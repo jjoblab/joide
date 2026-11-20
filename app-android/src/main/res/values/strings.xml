@@ -33,7 +33,6 @@
     <string name="assistant_confirmation_detail">Le mode choisi peut être changé plus tard dans les paramètres (installer l'autre mode, réparer, désinstaller).</string>
     <string name="assistant_confirmer">Confirmer le choix</string>
     <string name="assistant_retour_choix">Revenir au choix</string>
-</resources>
     <string name="assistant_commencer">Commencer</string>
     <string name="mode_forge_limites">Limites : AAR et ViewBinding non supportés ; les composants Android (aapt2, plateformes) ne sont pas encore publiés par Forge.</string>
     <string name="mode_gradle_limites">Limites : plus lourd (environnement Linux complet à télécharger) ; le premier build est plus lent.</string>
