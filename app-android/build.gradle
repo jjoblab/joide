@@ -63,6 +63,7 @@ dependencies {
     implementation project(':workbench-spi')
     implementation project(':build-forge')
     implementation project(':build-gradle-core')
+    implementation project(':terminal-core')
     implementation 'androidx.appcompat:appcompat:1.7.0'
     // Terminal intégré (mode Gradle, ADR-005) : modules Apache-2.0 du dépôt Termux
     // uniquement (terminal-emulator + terminal-view, exception de licence explicite
