@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Assistant du premier lancement : choix Forge / Gradle, sans défaut caché (ADR-002). -->
+<!-- Assistant du premier lancement : quatre pages (ADR-002) en sections à
+     visibilité séquentielle — bienvenue, Forge, Gradle, confirmation. -->
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -10,6 +11,13 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="24dp">
+
+    <!-- Page 1 : bienvenue (aucune sélection possible ici). -->
+    <LinearLayout
+        android:id="@+id/welcome_section"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
 
         <TextView
             android:layout_width="match_parent"
@@ -25,65 +33,139 @@
             android:textAppearance="?attr/textAppearanceBodyMedium"
             android:textColor="?attr/colorOnSurfaceVariant" />
 
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/forge_card"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/mode_forge_nom"
-                    android:textAppearance="?attr/textAppearanceTitleMedium" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="@string/mode_forge_apports"
-                    android:textAppearance="?attr/textAppearanceBodyMedium" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/gradle_card"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/mode_gradle_nom"
-                    android:textAppearance="?attr/textAppearanceTitleMedium" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="@string/mode_gradle_apports"
-                    android:textAppearance="?attr/textAppearanceBodyMedium" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
         <Button
-            android:id="@+id/select_button"
+            android:id="@+id/welcome_next_button"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:text="@string/assistant_choisir" />
+            android:text="@string/assistant_commencer" />
+    </LinearLayout>
+
+    <!-- Page 2 : Forge (apports + limites honnêtes). -->
+    <LinearLayout
+        android:id="@+id/forge_section"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/mode_forge_nom"
+            android:textAppearance="?attr/textAppearanceDisplaySmall" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/mode_forge_apports"
+            android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/mode_forge_limites"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSurfaceVariant" />
+
+        <Button
+            android:id="@+id/forge_select_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/assistant_choisir_forge" />
+
+        <Button
+            android:id="@+id/forge_next_button"
+            style="?attr/borderlessButtonStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/assistant_poursuivre_gradle" />
+    </LinearLayout>
+
+    <!-- Page 3 : Gradle (apports + limites honnêtes). -->
+    <LinearLayout
+        android:id="@+id/gradle_section"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/mode_gradle_nom"
+            android:textAppearance="?attr/textAppearanceDisplaySmall" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/mode_gradle_apports"
+            android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/mode_gradle_limites"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSurfaceVariant" />
+
+        <Button
+            android:id="@+id/gradle_select_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/assistant_choisir_gradle" />
+
+        <Button
+            android:id="@+id/gradle_back_button"
+            style="?attr/borderlessButtonStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/assistant_retour_forge" />
+    </LinearLayout>
+
+    <!-- Page 4 : confirmation (récapitule le mode provisoire, aucun défaut). -->
+    <LinearLayout
+        android:id="@+id/confirm_section"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/assistant_confirmation_titre"
+            android:textAppearance="?attr/textAppearanceDisplaySmall" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/assistant_confirmation_detail"
+            android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+        <Button
+            android:id="@+id/confirm_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/assistant_confirmer" />
+
+        <Button
+            android:id="@+id/confirm_back_button"
+            style="?attr/borderlessButtonStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/assistant_retour_choix" />
+    </LinearLayout>
     </LinearLayout>
 </ScrollView>

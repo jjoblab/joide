@@ -110,6 +110,23 @@ avec notre implémentation** ; **statut**.
   aussi `jjoblab/codeide` (dépôt de l'écosystème maison, hors périmètre du présent
   registre de référence design/IA).
 
+## Comparaison après lots (L2-L3, 2026-11-20)
+
+- **LOT-02 (assistant des modes)** : conforme aux notes design de la référence
+  (premier lancement sans défaut, apports/limites par mode). Écart : pas de pager
+  (ViewPager2) — la référence utilise un pager, JoIDE met en page par sections
+  (règle de dépendances : pas de bibliothèque pour un besoin couvert autrement) ;
+  l'ordre de lecture reste imposé. Consigné dans LOT-02.
+- **LOT-03 (intégration Forge)** : la traduction d'événements reprend la
+  correspondance constatée dans l'analyse design (journal/tâches/progression/
+  diagnostics/fin). Écarts : (1) la taille affichée par l'assistant viendra du
+  manifeste vérifié seulement en L8 (avant l'installation réelle) ; (2) F-03
+  (agrégation du premier diagnostic dans la fin de build) reste ouverte côté Forge ;
+  (3) la reprise d'installation interrompue est testée côté Forge (plages HTTP) et
+  le chemin local côté JoIDE — la reprise à travers le port JoIDE sera retestée en
+  L8 avec le bouton Annuler. Aucun contournement silencieux : tout vit dans
+  DEMANDES-FORGE ou LOT-03.
+
 ## Suivi des écarts après implémentation
 
 Chaque lot (L0-L9) relit la partie correspondante du produit de référence **après**

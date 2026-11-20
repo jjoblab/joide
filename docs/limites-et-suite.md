@@ -13,8 +13,8 @@
 | Maquettes HTML des écrans clés (jalon J1) | Fait (`docs/mockups/`, miroir dans le répertoire de téléchargement) |
 | L0 : squelette multi-modules, contrôle des termes, règle de langue, contrôle API 28, règle de dépendances, hooks | Fait |
 | L1 : design system XML, thèmes clair/sombre, composants (carte projet, segments, état vide, strip d'avis, popup ancrée, bottom sheet 4 sections), coquille de navigation | Fait |
-| L2 : assistant des deux modes, stockage du choix, tests des états | Fait |
-| L3 : `BuildBackend` + `ForgeBackend` + `GradleBackend` (double), événements, diagnostics, annulation, tests avec doubles | Fait (tests JVM ; intégration Forge réelle = appareil) |
+| L2 : assistant des modes (modèle d'états JVM + 4 pages sans dépendance pager), stockage du choix | Fait (rapport `docs/lots/LOT-02.md`) |
+| L3 : Forge consommé **comme bibliothèque versionnée** (mavenLocal du checkout épinglé v0.2.6, ADR-001), traducteur d'événements + intégration avec le **moteur factice réel** en processus séparé, installateur signé (manifeste falsifié refusé, altération → BROKEN), lancement `EngineClient` | Fait (rapport `docs/lots/LOT-03.md` ; `app_process` et canal HTTPS de production = appareil réel) |
 | L4 : détection des projets (forge.json / Gradle), accueil, création depuis modèle | Fait |
 | CI : build JVM + APK signé + contrôles | Fait (démarrée ; les jobs suivants seront suivis dans les rapports de lots) |
 
@@ -35,6 +35,9 @@ reprendre sera choisie à ce moment-là.
 
 ## 3. Hypothèses retenues (faute d'interrogation possible)
 
+0. **Clé du canal manifeste épinglée** dans `ForgeInstaller` (identique à
+   `ClesForge` de Forge — clé publique, pas un secret ; surchargeable par
+   `joide.forge.manifestKey` pour les tests).
 1. **`targetSdk 28` confirmé** pour l'application entière (ADR-009) : cohérent avec
    Forge (exécution de binaires téléchargés depuis le stockage privé), assume la
    distribution hors magasin. Le cahier des charges demandait une confirmation par
