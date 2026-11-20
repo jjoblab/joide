@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace 'jo.joide.app'
-    compileSdk 35
+    compileSdk 36  // celeris AAR (2.1.0) exige 36 ; targetSdk reste 28 (ADR-009)
     defaultConfig {
         applicationId 'jo.joide.app'
         minSdk 28
