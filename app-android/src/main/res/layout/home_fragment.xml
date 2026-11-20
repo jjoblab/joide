@@ -52,6 +52,27 @@
                 android:padding="24dp"
                 android:text="@string/accueil_vide_texte"
                 android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+            <!-- Liste des projets (cartes) : racine du stockage privé, L4 -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/projects_recycler"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:nestedScrollingEnabled="false"
+                android:visibility="gone" />
+
+            <!-- Avis passager (échec honnête, action non câblée) : jamais muet -->
+            <TextView
+                android:id="@+id/transient_notice"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:padding="12dp"
+                android:visibility="gone"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:background="?attr/colorSurfaceVariant" />
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 

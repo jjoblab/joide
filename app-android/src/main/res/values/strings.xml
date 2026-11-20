@@ -34,4 +34,8 @@
     <string name="assistant_confirmation_detail">Le mode choisi peut être changé plus tard dans les paramètres (installer l\'autre mode, réparer, désinstaller).</string>
     <string name="assistant_confirmer">Confirmer le choix</string>
     <string name="assistant_retour_choix">Revenir au choix</string>
+    <string name="projet_meta_modes">Modes : %s</string>
+    <string name="projet_modes_inconnu">Dossier de fichiers</string>
+    <string name="import_non_cable_encore">Import : câblé au lot L8 (permissions documentées)</string>
+    <string name="creation_echec">Création impossible : %s</string>
 </resources>
