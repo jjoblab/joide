@@ -60,9 +60,13 @@ jobs:
           JOIDE_KEYSTORE_B64: ${{ secrets.JOIDE_KEYSTORE_B64 }}
           JOIDE_KEYSTORE_MDP: ${{ secrets.JOIDE_KEYSTORE_MDP }}
         run: |
+          # Keystore reconstitué depuis le secret (base64 PKCS12), puis build
+          # release signé (même clé pour toutes les mises à jour).
+          echo "$JOIDE_KEYSTORE_B64" | base64 -d > app-android/joide-ci.keystore
           chmod +x gradlew
-          ./gradlew --no-daemon :app-android:assembleDebug
+          ./gradlew --no-daemon :app-android:assembleRelease
+          rm -f app-android/joide-ci.keystore
       - uses: actions/upload-artifact@v4
         with:
           name: joide-apk-signe
-          path: app-android/build/outputs/apk/debug/*.apk
+          path: app-android/build/outputs/apk/release/*.apk

@@ -1,9 +1,11 @@
 // Module application Android : la coquille (écrans, atelier, design system).
 // Java 17, vues AndroidX + Material 3, layouts XML + ViewBinding (cahier des charges §3).
+// Signature : la CI (job apk-signe) reconstruit le keystore depuis le secret
+// JOIDE_KEYSTORE_B64 (base64 PKCS12) et signe le build debug de publication
+// (installation cumulative sur appareil : même key, mises à jour autorisées).
 plugins {
     id 'com.android.application'
 }
-apply plugin: 'com.android.application'
 
 android {
     namespace 'jo.joide.app'
@@ -20,10 +22,30 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+    signingConfigs {
+        // Keystore reconstitué par la CI avant le build ; absent en local debug
+        // (le debug standard garde la clé AOSP de développement).
+        ci {
+            def keystoreFile = rootProject.file('app-android/joide-ci.keystore')
+            storeFile keystoreFile
+            storePassword System.getenv('JOIDE_KEYSTORE_MDP')
+            keyAlias 'joide'
+            keyPassword System.getenv('JOIDE_KEYSTORE_MDP')
+            // Le fichier est créé par le job ; s'il est absent, la config reste
+            // inutilisée (buildTypes ci-dessous ne l'active que si le fichier existe).
+            enableV1Signing true
+            enableV2Signing true
+        }
+    }
     buildTypes {
         debug { }
         release {
             minifyEnabled false
+            // Job apk-signe (étiquettes) : signature stable depuis les secrets.
+            if (rootProject.file('app-android/joide-ci.keystore').exists()
+                    && System.getenv('JOIDE_KEYSTORE_MDP') != null) {
+                signingConfig signingConfigs.ci
+            }
         }
     }
 }
