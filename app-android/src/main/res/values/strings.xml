@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Textes de la coquille JoIDE (l'UI ne contient jamais de texte en dur : check-langue). -->
 <resources>
     <string name="app_nom">JoIDE</string>
     <string name="accueil_titre">Projets</string>
@@ -22,28 +23,6 @@
     <string name="assistant_sous_titre">Choisissez votre mode de travail</string>
     <string name="assistant_choisir">Installer ce mode</string>
     <string name="commun_retour">Retour</string>
-    <string name="assistant_commencer">Commencer</string>
-    <string name="mode_forge_limites">Limites : AAR et ViewBinding non supportés ; les composants Android (aapt2, plateformes) ne sont pas encore publiés par Forge.</string>
-    <string name="mode_gradle_limites">Limites : plus lourd (environnement Linux complet à télécharger) ; le premier build est plus lent.</string>
-    <string name="assistant_choisir_forge">Choisir Forge</string>
-    <string name="assistant_choisir_gradle">Choisir Gradle</string>
-    <string name="assistant_poursuivre_gradle">Voir aussi le mode Gradle</string>
-    <string name="assistant_retour_forge">Revenir au mode Forge</string>
-    <string name="assistant_confirmation_titre">Confirmation du mode</string>
-    <string name="assistant_confirmation_detail">Le mode choisi peut être changé plus tard dans les paramètres (installer l'autre mode, réparer, désinstaller).</string>
-    <string name="assistant_confirmer">Confirmer le choix</string>
-    <string name="assistant_retour_choix">Revenir au choix</string>
-    <string name="assistant_commencer">Commencer</string>
-    <string name="mode_forge_limites">Limites : AAR et ViewBinding non supportés ; les composants Android (aapt2, plateformes) ne sont pas encore publiés par Forge.</string>
-    <string name="mode_gradle_limites">Limites : plus lourd (environnement Linux complet à télécharger) ; le premier build est plus lent.</string>
-    <string name="assistant_choisir_forge">Choisir Forge</string>
-    <string name="assistant_choisir_gradle">Choisir Gradle</string>
-    <string name="assistant_poursuivre_gradle">Voir aussi le mode Gradle</string>
-    <string name="assistant_retour_forge">Revenir au mode Forge</string>
-    <string name="assistant_confirmation_titre">Confirmation du mode</string>
-    <string name="assistant_confirmation_detail">Le mode choisi peut être changé plus tard dans les paramètres (installer l'autre mode, réparer, désinstaller).</string>
-    <string name="assistant_confirmer">Confirmer le choix</string>
-    <string name="assistant_retour_choix">Revenir au choix</string>
     <string name="assistant_commencer">Commencer</string>
     <string name="mode_forge_limites">Limites : AAR et ViewBinding non supportés ; les composants Android (aapt2, plateformes) ne sont pas encore publiés par Forge.</string>
     <string name="mode_gradle_limites">Limites : plus lourd (environnement Linux complet à télécharger) ; le premier build est plus lent.</string>
