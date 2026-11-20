@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Jetons sombre -->
+    <color name="primaire">#A9C8FF</color>
+    <color name="sur_primaire">#002F4C</color>
+    <color name="conteneur_primaire">#00456F</color>
+    <color name="sur_conteneur_primaire">#D4E3FF</color>
+    <color name="secondaire">#BDC7E0</color>
+    <color name="surface">#1A1C1A</color>
+    <color name="sur_surface">#E2E2E9</color>
+    <color name="sur_surface_attenue">#C4C6CC</color>
+    <color name="contour">#8E9199</color>
+    <color name="erreur">#FFB4AB</color>
+    <color name="tertiaire">#A6D0E8</color>
+</resources>

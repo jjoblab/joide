@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_nom">JoIDE</string>
+    <string name="accueil_titre">Projets</string>
+    <string name="accueil_nouveau">Nouveau projet</string>
+    <string name="accueil_importer">Importer un projet</string>
+    <string name="accueil_vide_titre">Aucun projet pour l\'instant</string>
+    <string name="accueil_vide_texte">Créez votre premier projet à partir d\'un modèle, ou importez un dossier existant.</string>
+    <string name="atelier_titre">Atelier</string>
+    <string name="atelier_executer">Construire</string>
+    <string name="atelier_enregistrer">Enregistrer</string>
+    <string name="section_console">Console</string>
+    <string name="section_problemes">Problèmes</string>
+    <string name="section_journal">Journal</string>
+    <string name="section_logcat">Logcat</string>
+    <string name="parametres_titre">Paramètres</string>
+    <string name="mode_forge_nom">Forge</string>
+    <string name="mode_forge_apports">Moteur de build maison, léger et rapide à installer</string>
+    <string name="mode_gradle_nom">Gradle + terminal</string>
+    <string name="mode_gradle_apports">Projets Gradle existants, terminal intégré, environnement Linux complet</string>
+    <string name="assistant_bienvenue">Bienvenue dans JoIDE</string>
+    <string name="assistant_sous_titre">Choisissez votre mode de travail</string>
+    <string name="assistant_choisir">Installer ce mode</string>
+    <string name="commun_retour">Retour</string>
+</resources>

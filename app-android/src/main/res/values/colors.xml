@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Jetons clair (design-system §2, palette bleu nuit générée par l'outil M3) -->
+    <color name="primaire">#1B3A5C</color>
+    <color name="sur_primaire">#FDFBFF</color>
+    <color name="conteneur_primaire">#D4E3FF</color>
+    <color name="sur_conteneur_primaire">#002E4F</color>
+    <color name="secondaire">#565E71</color>
+    <color name="surface">#FDFBFF</color>
+    <color name="sur_surface">#1A1C1A</color>
+    <color name="sur_surface_attenue">#44474A</color>
+    <color name="contour">#74777A</color>
+    <color name="erreur">#BA1A1A</color>
+    <color name="tertiaire">#3F6373</color>
+</resources>

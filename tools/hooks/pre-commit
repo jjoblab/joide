@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Hook pre-commit : refuse le commit si un terme interdit apparaît dans les fichiers
+# indexés, hors docs/REFERENCES.md, ou dans l'historique des messages (mécanisme Forge).
+set -uo pipefail
+cd "$(git rev-parse --show-toplevel)" || exit 1
+TERMS_FILE="$(git rev-parse --git-dir)/info/forbidden-terms.txt"
+[ -f "$TERMS_FILE" ] || { echo "pre-commit : $TERMS_FILE introuvable (lancez ./tools/setup-local.sh)." >&2; exit 1; }
+mapfile -t TERMS < <(grep -vE '^\s*(#|$)' "$TERMS_FILE" || true)
+[ "${#TERMS[@]}" -eq 0 ] && { echo "pre-commit : liste vide." >&2; exit 1; }
+failed=0
+check_content() {
+  local label="$1" content="$2"
+  for term in "${TERMS[@]}"; do
+    if grep -Finq -- "$term" <<< "$content"; then
+      echo "  terme interdit « ${term} » trouvé dans ${label}" >&2
+      grep -Fin -- "$term" <<< "$content" | head -3 | sed 's/^/    /' >&2
+      failed=1
+    fi
+  done
+}
+while IFS= read -r file; do
+  [ -z "$file" ] && continue
+  case "$file" in docs/REFERENCES.md) continue ;; esac
+  if [ -f "$file" ]; then
+    if content="$(git show ":$file" 2>/dev/null)"; then check_content "$file" "$content"; fi
+  fi
+done < <(git diff --cached --name-only --diff-filter=ACMR)
+if git rev-parse HEAD >/dev/null 2>&1; then
+  for term in "${TERMS[@]}"; do
+    if git log --format='%s%n%b' | grep -Finq -- "$term"; then
+      echo "  terme interdit « ${term} » dans l'historique des messages de commit" >&2
+      failed=1
+    fi
+  done
+fi
+[ "$failed" -ne 0 ] && echo "Commit refusé : termes interdits (exception unique : docs/REFERENCES.md)." >&2
+exit "$failed"

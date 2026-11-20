@@ -1,0 +1,3 @@
+// JoIDE — build racine : les conventions vivent dans chaque module (JVM purs) ;
+// le module Android (app-android) est inclus par settings.gradle.kts si le SDK est détecté.
+description = "JoIDE : IDE Android pour téléphone, deux modes de build (Forge ou Gradle + terminal)"

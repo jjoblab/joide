@@ -1,0 +1,42 @@
+// Module application Android : la coquille (écrans, atelier, design system).
+// Java 17, vues AndroidX + Material 3, layouts XML + ViewBinding (cahier des charges §3).
+plugins {
+    id 'com.android.application'
+}
+apply plugin: 'com.android.application'
+
+android {
+    namespace 'jo.joide.app'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'jo.joide.app'
+        minSdk 28
+        targetSdk 28
+        versionCode 1
+        versionName '0.1.0'
+    }
+    buildFeatures { viewBinding true }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    buildTypes {
+        debug { }
+        release {
+            minifyEnabled false
+        }
+    }
+}
+
+dependencies {
+    implementation project(':core-model')
+    implementation project(':core-store')
+    implementation project(':workbench-spi')
+    implementation project(':build-forge')
+    implementation project(':build-gradle-core')
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.2.0'
+    implementation 'androidx.navigation:navigation-fragment:2.8.4'
+    implementation 'androidx.navigation:navigation-ui:2.8.4'
+}

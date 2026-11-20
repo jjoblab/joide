@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JoIDE — maquette atelier (J1)</title>
+<style>
+:root{--primaire:#1B3A5C;--surface:#FDFBFF;--sur:#1A1C1A;--attenue:#44474A;--contour:#74777A;--erreur:#BA1A1A;--console-bg:#101418;--D5E:#D5E3F0}
+body{margin:0;font-family:system-ui,sans-serif;background:var(--surface);color:var(--sur)}
+.telephone{max-width:420px;margin:16px auto;border:1px solid var(--contour);border-radius:24px;overflow:hidden;background:var(--surface)}
+.barre{display:flex;gap:8px;align-items:center;padding:8px 12px;height:52px;border-bottom:1px solid #E2E2E9}
+.barre b{flex:1;font-weight:600}
+.btn{width:40px;height:40px;display:flex;align-items:center;justify-content:center;border:none;background:none;font-size:18px}
+.zone{padding:16px;font-family:ui-monospace,monospace;font-size:12.5px;background:#F3F6FA;min-height:120px;white-space:pre;color:#244}
+.sheet{border-top:1px solid #E2E2E9;background:var(--surface)}
+.onglets{display:flex;height:56px;align-items:center;border-bottom:1px solid #E2E2E9;overflow-x:auto}
+.onglets span{padding:0 14px;font-size:13px;color:var(--attenue);white-space:nowrap;border-bottom:2px solid transparent}
+.onglets span.actif{color:var(--primaire);border-color:var(--primaire);font-weight:600}
+.console{background:var(--console-bg);color:#D5E3F0;min-height:140px;padding:12px;font-family:ui-monospace,monospace;font-size:11.5px;line-height:1.5}
+.ligne{display:flex;gap:8px}.sev{width:70px}.err{color:#FF8A80}.ok{color:#B9F6CA}
+.avis{display:flex;gap:8px;align-items:center;padding:6px 12px;font-size:12px;color:#7A5B00;background:#FFF8E1;border-bottom:1px solid #F0E6C8}
+@media(max-width:440px){.telephone{margin:0;border-radius:0;border:none}}
+</style>
+</head>
+<body>
+<div class="telephone">
+  <div class="barre">
+    <button class="btn" aria-label="Retour">←</button>
+    <button class="btn" aria-label="Fichiers">☰</button>
+    <b>MonApplication</b>
+    <button class="btn" aria-label="Enregistrer">⤓</button>
+    <button class="btn" aria-label="Construire" style="color:var(--primaire)">▶</button>
+    <button class="btn" aria-label="Plus">⋮</button>
+  </div>
+  <div class="avis">⚠ Mode Forge : composants Android (aapt2, plateformes) non publiés — voir Demandes F-02 · <u>Changer de mode</u></div>
+  <div class="zone">package demo.app;
+
+public final class MainActivity {
+    // zone éditeur (brique de l'auteur)
+}</div>
+  <div class="sheet">
+    <div class="onglets" role="tablist">
+      <span class="actif">Console</span><span>Problèmes</span><span>Journal</span><span>Logcat</span>
+    </div>
+    <div class="console">
+      <div class="ligne"><span class="sev ok">TÂCHE</span><span>app:compileJava — REUSSIE (812 ms)</span></div>
+      <div class="ligne"><span class="sev">TÂCHE</span><span>app:dex — A_JOUR</span></div>
+      <div class="ligne"><span class="sev err">ERREUR</span><span>app/src/main/java/demo/Main.java:12: cannot find symbol</span></div>
+      <div class="ligne"><span class="sev">FIN</span><span>échec — tâche fautive : app:compileJava</span></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

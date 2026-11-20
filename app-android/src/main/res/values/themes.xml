@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.JoIDE" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/primaire</item>
+        <item name="colorOnPrimary">@color/sur_primaire</item>
+        <item name="colorPrimaryContainer">@color/conteneur_primaire</item>
+        <item name="colorOnPrimaryContainer">@color/sur_conteneur_primaire</item>
+        <item name="colorSecondary">@color/secondaire</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/sur_surface</item>
+        <item name="colorOnSurfaceVariant">@color/sur_surface_attenue</item>
+        <item name="colorOutline">@color/contour</item>
+        <item name="colorError">@color/erreur</item>
+        <item name="colorTertiary">@color/tertiaire</item>
+    </style>
+</resources>

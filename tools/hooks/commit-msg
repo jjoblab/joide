@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Hook commit-msg : refuse un message de commit contenant un terme interdit.
+set -uo pipefail
+MSG_FILE="${1:?argument manquant : fichier du message}"
+TERMS_FILE="$(git rev-parse --git-dir)/info/forbidden-terms.txt"
+[ -f "$TERMS_FILE" ] || { echo "commit-msg : $TERMS_FILE introuvable." >&2; exit 1; }
+mapfile -t TERMS < <(grep -vE '^\s*(#|$)' "$TERMS_FILE" || true)
+failed=0
+for term in "${TERMS[@]}"; do
+  if grep -Finq -- "$term" "$MSG_FILE"; then
+    echo "commit-msg : terme interdit « ${term} » dans le message :" >&2
+    grep -Fin -- "$term" "$MSG_FILE" | head -3 | sed 's/^/    /' >&2
+    failed=1
+  fi
+done
+exit "$failed"
