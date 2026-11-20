@@ -51,6 +51,13 @@ android {
 }
 
 dependencies {
+    // Brique céleris (consigne du propriétaire, conception §6) : version épinglée
+    // 2.1.0 via mavenLocal du checkout cloné (ADR-001 bis : pas de tag JitPack —
+    // demande B-01). La CI publie celeris vers mavenLocal avant le build.
+    implementation 'jo.celeris:android-view:2.1.0'
+    implementation 'jo.celeris:android-widgets:2.1.0'
+    implementation 'jo.celeris:android-host:2.1.0'
+    implementation 'jo.celeris:core-syntax-grammars:2.1.0'
     implementation project(':core-model')
     implementation project(':core-store')
     implementation project(':workbench-spi')

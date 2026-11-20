@@ -28,6 +28,10 @@ jobs:
         run: |
           git clone --depth 1 --branch v0.2.6 https://github.com/jjoblab/forge.git /tmp/forge
           ./tools/forge-mavenlocal.sh /tmp/forge 0.2.6
+      - name: Celeris vers mavenLocal (ADR-001 bis, demande B-01)
+        run: |
+          git clone --depth 1 https://github.com/jjoblab/celeris.git /tmp/celeris
+          (cd /tmp/celeris && chmod +x gradlew && ./gradlew --no-daemon -q publishToMavenLocal)
       - name: Tests du coeur JVM (Forge integre, sans SDK Android)
         run: |
           chmod +x gradlew

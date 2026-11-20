@@ -38,4 +38,8 @@
     <string name="projet_modes_inconnu">Dossier de fichiers</string>
     <string name="import_non_cable_encore">Import : câblé au lot L8 (permissions documentées)</string>
     <string name="creation_echec">Création impossible : %s</string>
+    <string name="atelier_construire">Construire</string>
+    <string name="atelier_enregistrer_ok">Enregistré</string>
+    <string name="atelier_build_reussi">Build réussi</string>
+    <string name="atelier_build_echoue">Build échoué (tâche fautive : %s)</string>
 </resources>

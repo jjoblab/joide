@@ -12,18 +12,51 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/workbench_toolbar"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="52dp"
-            app:title="@string/atelier_titre" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="8dp">
 
-        <FrameLayout
-            android:id="@+id/editor_area"
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/atelier_titre"
+                android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+            <Button
+                android:id="@+id/build_button"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="0dp"
+                android:text="@string/atelier_construire" />
+        </LinearLayout>
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:background="?attr/colorSurface" />
+            android:orientation="horizontal">
+
+            <!-- Tiroir fichiers (bord gauche, largeur bornée téléphone) -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/files_recycler"
+                android:layout_width="112dp"
+                android:layout_height="match_parent"
+                android:background="?attr/colorSurfaceVariant"
+                android:overScrollMode="ifContentScrolls" />
+
+            <!-- Zone éditeur (brique céleris, L5) -->
+            <FrameLayout
+                android:id="@+id/editor_area"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="?attr/colorSurface" />
+        </LinearLayout>
     </LinearLayout>
 
     <com.google.android.material.bottomsheet.BottomSheetDragHandleView
@@ -63,5 +96,50 @@
                 android:layout_height="wrap_content"
                 android:text="@string/section_logcat" />
         </com.google.android.material.tabs.TabLayout>
+
+        <!-- Contenus des quatre sections : une seule en-tête, aucun doublon -->
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="160dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="12dp"
+                android:paddingBottom="12dp">
+
+                <TextView
+                    android:id="@+id/console_output"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="monospace"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:importantForAccessibility="no" />
+
+                <TextView
+                    android:id="@+id/problems_list"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"
+                    android:textAppearance="?attr/textAppearanceBodySmall" />
+
+                <TextView
+                    android:id="@+id/ide_journal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"
+                    android:fontFamily="monospace"
+                    android:textAppearance="?attr/textAppearanceBodySmall" />
+
+                <TextView
+                    android:id="@+id/logcat_output"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"
+                    android:fontFamily="monospace"
+                    android:textAppearance="?attr/textAppearanceBodySmall" />
+            </LinearLayout>
+        </ScrollView>
     </LinearLayout>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
