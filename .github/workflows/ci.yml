@@ -21,6 +21,11 @@ jobs:
         run: |
           chmod +x gradlew
           JOIDE_SKIP_ANDROID=1 ./gradlew --no-daemon test
+      - name: Construire l'APK (SDK de l'exécutant)
+        run: |
+          chmod +x gradlew
+          export ANDROID_SDK_ROOT=$ANDROID_HOME
+          ./gradlew --no-daemon :app-android:assembleDebug
       - name: Construire (APK si SDK disponible)
         run: |
           if [ -n "$ANDROID_HOME" ]; then ./gradlew --no-daemon assembleDebug; else

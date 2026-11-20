@@ -10,6 +10,10 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
     }
+    // AGP pour le module Android (version épinglée, ADR conception §1).
+    plugins {
+        id("com.android.application") version "8.7.3"
+    }
 }
 
 plugins {
@@ -32,7 +36,6 @@ dependencyResolutionManagement {
 val refusAndroid = providers.gradleProperty("joide.skipAndroid").getOrElse("") == "1"
         || providers.environmentVariable("JOIDE_SKIP_ANDROID").getOrElse("") == "1"
 val sdkDetecte = providers.environmentVariable("ANDROID_HOME").getOrElse("").isNotEmpty()
-        && providers.environmentVariable("ANDROID_SDK_ROOT").getOrElse("").isNotEmpty()
 
 rootProject.name = "joide"
 
