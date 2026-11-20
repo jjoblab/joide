@@ -101,8 +101,7 @@ public class WorkbenchFragment extends Fragment {
                 appendToConsole(log.message());
             } else if (event instanceof BuildEvent.DiagnosticEvent diagnostic) {
                 binding.problemsList.append(diagnosticSummary(diagnostic.diagnostic())
-                        + "
-");
+                        + "\n");
             } else if (event instanceof BuildEvent.TaskState task) {
                 appendToConsole(task.taskName() + " : " + task.status());
             } else if (event instanceof BuildEvent.Progress progress) {
