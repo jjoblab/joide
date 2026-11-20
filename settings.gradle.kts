@@ -30,6 +30,14 @@ dependencyResolutionManagement {
         mavenLocal()
         google()
         mavenCentral()
+        // Termux : uniquement les modules Apache-2.0 (terminal-emulator, terminal-view)
+        // via JitPack — filtre strict, rien d'autre ne vient de ce dépôt.
+        maven {
+            url = uri("https://jitpack.io")
+            content {
+                includeGroup("com.github.termux.termux-app")
+            }
+        }
     }
 }
 
@@ -41,6 +49,7 @@ rootProject.name = "joide"
 
 include(":core-model")
 include(":core-store")
+include(":terminal-core")
 include(":workbench-spi")
 include(":build-forge")
 include(":build-gradle-core")

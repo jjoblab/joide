@@ -64,6 +64,12 @@ dependencies {
     implementation project(':build-forge')
     implementation project(':build-gradle-core')
     implementation 'androidx.appcompat:appcompat:1.7.0'
+    // Terminal intégré (mode Gradle, ADR-005) : modules Apache-2.0 du dépôt Termux
+    // uniquement (terminal-emulator + terminal-view, exception de licence explicite
+    // dans LICENSE.md de termux-app). PAS de fork du dépôt racine (GPLv3) et PAS de
+    // termux-shared (GPLv3) : le clavier étendu est ré-implémenté en interne.
+    implementation 'com.github.termux.termux-app:terminal-emulator:v0.118.3'
+    implementation 'com.github.termux.termux-app:terminal-view:v0.118.3'
     implementation 'com.google.android.material:material:1.12.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.2.0'
     implementation 'androidx.navigation:navigation-fragment:2.8.4'

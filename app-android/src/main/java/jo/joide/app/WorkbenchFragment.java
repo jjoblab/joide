@@ -66,6 +66,13 @@ public class WorkbenchFragment extends Fragment {
             // J2 : construire — le build Forge alimente la Console (journal,
             // progression) et la section Problèmes (diagnostics avec position).
             binding.buildButton.setOnClickListener(v -> runForgeBuild());
+            // J3 : terminal intégré (mode Gradle, lot L6).
+            binding.terminalButton.setOnClickListener(v ->
+                    getParentFragmentManager().beginTransaction()
+                            .replace(((ViewGroup) requireView().getParent()).getId(),
+                                    new jo.joide.app.terminal.TerminalFragment())
+                            .addToBackStack(null)
+                            .commit());
         }
         return binding.getRoot();
     }

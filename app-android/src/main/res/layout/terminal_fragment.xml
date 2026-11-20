@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Terminal intégré (mode Gradle, J3) : vue unique + clavier étendu + tiroir sessions. -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <!-- Avis honnête : environnement non installé (jamais d'écran vide muet) -->
+    <TextView
+        android:id="@+id/terminal_notice"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:visibility="gone"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="?attr/colorOnSurfaceVariant" />
+
+    <FrameLayout
+        android:id="@+id/terminal_area"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="#000000" />
+
+    <!-- Clavier étendu interne (Ctrl/Alt/Échap/Tab/flèches ; GPLv3 évité) -->
+    <jo.joide.app.terminal.ExtendedKeyboardRow
+        android:id="@+id/extended_keyboard"
+        android:layout_width="match_parent"
+        android:layout_height="44dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <Button
+            android:id="@+id/new_session_button"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/terminal_nouvelle_session" />
+    </LinearLayout>
+
+    <!-- Tiroir sessions (vives et mortes jusqu'à fermeture) -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/sessions_recycler"
+        android:layout_width="match_parent"
+        android:layout_height="120dp" />
+</LinearLayout>

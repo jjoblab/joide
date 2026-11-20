@@ -42,4 +42,7 @@
     <string name="atelier_enregistrer_ok">Enregistré</string>
     <string name="atelier_build_reussi">Build réussi</string>
     <string name="atelier_build_echoue">Build échoué (tâche fautive : %s)</string>
+    <string name="terminal_titre">Terminal</string>
+    <string name="terminal_nouvelle_session">Nouvelle session</string>
+    <string name="terminal_non_installe">Environnement Gradle non installé : le terminal arrive après l\'installation du mode Gradle (paramètres, lot L8).</string>
 </resources>
