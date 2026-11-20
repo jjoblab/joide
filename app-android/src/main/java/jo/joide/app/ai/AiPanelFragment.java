@@ -13,6 +13,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import jo.joide.app.R;
 import jo.joide.ai.AgentLoop;
 import jo.joide.ai.AgentWorkspace;
 import jo.joide.ai.AiProvider;
