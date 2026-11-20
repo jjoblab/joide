@@ -20,7 +20,7 @@ jobs:
       - name: Tests du cœur JVM (sans SDK Android)
         run: |
           chmod +x gradlew
-          JOIDE_SKIP_ANDROID=1 ./gradlew --no-daemon -Porg.gradle.java.installations.auto-download=false test
+          JOIDE_SKIP_ANDROID=1 ./gradlew --no-daemon test
       - name: Construire (APK si SDK disponible)
         run: |
           if [ -n "$ANDROID_HOME" ]; then ./gradlew --no-daemon assembleDebug; else
