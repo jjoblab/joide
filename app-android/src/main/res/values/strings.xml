@@ -31,7 +31,7 @@
     <string name="assistant_poursuivre_gradle">Voir aussi le mode Gradle</string>
     <string name="assistant_retour_forge">Revenir au mode Forge</string>
     <string name="assistant_confirmation_titre">Confirmation du mode</string>
-    <string name="assistant_confirmation_detail">Le mode choisi peut être changé plus tard dans les paramètres (installer l'autre mode, réparer, désinstaller).</string>
+    <string name="assistant_confirmation_detail">Le mode choisi peut être changé plus tard dans les paramètres (installer l\'autre mode, réparer, désinstaller).</string>
     <string name="assistant_confirmer">Confirmer le choix</string>
     <string name="assistant_retour_choix">Revenir au choix</string>
 </resources>
