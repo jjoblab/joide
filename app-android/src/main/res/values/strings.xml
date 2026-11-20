@@ -45,4 +45,6 @@
     <string name="terminal_titre">Terminal</string>
     <string name="terminal_nouvelle_session">Nouvelle session</string>
     <string name="terminal_non_installe">Environnement Gradle non installé : le terminal arrive après l\'installation du mode Gradle (paramètres, lot L8).</string>
+    <string name="ia_titre">IA</string>
+    <string name="ia_sans_cle">Aucune clé IA au coffre : réglez un fournisseur dans les paramètres (lot L8). La passerelle locale fonctionne sans clé.</string>
 </resources>

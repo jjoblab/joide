@@ -50,6 +50,7 @@ rootProject.name = "joide"
 include(":core-model")
 include(":core-store")
 include(":terminal-core")
+include(":ai")
 include(":workbench-spi")
 include(":build-forge")
 include(":build-gradle-core")

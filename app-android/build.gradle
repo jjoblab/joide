@@ -65,6 +65,10 @@ dependencies {
     implementation project(':build-gradle-core')
     implementation project(':terminal-core')
     implementation 'androidx.appcompat:appcompat:1.7.0'
+    // Coffre IA : EncryptedSharedPreferences (clé Keystore) — conception §8, REF-123.
+    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
+    // Module IA (lot L7) : boucle d'agent + transport + coffre (port).
+    implementation project(':ai')
     // Terminal intégré (mode Gradle, ADR-005) : modules Apache-2.0 du dépôt Termux
     // uniquement (terminal-emulator + terminal-view, exception de licence explicite
     // dans LICENSE.md de termux-app). PAS de fork du dépôt racine (GPLv3) et PAS de

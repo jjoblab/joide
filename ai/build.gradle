@@ -1,0 +1,16 @@
+// Module IA (lot L7) : Java pur + transport HTTP/SSE — testable sur JVM avec un
+// transport mock ; la coquille Android fournit l'implémentation EncryptedSharedPreferences
+// du coffre de clés (conception §8 : clés chiffrées, repli mémoire si keystore absent).
+plugins { id "java-library" }
+group = "jo.joide"
+version = "0.1.0"
+java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
+tasks.withType(JavaCompile).configureEach { options.encoding = "UTF-8"; options.release = 17 }
+tasks.withType(Test).configureEach { useJUnitPlatform() }
+dependencies {
+    api project(":core-model")
+    api project(":workbench-spi")
+    testImplementation platform("org.junit:junit-bom:5.11.4")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}

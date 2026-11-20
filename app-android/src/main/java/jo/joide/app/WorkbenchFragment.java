@@ -73,6 +73,18 @@ public class WorkbenchFragment extends Fragment {
                                     new jo.joide.app.terminal.TerminalFragment())
                             .addToBackStack(null)
                             .commit());
+            // L7 : tiroir IA de l'atelier (module ai, conception §8).
+            binding.aiButton.setOnClickListener(v -> {
+                jo.joide.app.ai.AiPanelFragment panel =
+                        new jo.joide.app.ai.AiPanelFragment();
+                Bundle args = new Bundle();
+                args.putString("project", projectPath);
+                panel.setArguments(args);
+                getParentFragmentManager().beginTransaction()
+                        .replace(((ViewGroup) requireView().getParent()).getId(), panel)
+                        .addToBackStack(null)
+                        .commit();
+            });
         }
         return binding.getRoot();
     }

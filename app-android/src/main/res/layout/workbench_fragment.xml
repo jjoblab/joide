@@ -27,6 +27,14 @@
                 android:textAppearance="?attr/textAppearanceTitleMedium" />
 
             <Button
+                android:id="@+id/ai_button"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="0dp"
+                android:text="@string/ia_titre" />
+
+            <Button
                 android:id="@+id/terminal_button"
                 style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="wrap_content"
