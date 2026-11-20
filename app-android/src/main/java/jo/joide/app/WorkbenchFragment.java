@@ -103,7 +103,7 @@ public class WorkbenchFragment extends Fragment {
                 binding.problemsList.append(diagnosticSummary(diagnostic.diagnostic())
                         + "\n");
             } else if (event instanceof BuildEvent.TaskState task) {
-                appendToConsole(task.taskName() + " : " + task.status());
+                appendToConsole(task.task() + " : " + task.status());
             } else if (event instanceof BuildEvent.Progress progress) {
                 appendToConsole("progression : " + progress.tasksDone()
                         + "/" + progress.tasksTotal());
@@ -148,7 +148,8 @@ public class WorkbenchFragment extends Fragment {
     /** Ouvre un fichier dans l'éditeur (onglet actif). */
     private void openFile(Path file) {
         try {
-            String content = Files.readString(file, StandardCharsets.UTF_8);
+            String content = new String(Files.readAllBytes(file),
+                    StandardCharsets.UTF_8);
             attachEditor(file.getFileName().toString(), content);
         } catch (IOException e) {
             appendToJournal("Ouverture de " + file.getFileName()
