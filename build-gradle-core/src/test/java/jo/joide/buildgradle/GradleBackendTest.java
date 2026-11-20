@@ -1,19 +1,21 @@
 package jo.joide.buildgradle;
 
-import jo.joide.workbench.*;
+import jo.joide.workbench.Capabilities;
+import jo.joide.workbench.WorkMode;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GradleBackendTest {
 
     @Test
-    void leBackendGradleAssumeSonPoidsDansSesLimites() {
+    void gradleBackendOwnsItsWeightInLimitations() {
         GradleBackend backend = new GradleBackend();
-        assertEquals(ModeTravail.GRADLE, backend.mode());
-        Capacites c = backend.capacites();
-        assertTrue(c.scriptsGradle());
+        assertEquals(WorkMode.GRADLE, backend.mode());
+        Capabilities c = backend.capabilities();
+        assertTrue(c.gradleScripts());
         assertTrue(c.terminal());
         assertTrue(c.aar());
-        assertTrue(c.limitesAffichees().stream().anyMatch(l -> l.contains("lourd")));
+        assertTrue(c.limitations().stream().anyMatch(l -> l.contains("lourd")));
     }
 }

@@ -5,18 +5,21 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import jo.joide.app.databinding.FragmentAtelierBinding;
+import jo.joide.app.databinding.WorkbenchFragmentBinding;
 
 /** Atelier : barre, zone éditeur, bottom sheet à quatre sections (fiche ecrans/atelier.md). */
-public class FragmentAtelier extends Fragment {
+public class WorkbenchFragment extends Fragment {
 
+    @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater gonfler, ViewGroup conteneur,
-            Bundle etat) {
-        FragmentAtelierBinding vue = FragmentAtelierBinding.inflate(gonfler, conteneur, false);
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
+            @Nullable Bundle savedInstanceState) {
+        WorkbenchFragmentBinding binding =
+                WorkbenchFragmentBinding.inflate(inflater, container, false);
         // Le câblage des sections (Console/Problèmes/Journal/Logcat) au BuildBackend
         // arrive en L3-L5 (lots restants, docs/limites-et-suite.md).
-        return vue.getRoot();
+        return binding.getRoot();
     }
 }

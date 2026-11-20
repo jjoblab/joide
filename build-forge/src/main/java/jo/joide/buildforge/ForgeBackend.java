@@ -1,8 +1,13 @@
 package jo.joide.buildforge;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.List;
-import jo.joide.workbench.*;
+import java.util.concurrent.CompletableFuture;
+import jo.joide.workbench.BuildBackend;
+import jo.joide.workbench.BuildRequest;
+import jo.joide.workbench.BuildSession;
+import jo.joide.workbench.Capabilities;
+import jo.joide.workbench.InstallState;
+import jo.joide.workbench.WorkMode;
 
 /**
  * Backend Forge : adapte le client du moteur Forge ({@code jo.forge.client}) au port
@@ -16,29 +21,31 @@ import jo.joide.workbench.*;
 public final class ForgeBackend implements BuildBackend {
 
     /** Canal du manifeste du moteur Forge (release GitHub). */
-    public static final String CANAL_MANIFESTE =
+    public static final String MANIFEST_CHANNEL =
             "https://github.com/jjoblab/forge/releases/latest/download/manifest.json";
 
-    private final GestionnaireEvenementsForge traducteur = new GestionnaireEvenementsForge();
+    private final ForgeEngineManager engineManager = new ForgeEngineManager();
 
     @Override
-    public ModeTravail mode() { return ModeTravail.FORGE; }
+    public WorkMode mode() {
+        return WorkMode.FORGE;
+    }
 
     @Override
-    public Capacites capacites() {
-        return new Capacites(true, false, false, false, false, List.of(
+    public Capabilities capabilities() {
+        return new Capabilities(true, false, false, false, false, List.of(
                 "AAR non supportés (demande F-05)",
                 "ViewBinding non supporté (demande F-06)",
                 "Composants Android (aapt2, plateformes) non publiés en v0.2.x (F-02)"));
     }
 
     @Override
-    public EtatInstallation etatInstallation() {
-        return traducteur.etatInstallation();
+    public InstallState installState() {
+        return engineManager.installState();
     }
 
     @Override
-    public CompletableFuture<BuildSession> build(BuildRequest requete) {
-        return traducteur.lancerBuild(requete);
+    public CompletableFuture<BuildSession> build(BuildRequest request) {
+        return engineManager.startBuild(request);
     }
 }

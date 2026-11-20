@@ -11,7 +11,7 @@
         android:theme="@style/Theme.JoIDE">
 
         <activity
-            android:name=".ActivitePrincipale"
+            android:name=".MainActivity"
             android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode">
             <intent-filter>

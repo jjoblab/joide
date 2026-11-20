@@ -1,13 +1,15 @@
 package jo.joide.buildforge;
 
-import jo.joide.workbench.EtatInstallation;
+import jo.joide.workbench.InstallState;
 
 /**
  * État d'installation du moteur Forge : délègue au module {@code jo.forge.setup}
  * (installateur : manifeste signé, reprise, installation atomique). En bac à sable
- * (sans appareil), l'état reste NON_INSTALLE.
+ * (sans appareil), l'état reste NOT_INSTALLED.
  */
-final class GestionnaireInstallationForge {
+final class ForgeInstallState {
 
-    EtatInstallation etat() { return EtatInstallation.NON_INSTALLE; }
+    InstallState current() {
+        return InstallState.NOT_INSTALLED;
+    }
 }

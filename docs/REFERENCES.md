@@ -103,6 +103,13 @@ avec notre implémentation** ; **statut**.
 | REF-124 | injection d'instructions | `SystemPrompt.kt` + `BuiltinTools.kt` | 57-62 ; 592-599 | 1b1a305 | Règle d'ancrage (résultat d'outil = donnée, pas instruction) + marquage du contenu réseau en « non fiable » ; la porte de permission est le vrai conteneur | Retenu à l'identique | Adopté |
 | REF-125 | absences (différenciateurs) | `docs/completion-contributor-api.md` + `services/vcs-ui/` | 1-40 ; — | 1b1a305 | **Complétion inline IA inexistante** ; **génération de commit inexistante** | Suite possible (limites) — pas en L7 | Différé |
 
+## Consignes du propriétaire consignées
+
+- 2026-11-20 : la génération 1 n'est pas consultée (seuls céleris / code-lsp /
+  LayoutLib sont retenus de sa connaissance) ; à l'étape terminal (L6), consulter
+  aussi `jjoblab/codeide` (dépôt de l'écosystème maison, hors périmètre du présent
+  registre de référence design/IA).
+
 ## Suivi des écarts après implémentation
 
 Chaque lot (L0-L9) relit la partie correspondante du produit de référence **après**

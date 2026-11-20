@@ -24,6 +24,11 @@
 |---|---|---|
 | L5 | Atelier : intégration des briques (éditeur céleris, LSP code-lsp, aperçu LayoutLib), onglets, tiroirs, bottom sheet câblé Console/Problèmes/Journal/Logcat, barre de symboles | **J2** : un projet s'édite et se construit en mode Forge |
 | L6 | Mode Gradle : installateur des composants (bootstrap, JDK, Gradle, SDK), terminal intégré (fork), builds, diagnostics | **J3** |
+
+Consigne du propriétaire (2026-11-20) : à l'étape terminal (L6), consulter aussi
+`jjoblab/codeide` (dépôt de l'écosystème maison) en complément du packaging
+(`codeide-packages`) et des forks de la famille libre — la base de code terminal à
+reprendre sera choisie à ce moment-là.
 | L7 | IA : fournisseurs, conversation, contexte, outils, approbation, clés chiffrées | — |
 | L8 | Paramètres, changement/réparation/désinstallation de mode, rapport de diagnostic, journal des écroulements | — |
 | L9 | Qualité : tests étendus, performances, accessibilité, sécurité, publication | **J4** |
@@ -85,5 +90,7 @@ que sur appareil (règle du cahier des charges §6).
   retours du jalon J1.
 - `codeide-packages` : le bootstrap minimal existe (aarch64) ; l'assemblage complet
   (JDK, Gradle, SDK) de L6 est à construire sur cette base.
+- Étape terminal (L6) : consulter `jjoblab/codeide` (consigne du propriétaire) en
+  complément de `codeide-packages`.
 - Le contrôle CI des termes interdits exige le secret `FORBIDDEN_TERMS` (posé par
   l'API GitHub, jamais versionné) ; voir `docs/` du workflow L0.

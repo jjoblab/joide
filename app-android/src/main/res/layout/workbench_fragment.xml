@@ -13,13 +13,13 @@
         android:orientation="vertical">
 
         <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/barre_atelier"
+            android:id="@+id/workbench_toolbar"
             android:layout_width="match_parent"
             android:layout_height="52dp"
             app:title="@string/atelier_titre" />
 
         <FrameLayout
-            android:id="@+id/zone_editeur"
+            android:id="@+id/editor_area"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
@@ -33,7 +33,7 @@
 
     <!-- Bottom sheet : une seule en-tête à onglets, quatre sections, aucune répétition -->
     <LinearLayout
-        android:id="@+id/feuille_sections"
+        android:id="@+id/sections_sheet"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
@@ -41,7 +41,7 @@
         app:behavior_peekHeight="56dp">
 
         <com.google.android.material.tabs.TabLayout
-            android:id="@+id/onglets_sections"
+            android:id="@+id/sections_tabs"
             android:layout_width="match_parent"
             android:layout_height="56dp"
             app:tabMode="scrollable">
