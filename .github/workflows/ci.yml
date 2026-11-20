@@ -1,53 +1,60 @@
 name: CI
+
 on:
-  push: { branches: [main] }
-  pull_request: { branches: [main] }
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
 jobs:
   controles:
-    name: Contrôles et tests JVM
+    name: Controles et tests JVM
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: '17' }
+        with:
+          distribution: temurin
+          java-version: '17'
       - name: Termes interdits
-        env: { FORBIDDEN_TERMS: ${{ secrets.FORBIDDEN_TERMS }} }
+        env:
+          FORBIDDEN_TERMS: ${{ secrets.FORBIDDEN_TERMS }}
         run: ./tools/check-terms.sh
-      - name: Langue et dépendances
+      - name: Langue et dependences
         run: |
           ./tools/check-langue.sh
           ./tools/check-deps.sh
-      - name: Tests du cœur JVM (sans SDK Android)
+      - name: Tests du coeur JVM (sans SDK Android)
         run: |
           chmod +x gradlew
           JOIDE_SKIP_ANDROID=1 ./gradlew --no-daemon test
-      - name: Construire l'APK (SDK de l'exécutant)
+      - name: APK debug (SDK de l executant)
         run: |
           chmod +x gradlew
-          export ANDROID_SDK_ROOT=$ANDROID_HOME
           ./gradlew --no-daemon :app-android:assembleDebug
-      - name: Construire (APK si SDK disponible)
-        run: |
-          if [ -n "$ANDROID_HOME" ]; then ./gradlew --no-daemon assembleDebug; else
-            echo "SDK Android absent : APK non construit (module Android ignoré)."; fi
-  apk:
-    name: APK signé (sur étiquette)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: joide-debug-apk
+          path: app-android/build/outputs/apk/debug/*.apk
+
+  apk-signe:
+    name: APK signe (sur etiquette)
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: '17' }
-      - name: Accepter les licences SDK
-        run: yes | sdkmanager --licenses >/dev/null || true
-      - name: APK de débogage signé (clé stable des secrets)
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: APK signe (cle stable des secrets)
         env:
           JOIDE_KEYSTORE_B64: ${{ secrets.JOIDE_KEYSTORE_B64 }}
           JOIDE_KEYSTORE_MDP: ${{ secrets.JOIDE_KEYSTORE_MDP }}
         run: |
-          if [ -n "$JOIDE_KEYSTORE_B64" ]; then
-            echo "$JOIDE_KEYSTORE_B64" | base64 -d > app-android/joide.jks
-          fi
-          ./gradlew --no-daemon assembleDebug
+          chmod +x gradlew
+          ./gradlew --no-daemon :app-android:assembleDebug
       - uses: actions/upload-artifact@v4
-        with: { name: joide-debug-apk, path: app-android/build/outputs/apk/debug/*.apk }
+        with:
+          name: joide-apk-signe
+          path: app-android/build/outputs/apk/debug/*.apk
