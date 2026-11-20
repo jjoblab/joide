@@ -24,7 +24,11 @@ jobs:
         run: |
           ./tools/check-langue.sh
           ./tools/check-deps.sh
-      - name: Tests du coeur JVM (sans SDK Android)
+      - name: Forge vers mavenLocal (ADR-001, demande F-01)
+        run: |
+          git clone --depth 1 --branch v0.2.6 https://github.com/jjoblab/forge.git /tmp/forge
+          ./tools/forge-mavenlocal.sh /tmp/forge 0.2.6
+      - name: Tests du coeur JVM (Forge integre, sans SDK Android)
         run: |
           chmod +x gradlew
           JOIDE_SKIP_ANDROID=1 ./gradlew --no-daemon test
@@ -47,6 +51,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Forge vers mavenLocal (ADR-001)
+        run: |
+          git clone --depth 1 --branch v0.2.6 https://github.com/jjoblab/forge.git /tmp/forge
+          ./tools/forge-mavenlocal.sh /tmp/forge 0.2.6
       - name: APK signe (cle stable des secrets)
         env:
           JOIDE_KEYSTORE_B64: ${{ secrets.JOIDE_KEYSTORE_B64 }}
