@@ -15,21 +15,23 @@
 | L1 : design system XML, thèmes clair/sombre, composants (carte projet, segments, état vide, strip d'avis, popup ancrée, bottom sheet 4 sections), coquille de navigation | Fait |
 | L2 : assistant des modes (modèle d'états JVM + 4 pages sans dépendance pager), stockage du choix | Fait (rapport `docs/lots/LOT-02.md`) |
 | L3 : Forge consommé **comme bibliothèque versionnée** (mavenLocal du checkout épinglé v0.2.6, ADR-001), traducteur d'événements + intégration avec le **moteur factice réel** en processus séparé, installateur signé (manifeste falsifié refusé, altération → BROKEN), lancement `EngineClient` | Fait (rapport `docs/lots/LOT-03.md` ; `app_process` et canal HTTPS de production = appareil réel) |
-| L4 : détection des projets (forge.json / Gradle), accueil, création depuis modèle | Fait |
+| L4 : détection des projets, accueil câblé (cartes + badge), création depuis modèles buildables, stockage privé | Fait (rapport `docs/lots/LOT-04.md`) |
+| L5 : atelier — éditeur **céleris 2.1.0 intégré** (mavenLocal du checkout, ADR-001 bis), tiroir fichiers, quatre sections, bouton Construire → Console/Problèmes | Fait (J2 logique ; APK en CI, appareil = limites §4 ; rapport `docs/lots/LOT-05.md`) |
+| L6 : mode Gradle — **codeide consulté (consigne)** : terminal = dépendance JitPack termux-emulator/view (Apache-2.0, PAS de fork GPLv3, clavier interne), environnement vérifié par phases avec reprise, build Gradle → Console | Fait (J3 logique ; 8 tests JVM ; APK en CI ; rapport `docs/lots/LOT-06.md`) |
 | CI : build JVM + APK signé + contrôles | Fait (démarrée ; les jobs suivants seront suivis dans les rapports de lots) |
 
 ## 2. Ce qui reste (les lots et jalons restants)
 
 | Lot | Contenu | Jalon |
 |---|---|---|
-| L5 | Atelier : intégration des briques (éditeur céleris, LSP code-lsp, aperçu LayoutLib), onglets, tiroirs, bottom sheet câblé Console/Problèmes/Journal/Logcat, barre de symboles | **J2** : un projet s'édite et se construit en mode Forge |
-| L6 | Mode Gradle : installateur des composants (bootstrap, JDK, Gradle, SDK), terminal intégré (fork), builds, diagnostics | **J3** |
+| L5 | Suite de l'atelier : LSP (code-lsp — demande B-02), aperçu XML (LayoutLib — accord de licence B-03), barre de symboles/clavier délégué au-dessus du clavier (appareil) | après L7 |
+| L6 | Suite du mode Gradle : installation réelle des composants sur appareil (canal `codeide-packages`), service foreground du terminal, terminal interactif | après L7 |
 
 Consigne du propriétaire (2026-11-20) : à l'étape terminal (L6), consulter aussi
 `jjoblab/codeide` (dépôt de l'écosystème maison) en complément du packaging
 (`codeide-packages`) et des forks de la famille libre — la base de code terminal à
 reprendre sera choisie à ce moment-là.
-| L7 | IA : fournisseurs, conversation, contexte, outils, approbation, clés chiffrées | — |
+| L7 | IA : fournisseurs, conversation, contexte, outils, approbation, clés chiffrées (EncryptedSharedPreferences, repli mémoire) | — (prochain lot ; plan dans `analyse-ia.md` et conception §8) |
 | L8 | Paramètres, changement/réparation/désinstallation de mode, rapport de diagnostic, journal des écroulements | — |
 | L9 | Qualité : tests étendus, performances, accessibilité, sécurité, publication | **J4** |
 
@@ -38,6 +40,11 @@ reprendre sera choisie à ce moment-là.
 0. **Clé du canal manifeste épinglée** dans `ForgeInstaller` (identique à
    `ClesForge` de Forge — clé publique, pas un secret ; surchargeable par
    `joide.forge.manifestKey` pour les tests).
+0. **Secrets CI posés** (2026-11-20) : `FORBIDDEN_TERMS` (contrôle des termes
+   actif en CI), `JOIDE_KEYSTORE_B64`/`JOIDE_KEYSTORE_MDP` (keystore PKCS12
+   dédié, signature release stable — mises à jour cumulatives autorisées) ;
+   la CI signe `assembleRelease` sur les étiquettes. Le jeton GitHub ayant
+   circulé en clair dans l'historique du bac à sable : **à révoquer**.
 1. **`targetSdk 28` confirmé** pour l'application entière (ADR-009) : cohérent avec
    Forge (exécution de binaires téléchargés depuis le stockage privé), assume la
    distribution hors magasin. Le cahier des charges demandait une confirmation par
