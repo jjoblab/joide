@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ⋮ Options (trois points verticaux, silhouette du preview — dessin original). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24"
+    android:tint="?attr/colorOnSurfaceVariant">
+    <path android:pathData="M12,3.6 a1.9,1.9 0 1 0 0.01,0 z M12,10.1 a1.9,1.9 0 1 0 0.01,0 z M12,16.6 a1.9,1.9 0 1 0 0.01,0 z"
+        android:fillColor="#FFFFFF" />
+</vector>

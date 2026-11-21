@@ -1,6 +1,7 @@
 package jo.joide.app.drawer;
 
 import android.os.Bundle;
+import java.io.IOException;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -27,6 +28,10 @@ import jo.joide.app.databinding.LeftDrawerFragmentBinding;
  * voile) — la mécanique vit dans {@code WorkbenchFragment.setupDrawers()}.</p>
  */
 public final class LeftDrawerFragment extends Fragment {
+
+    /** Fil UI pour publier la branche lue en fond. */
+    private final android.os.Handler main = new android.os.Handler(
+            android.os.Looper.getMainLooper());
 
     private static final String ARG_PROJECT = "project";
     private static final String STATE_TAB = "current_tab";
@@ -59,6 +64,31 @@ public final class LeftDrawerFragment extends Fragment {
 
         // Sélecteur : trois onglets hébergés ; Git ouvre l'écran Git (comme
         // avant — le client Git dans le tiroir arrive au lot Git).
+        binding.drawerProjectName.setText(projectName());
+        binding.drawerProjectBranch.setText("");
+        Thread branchReader = new Thread(() -> {
+            String path = viewModel.projectPath();
+            String branch = null;
+            if (path != null
+                    && java.nio.file.Files.isDirectory(
+                            java.nio.file.Paths.get(path).resolve(".git"))) {
+                try {
+                    branch = jo.joide.coregit.GitOps.open(
+                            java.nio.file.Paths.get(path)).currentBranch();
+                } catch (IOException e) {
+                    branch = null; // pas un dépôt : la branche reste masquée.
+                }
+            }
+            String shown = branch;
+            main.post(() -> {
+                if (binding != null) {
+                    binding.drawerProjectBranch.setText(
+                            shown == null ? "" : shown);
+                }
+            });
+        }, "tiroir-branche");
+        branchReader.setDaemon(true);
+        branchReader.start();
         binding.drawerTabFiles.setOnClickListener(v -> selectTab(R.id.drawer_tab_files));
         binding.drawerTabSearch.setOnClickListener(v -> selectTab(R.id.drawer_tab_search));
         binding.drawerTabStructure.setOnClickListener(v -> selectTab(R.id.drawer_tab_structure));
@@ -140,10 +170,20 @@ public final class LeftDrawerFragment extends Fragment {
     }
 
     private void styleTab(TextView chip, boolean on) {
-        chip.setBackground(getResources().getDrawable(
-                on ? R.drawable.fond_chip_on : R.drawable.fond_chip));
+        chip.setBackground(on ? getResources().getDrawable(R.drawable.fond_segment_on)
+                : null);
         chip.setTextColor(getResources().getColor(
-                on ? R.color.sur_sc2 : R.color.sur));
+                on ? R.color.sur_sc2 : R.color.sur_var));
+    }
+
+    /** Nom du projet : dernier segment du chemin réel (preview .tete-tiroir). */
+    private String projectName() {
+        String path = viewModel.projectPath();
+        if (path == null || path.isBlank()) {
+            return getString(R.string.atelier_files);
+        }
+        String name = java.nio.file.Paths.get(path).getFileName().toString();
+        return name == null ? path : name;
     }
 
     /** L'hôte du tiroir est l'atelier (contrat WorkbenchHost). */

@@ -60,6 +60,17 @@ public class WorkspaceViewModel extends ViewModel {
     }
 
     /** Chemin du projet ouvert ; null hors atelier. */
+    /** Instant de la dernière synchro git (−1 : jamais synchronisé). */
+    private long gitLastSyncMillis = -1L;
+
+    public long gitLastSyncMillis() {
+        return gitLastSyncMillis;
+    }
+
+    public void setGitLastSyncMillis(long value) {
+        gitLastSyncMillis = value;
+    }
+
     public String projectPath() {
         return projectPath;
     }

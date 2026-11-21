@@ -62,9 +62,25 @@ public final class GitOps {
 
     /** Initialise un nouveau dépôt dans le dossier (main par défaut). */
     public static GitOps init(Path directory) throws IOException {
+        return init(directory, false);
+    }
+
+    /**
+     * Initialise un dépôt, avec .gitignore de départ Android/Gradle si
+     * demandé (preview : premier commit proposé, artefacts exclus).
+     */
+    public static GitOps init(Path directory, boolean starterGitignore)
+            throws IOException {
         try (Git git = Git.init().setDirectory(directory.toFile())
                 .setInitialBranch("main").call()) {
-            return new GitOps(directory);
+            GitOps ops = new GitOps(directory);
+            if (starterGitignore) {
+                ops.ignoreMany(List.of(
+                        ".gradle/", "build/", "local.properties",
+                        ".idea/", "*.iml", ".DS_Store", "captures/",
+                        ".kotlin/"));
+            }
+            return ops;
         } catch (GitAPIException e) {
             throw new IOException(e.getMessage(), e);
         }
@@ -181,8 +197,8 @@ public final class GitOps {
 
     // ---- Diffs indexé et non indexé ---------------------------------------------
 
-    /** Nature d'une ligne de diff. */
-    public enum LineKind { ADD, REMOVE, CONTEXT }
+    /** Nature d'une ligne de diff (HUNK = en-tête @@ -a,b +c,d @@). */
+    public enum LineKind { ADD, REMOVE, CONTEXT, HUNK }
 
     /** Une ligne de diff (type + texte). */
     public record DiffLine(LineKind kind, String text) {}
@@ -266,7 +282,9 @@ public final class GitOps {
 
     private static void parseLines(String patch, List<DiffLine> out) {
         for (String line : patch.split("\n")) {
-            if (line.startsWith("+") && !line.startsWith("+++")) {
+            if (line.startsWith("@@")) {
+                out.add(new DiffLine(LineKind.HUNK, line));
+            } else if (line.startsWith("+") && !line.startsWith("+++")) {
                 out.add(new DiffLine(LineKind.ADD, line.substring(1)));
             } else if (line.startsWith("-") && !line.startsWith("---")) {
                 out.add(new DiffLine(LineKind.REMOVE, line.substring(1)));
@@ -280,8 +298,26 @@ public final class GitOps {
 
     /** Committe l'index tel quel (la zone de préparation décide, pas l'API). */
     public String commitStaged(String message) throws IOException {
+        return commitStaged(message, false, false);
+    }
+
+    /**
+     * Committe l'index, avec amend (réécrit le dernier commit) et signoff —
+     * le trailer « Signed-off-by: » de {@code git commit --signoff}, écrit
+     * dans le message (pas la signature cryptographique). Les deux cases du
+     * preview sont réelles.
+     */
+    public String commitStaged(String message, boolean amend, boolean signoff)
+            throws IOException {
         try (Git git = Git.open(root.toFile())) {
-            RevCommit commit = git.commit().setMessage(message).call();
+            String finalMessage = message;
+            if (signoff) {
+                PersonIdent ident = new PersonIdent(git.getRepository());
+                finalMessage = message + "\n\nSigned-off-by: "
+                        + ident.getName() + " <" + ident.getEmailAddress() + ">";
+            }
+            RevCommit commit = git.commit().setMessage(finalMessage)
+                    .setAmend(amend).call();
             return commit.abbreviate(7).name();
         } catch (GitAPIException e) {
             throw new IOException(e.getMessage(), e);
@@ -366,6 +402,63 @@ public final class GitOps {
         } catch (GitAPIException e) {
             throw new IOException(e.getMessage(), e);
         }
+    }
+
+    /** Fusionne une branche dans la courante (conflits → IOException claire). */
+    public void merge(String branchName) throws IOException {
+        try (Git git = Git.open(root.toFile())) {
+            ObjectId id = git.getRepository().resolve(branchName);
+            if (id == null) {
+                throw new IOException("Branche inconnue : " + branchName);
+            }
+            var result = git.merge().include(id).call();
+            if (result.getMergeStatus() != null
+                    && !result.getMergeStatus().isSuccessful()) {
+                throw new IOException("Fusion en conflit : "
+                        + result.getConflicts().size() + " fichier(s)");
+            }
+        } catch (GitAPIException e) {
+            throw new IOException(e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Abandonne une fusion en cours : reset dur vers HEAD (la fusion en
+     * conflit n'a pas commité) puis purge de l'état de fusion — l'équivalent
+     * de {@code git merge --abort}, que JGit 6.10 n'expose pas en commande.
+     */
+    public void abortMerge() throws IOException {
+        try (Git git = Git.open(root.toFile())) {
+            org.eclipse.jgit.lib.Repository repo = git.getRepository();
+            if (repo.resolve("MERGE_HEAD") == null) {
+                throw new IOException("Aucune fusion en cours");
+            }
+            git.reset().setMode(org.eclipse.jgit.api.ResetCommand.ResetType.HARD)
+                    .setRef(Constants.HEAD).call();
+            repo.writeMergeHeads(new ArrayList<>());
+            repo.writeMergeCommitMsg(null);
+        } catch (GitAPIException e) {
+            throw new IOException(e.getMessage(), e);
+        }
+    }
+
+    /** Branches distantes (refs/remotes, groupe « Distantes » du preview). */
+    public List<BranchInfo> remoteBranches() throws IOException {
+        List<BranchInfo> out = new ArrayList<>();
+        try (Git git = Git.open(root.toFile())) {
+            for (org.eclipse.jgit.lib.Ref ref : git.branchList()
+                    .setListMode(org.eclipse.jgit.api.ListBranchCommand
+                            .ListMode.REMOTE).call()) {
+                String name = ref.getName().replace("refs/remotes/", "");
+                if (!name.equals("origin/HEAD")) {
+                    out.add(new BranchInfo(name, false));
+                }
+            }
+        } catch (GitAPIException e) {
+            throw new IOException(e.getMessage(), e);
+        }
+        out.sort(java.util.Comparator.comparing(BranchInfo::name));
+        return out;
     }
 
     /** Nom de la branche courante (HEAD détaché : l'identifiant court). */
@@ -476,6 +569,31 @@ public final class GitOps {
         }
     }
 
+    // ---- Identité ----------------------------------------------------------------------
+
+    /** Identité de commit configurée (null si absente — l'UI propose de la définir). */
+    public record Identity(String name, String email) {}
+
+    public Identity identity() throws IOException {
+        try (Git git = Git.open(root.toFile())) {
+            var config = git.getRepository().getConfig();
+            String name = config.getString("user", null, "name");
+            String email = config.getString("user", null, "email");
+            return name == null || email == null ? null
+                    : new Identity(name, email);
+        }
+    }
+
+    /** Définit l'identité de commit (config locale du dépôt, jamais en dur). */
+    public void setIdentity(String name, String email) throws IOException {
+        try (Git git = Git.open(root.toFile())) {
+            var config = git.getRepository().getConfig();
+            config.setString("user", null, "name", name);
+            config.setString("user", null, "email", email);
+            config.save();
+        }
+    }
+
     // ---- Stash -----------------------------------------------------------------------
 
     /** Une entrée de stash (référence, message, instant). */
@@ -555,6 +673,55 @@ public final class GitOps {
         return out;
     }
 
+    // ---- Références pointant un commit ---------------------------------------------------
+
+    /** Une référence (HEAD, branche locale, distante ou étiquette). */
+    public record RefBadge(String name, String kind) {}
+
+    /** Références qui pointent exactement ce commit (pastilles du graphe). */
+    public List<RefBadge> refsFor(String commitId) throws IOException {
+        List<RefBadge> out = new ArrayList<>();
+        try (Git git = Git.open(root.toFile())) {
+            org.eclipse.jgit.lib.Repository repo = git.getRepository();
+            try (RevWalk walk = new RevWalk(repo)) {
+                ObjectId target = walk.parseCommit(
+                        repo.resolve(commitId)).getId();
+                if (repo.resolve(Constants.HEAD).equals(target)) {
+                    out.add(new RefBadge("HEAD", "tête"));
+                }
+                for (org.eclipse.jgit.lib.Ref ref : git.branchList().call()) {
+                    if (walk.parseCommit(ref.getObjectId()).getId().equals(target)) {
+                        out.add(new RefBadge(
+                                ref.getName().replace("refs/heads/", ""),
+                                "br"));
+                    }
+                }
+                for (org.eclipse.jgit.lib.Ref ref : git.branchList()
+                        .setListMode(org.eclipse.jgit.api.ListBranchCommand
+                                .ListMode.REMOTE).call()) {
+                    if (walk.parseCommit(ref.getObjectId()).getId().equals(target)) {
+                        out.add(new RefBadge(
+                                ref.getName().replace("refs/remotes/", ""),
+                                "distante"));
+                    }
+                }
+                for (org.eclipse.jgit.lib.Ref ref : repo.getRefDatabase()
+                        .getRefsByPrefix(Constants.R_TAGS)) {
+                    ObjectId peeled = ref.getPeeledObjectId() != null
+                            ? ref.getPeeledObjectId() : ref.getObjectId();
+                    if (walk.parseCommit(peeled).getId().equals(target)) {
+                        out.add(new RefBadge(
+                                ref.getName().replace("refs/tags/", ""),
+                                "tag"));
+                    }
+                }
+            }
+        } catch (GitAPIException e) {
+            throw new IOException(e.getMessage(), e);
+        }
+        return out;
+    }
+
     // ---- Correctifs ----------------------------------------------------------------------
 
     /** Annule un commit par un commit inverse (sûr, partagé). */
@@ -616,8 +783,8 @@ public final class GitOps {
         return out;
     }
 
-    /** Résolution d'un conflit : garder un côté, ou un contenu fourni. */
-    public enum Resolution { OURS, THEIRS, CONTENT }
+    /** Résolution d'un conflit : un côté, les deux à la suite, ou un contenu. */
+    public enum Resolution { OURS, THEIRS, BOTH, CONTENT }
 
     /**
      * Résout un conflit : écrit le contenu choisi (nôtre = étape 2, leur =
@@ -630,32 +797,48 @@ public final class GitOps {
             DirCache cache = repo.readDirCache();
             String chosen = content;
             if (resolution != Resolution.CONTENT) {
-                int stage = resolution == Resolution.OURS ? 2 : 3;
-                String found = null;
-                for (int i = 0; i < cache.getEntryCount(); i++) {
-                    DirCacheEntry entry = cache.getEntry(i);
-                    if (entry.getPathString().equals(path)
-                            && entry.getStage() == stage) {
-                        try (ObjectReader reader = repo.newObjectReader()) {
-                            byte[] bytes = reader.open(entry.getObjectId())
-                                    .getBytes();
-                            found = new String(bytes, StandardCharsets.UTF_8);
-                        }
-                        break;
-                    }
+                String ours = stageContent(cache, repo, path, 2);
+                String theirs = stageContent(cache, repo, path, 3);
+                if (resolution == Resolution.OURS) {
+                    chosen = ours;
+                } else if (resolution == Resolution.THEIRS) {
+                    chosen = theirs;
+                } else {
+                    // Les deux : nôtre puis leur, séparés proprement.
+                    chosen = ours + (ours.endsWith("\n") ? "" : "\n")
+                            + theirs;
                 }
-                if (found == null) {
-                    throw new IOException("Étape " + stage
-                            + " absente pour " + path);
-                }
-                chosen = found;
             }
             Files.writeString(root.resolve(path), chosen);
             stage(List.of(path));
         }
     }
 
+    /** Contenu d'une étape de l'index (2 = nôtre, 3 = leur). */
+    private static String stageContent(DirCache cache,
+            org.eclipse.jgit.lib.Repository repo, String path, int stage)
+            throws IOException {
+        for (int i = 0; i < cache.getEntryCount(); i++) {
+            DirCacheEntry entry = cache.getEntry(i);
+            if (entry.getPathString().equals(path)
+                    && entry.getStage() == stage) {
+                try (ObjectReader reader = repo.newObjectReader()) {
+                    return new String(reader.open(entry.getObjectId())
+                            .getBytes(), StandardCharsets.UTF_8);
+                }
+            }
+        }
+        throw new IOException("Étape " + stage + " absente pour " + path);
+    }
+
     // ---- .gitignore et suivi -----------------------------------------------------------------
+
+    /** Ajoute plusieurs motifs au .gitignore (init de départ). */
+    public void ignoreMany(List<String> patterns) throws IOException {
+        for (String pattern : patterns) {
+            ignore(pattern);
+        }
+    }
 
     /** Ajoute un motif au .gitignore (créé au besoin, jamais de doublon). */
     public void ignore(String pattern) throws IOException {
@@ -689,6 +872,19 @@ public final class GitOps {
 
     /** Suivi distant de la branche courante (null sans amont). */
     public record Tracking(String remoteBranch, int ahead, int behind) {}
+
+    /** Suivi d'une branche précise (null sans amont). */
+    public Tracking trackingOf(String branchName) throws IOException {
+        try (Git git = Git.open(root.toFile())) {
+            org.eclipse.jgit.lib.Repository repo = git.getRepository();
+            org.eclipse.jgit.lib.BranchTrackingStatus status =
+                    org.eclipse.jgit.lib.BranchTrackingStatus.of(repo, branchName);
+            return status == null ? null : new Tracking(
+                    org.eclipse.jgit.lib.Repository.shortenRefName(
+                            status.getRemoteTrackingBranch()),
+                    status.getAheadCount(), status.getBehindCount());
+        }
+    }
 
     public Tracking tracking() throws IOException {
         try (Git git = Git.open(root.toFile())) {

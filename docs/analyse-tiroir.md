@@ -70,7 +70,7 @@
 | Jeton du distant | `GitCredentialsStore` (chiffré, repli mémoire) | câblé (interne) |
 | Zones exactes (conflits/indexé/non indexé/non suivi) | `GitOps#exactStatus` | câblé |
 | Indexer / désindexer | `GitOps#stage` / `GitOps#unstage` | câblé |
-| Visionneuse de diff | `GitTabFragment#showDiffDialog` (fond plus/moins) | câblé |
+| Visionneuse de diff | `GitTabFragment#showDiffSheet` (hunks, numéros, bascule indexé) | câblé |
 | Commit | `GitOps#commitStaged` (l'index décide) | câblé |
 | Résolution de conflits | `GitOps#resolveConflict` (nôtre/leur/contenu) | câblé |
 | Branches (basculer/créer/supprimer) | `GitOps#switchBranch` / `#createAndSwitch` / `#deleteBranch` | câblé |
@@ -81,6 +81,11 @@
 | Revert du dernier commit | `GitOps#revert` (confirmation avec le message réel) | câblé |
 | Reset soft HEAD~1 | `GitOps#reset` | câblé |
 | Oublier le jeton | `GitCredentialsStore#remove` | câblé |
+| Fusionner une branche | `GitOps#merge` (confirmation) | câblé |
+| Abandonner la fusion | `GitOps#abortMerge` (reset + purge d'état) | câblé |
+| Identité de commit | `GitOps#setIdentity` / `#identity` | câblé |
+| Init avec .gitignore de départ | `GitOps#init` (motifs Android/Gradle) | câblé |
+| Amend / Signoff | `GitOps#commitStaged` (trailer réel) | câblé |
 | Écran Git complet | `WorkbenchHost#openGitScreen` (GitFragment conservé) | câblé |
 | Graphe dessiné (lignes de fusion) | parents exposés (`GitOps#CommitNode`) ; le dessin des lignes reste à venir | annoncé |
 

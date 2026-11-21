@@ -114,7 +114,7 @@
             android:layout_height="30dp"
             android:layout_marginStart="2dp"
             android:contentDescription="@string/tiroir_reglages"
-            android:src="@drawable/ic_gear"
+            android:src="@drawable/ic_options"
             android:scaleType="centerInside"
             app:tint="@color/sur_var" />
     </LinearLayout>
@@ -207,7 +207,17 @@
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:contentDescription="@string/tiroir_selection_deplacer"
-            android:src="@drawable/ic_arrow"
+            android:src="@drawable/ic_deplacer"
+            android:scaleType="centerInside"
+            app:tint="@color/sur_sc2" />
+
+        <ImageButton
+            android:id="@+id/tree_selection_stage"
+            style="@style/IconBtn"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:contentDescription="@string/tiroir_selection_indexer"
+            android:src="@drawable/ic_plus"
             android:scaleType="centerInside"
             app:tint="@color/sur_sc2" />
 

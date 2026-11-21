@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Tiroir gauche (Lot 0 : extraction de WorkbenchFragment sans régression) :
-     switcher Files · Chercher · Structure · Git (chips 32dp, même style),
-     contenu par onglet (fragments enfants conservés par show/hide). Le tiroir
-     reste poussant — la mécanique vit dans WorkbenchFragment.setupDrawers(). -->
+<!-- Tiroir gauche (Lot 0 : extraction de WorkbenchFragment sans régression ;
+     fidélité preview tiroir-gauche.html) : en-tête nom du projet + branche,
+     segments soudés Files · Chercher · Structure · Git (piste sc_high,
+     actif sur sc2), contenu par onglet (fragments enfants conservés par
+     show/hide). Le tiroir reste poussant — la mécanique vit dans
+     WorkbenchFragment.setupDrawers(). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -10,62 +12,37 @@
     android:orientation="vertical"
     android:background="@color/sc">
 
-    <!-- Switcher (studio : Files · Chercher · Structure, chips 32dp) -->
+    <!-- En-tête (preview .tete-tiroir) : nom du projet en gras + branche Git -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:padding="10dp"
-        android:baselineAligned="false">
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="4dp">
 
         <TextView
-            android:id="@+id/drawer_tab_files"
-            style="@style/Chip"
+            android:id="@+id/drawer_project_name"
             android:layout_width="wrap_content"
-            android:layout_height="32dp"
-            android:gravity="center"
-            android:background="@drawable/fond_chip_on"
-            android:text="@string/atelier_files"
-            android:textColor="@color/sur_sc2"
-            android:textSize="@dimen/chip_txt"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/drawer_tab_search"
-            style="@style/Chip"
-            android:layout_width="wrap_content"
-            android:layout_height="32dp"
-            android:layout_marginStart="6dp"
-            android:gravity="center"
-            android:text="@string/atelier_chercher"
+            android:layout_height="wrap_content"
+            android:maxWidth="190dp"
+            android:singleLine="true"
+            android:ellipsize="end"
             android:textColor="@color/sur"
-            android:textSize="@dimen/chip_txt"
+            android:textSize="13.5sp"
             android:textStyle="bold" />
 
         <TextView
-            android:id="@+id/drawer_tab_structure"
-            style="@style/Chip"
+            android:id="@+id/drawer_project_branch"
             android:layout_width="wrap_content"
-            android:layout_height="32dp"
+            android:layout_height="wrap_content"
             android:layout_marginStart="6dp"
-            android:gravity="center"
-            android:text="@string/atelier_structure"
-            android:textColor="@color/sur"
-            android:textSize="@dimen/chip_txt"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/drawer_tab_git"
-            style="@style/Chip"
-            android:layout_width="wrap_content"
-            android:layout_height="32dp"
-            android:layout_marginStart="6dp"
-            android:gravity="center"
-            android:text="@string/git_title"
-            android:textColor="@color/sur"
-            android:textSize="@dimen/chip_txt"
-            android:textStyle="bold" />
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:textColor="@color/sur_var"
+            android:textSize="11sp" />
 
         <View
             android:layout_width="0dp"
@@ -83,7 +60,70 @@
             app:tint="@color/sur_var" />
     </LinearLayout>
 
-    <!-- Contenu de l'onglet (fragments enfants : Files, Chercher, Structure) -->
+    <!-- Segments soudés (preview .segments) : Fichiers · Chercher · Structure · Git -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="36dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="10dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/fond_segments"
+        android:padding="3dp"
+        android:baselineAligned="false">
+
+        <TextView
+            android:id="@+id/drawer_tab_files"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:background="@drawable/fond_segment_on"
+            android:singleLine="true"
+            android:text="@string/atelier_files"
+            android:textColor="@color/sur_sc2"
+            android:textSize="11.5sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/drawer_tab_search"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:singleLine="true"
+            android:text="@string/atelier_chercher"
+            android:textColor="@color/sur_var"
+            android:textSize="11.5sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/drawer_tab_structure"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:singleLine="true"
+            android:text="@string/atelier_structure"
+            android:textColor="@color/sur_var"
+            android:textSize="11.5sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/drawer_tab_git"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:singleLine="true"
+            android:text="@string/git_title"
+            android:textColor="@color/sur_var"
+            android:textSize="11.5sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Contenu de l'onglet (fragments enfants : Fichiers, Chercher, Structure, Git) -->
     <FrameLayout
         android:id="@+id/tab_container"
         android:layout_width="match_parent"

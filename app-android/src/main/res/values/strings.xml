@@ -421,4 +421,37 @@
     <string name="tiroir_reglages_suivi">Suivre le fichier actif</string>
     <string name="git_tiroir_oublier_jeton">Oublier le jeton du distant</string>
     <string name="git_tiroir_jeton_oublie">Jeton oublié pour %1$s</string>
+    <string name="tiroir_selection_indexer">Indexer (stage Git)</string>
+    <string name="tiroir_menu_gitignore">Ajouter à .gitignore</string>
+    <string name="tiroir_menu_git_historique">Git : Historique</string>
+    <!-- Onglet Git : fidélité preview (écarts corrigés) -->
+    <string name="git_tiroir_fetch">Fetch (récupérer)</string>
+    <string name="git_tiroir_synchronise">synchronisé il y a %1$s</string>
+    <string name="git_tiroir_tout_indexer">tout indexer</string>
+    <string name="git_tiroir_tout_desindexer">tout désindexer</string>
+    <string name="git_tiroir_supprime_dossier">supprimé dans le dossier de travail</string>
+    <string name="git_tiroir_sujet">✎ Sujet du commit (50 car. conseillés)</string>
+    <string name="git_tiroir_amend">Amend</string>
+    <string name="git_tiroir_signoff">Signoff</string>
+    <string name="git_tiroir_commit">Commit</string>
+    <string name="git_tiroir_les_deux">Les deux</string>
+    <string name="git_tiroir_abandonner_fusion">Abandonner la fusion</string>
+    <string name="git_tiroir_fusionner">Fusionner</string>
+    <string name="git_tiroir_basculer">Basculer</string>
+    <string name="git_tiroir_branches_locales">Locales</string>
+    <string name="git_tiroir_branches_distantes">Distantes</string>
+    <string name="git_tiroir_charger_plus">Charger 50 de plus</string>
+    <string name="git_tiroir_identite">Qui êtes-vous ?</string>
+    <string name="git_tiroir_identite_detail">nom + e-mail pour les commits — jamais codés en dur</string>
+    <string name="git_tiroir_identite_nom">Nom</string>
+    <string name="git_tiroir_identite_email">E-mail</string>
+    <string name="git_tiroir_definir">Définir</string>
+    <string name="git_tiroir_init_ignore">.gitignore de départ (Android/Gradle)</string>
+    <string name="git_tiroir_diff_indexe">Indexé</string>
+    <string name="git_tiroir_diff_non_indexe">Non indexé</string>
+    <string name="git_tiroir_changements_nav">Changements</string>
+    <string name="git_tiroir_historique_nav">Historique</string>
+    <string name="git_tiroir_plus_nav">Plus</string>
+    <string name="git_tiroir_fusion_confirm">Fusionner « %1$s » dans la branche courante ?</string>
+    <string name="git_tiroir_compteur_depart">0/72</string>
 </resources>

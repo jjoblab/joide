@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ⤓ Fetch (flèche descendant vers une barre, silhouette du preview —
+     dessin original, Lot 7 tiroir Git). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24"
+    android:tint="?attr/colorOnSurfaceVariant">
+    <path android:pathData="M12,4 v10.2"
+        android:strokeColor="#FFFFFF" android:strokeWidth="2.2"
+        android:strokeLineCap="round" />
+    <path android:pathData="M7.2,10.6 L12,15.4 L16.8,10.6"
+        android:strokeColor="#FFFFFF" android:strokeWidth="2.2"
+        android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M5,19.6 h14"
+        android:strokeColor="#FFFFFF" android:strokeWidth="2.2"
+        android:strokeLineCap="round" />
+</vector>

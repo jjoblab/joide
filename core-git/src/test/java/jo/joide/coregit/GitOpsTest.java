@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.util.List;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.revwalk.RevWalk;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -280,6 +281,137 @@ class GitOpsTest {
         ops.ignore("*.log"); // doublon : aucune seconde ligne.
         assertEquals(1, Files.readAllLines(fresh.resolve(".gitignore")).stream()
                 .filter(line -> line.equals("*.log")).count());
+    }
+
+    @Test
+    void amendAndSignoffRewriteTheCommit() throws Exception {
+        GitOps ops = seedWork();
+        Path work = temp.resolve("work");
+        Files.writeString(work.resolve("a.txt"), "amendé\n");
+        ops.stage(List.of("a.txt"));
+        ops.commitStaged("message initial");
+        ops.commitStaged("message réécrit", true, true);
+        assertEquals(2, ops.graph(10).size(), "amend réécrit, n'ajoute pas");
+        GitOps.CommitNode head = ops.graph(1).get(0);
+        assertEquals("message réécrit", head.message());
+        // Signoff : le trailer Signed-off-by vit dans le message complet.
+        try (Git git = Git.open(work.toFile());
+             RevWalk walk = new RevWalk(git.getRepository())) {
+            String full = walk.parseCommit(git.getRepository()
+                    .resolve("HEAD")).getFullMessage();
+            assertTrue(full.contains("Signed-off-by:"),
+                    "trailer signoff présent : " + full);
+        }
+    }
+
+    @Test
+    void mergeBranchAndAbortConflictedMerge() throws Exception {
+        GitOps ops = seedWork();
+        Path work = temp.resolve("work");
+        ops.createAndSwitch("feature");
+        Files.writeString(work.resolve("f.txt"), "feature\n");
+        ops.commitAll("sur feature");
+        ops.switchBranch("main");
+        ops.merge("feature");
+        assertEquals("feature\n", Files.readString(work.resolve("f.txt")),
+                "fusion rapide intègre feature");
+
+        // Fusion en conflit puis abandon : retour à l'état d'avant.
+        ops.createAndSwitch("conflit");
+        Files.writeString(work.resolve("a.txt"), "côté\n");
+        ops.commitAll("côté");
+        ops.switchBranch("main");
+        Files.writeString(work.resolve("a.txt"), "moi\n");
+        ops.commitAll("moi");
+        try (Git git = Git.open(work.toFile())) {
+            git.merge().include(git.getRepository().resolve("conflit")).call();
+        }
+        assertFalse(ops.conflicts().isEmpty(), "conflit posé");
+        ops.abortMerge();
+        assertTrue(ops.conflicts().isEmpty(), "état de fusion purgé");
+        assertEquals("moi\n", Files.readString(work.resolve("a.txt")),
+                "reset dur : le workdir revient à HEAD");
+    }
+
+    @Test
+    void identityIsStoredAndReadBack() throws Exception {
+        GitOps ops = seedWork();
+        ops.setIdentity("Olson", "olson@exemple.fr");
+        GitOps.Identity identity = ops.identity();
+        assertEquals("Olson", identity.name());
+        assertEquals("olson@exemple.fr", identity.email());
+    }
+
+    @Test
+    void refsForPointsHeadBranchAndTag() throws Exception {
+        GitOps ops = seedWork();
+        String head = ops.graph(1).get(0).id();
+        List<GitOps.RefBadge> refs = ops.refsFor(head);
+        assertTrue(refs.stream().anyMatch(r -> r.name().equals("HEAD")));
+        assertTrue(refs.stream().anyMatch(r -> r.name().equals("main")
+                && r.kind().equals("br")));
+        try (Git git = Git.open(temp.resolve("work").toFile())) {
+            git.tag().setName("v0.1.0").call();
+        }
+        assertTrue(ops.refsFor(head).stream()
+                .anyMatch(r -> r.name().equals("v0.1.0") && r.kind().equals("tag")),
+                "étiquette détectée");
+    }
+
+    @Test
+    void remoteBranchesListedAfterFetch() throws Exception {
+        GitOps ops = seedWork();
+        Path bare = temp.resolve("distant.git");
+        Git.init().setBare(true).setDirectory(bare.toFile())
+                .setInitialBranch("main").call().close();
+        ops.setRemote(bare.toUri().toString());
+        try (Git pusher = Git.open(temp.resolve("work").toFile())) {
+            pusher.push().setRemote("origin").setRefSpecs(
+                    new org.eclipse.jgit.transport.RefSpec(
+                            "refs/heads/main:refs/heads/main")).call();
+        }
+        ops.fetch(null);
+        List<GitOps.BranchInfo> remotes = ops.remoteBranches();
+        assertEquals(List.of("origin/main"), remotes.stream()
+                .map(GitOps.BranchInfo::name).toList());
+    }
+
+    @Test
+    void diffCarriesHunkHeaders() throws Exception {
+        GitOps ops = seedWork();
+        Path work = temp.resolve("work");
+        Files.writeString(work.resolve("a.txt"), "un\ndeux\n");
+        List<GitOps.DiffLine> lines = ops.diff("a.txt", false);
+        assertTrue(lines.stream().anyMatch(l -> l.kind() == GitOps.LineKind.HUNK
+                && l.text().startsWith("@@")), "hunk @@ présent");
+    }
+
+    @Test
+    void conflictResolutionBothConcatenates() throws Exception {
+        GitOps ops = seedWork();
+        Path work = temp.resolve("work");
+        ops.createAndSwitch("cote");
+        Files.writeString(work.resolve("a.txt"), "leur\n");
+        ops.commitAll("côté");
+        ops.switchBranch("main");
+        Files.writeString(work.resolve("a.txt"), "nôtre\n");
+        ops.commitAll("moi");
+        try (Git git = Git.open(work.toFile())) {
+            git.merge().include(git.getRepository().resolve("cote")).call();
+        }
+        ops.resolveConflict("a.txt", GitOps.Resolution.BOTH, null);
+        assertEquals("nôtre\nleur\n", Files.readString(work.resolve("a.txt")),
+                "les deux : nôtre puis leur, sans marqueurs");
+    }
+
+    @Test
+    void starterGitignoreExcludesBuildArtifacts() throws Exception {
+        Path fresh = temp.resolve("avec-ignore");
+        Files.createDirectories(fresh);
+        GitOps ops = GitOps.init(fresh, true);
+        assertTrue(ops.isIgnored("build/"));
+        assertTrue(ops.isIgnored(".gradle/"));
+        assertTrue(ops.isIgnored("local.properties"));
     }
 
     @Test

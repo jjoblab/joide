@@ -1,8 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Outil du tiroir (Lot 2, dessin original, teinté au rendu). -->
+<!-- ⇲ Suivre le fichier actif : flèche vers le coin (silhouette du preview,
+     Lot 2 redessinée à l'identique — dessin original). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp" android:height="24dp"
     android:viewportWidth="24" android:viewportHeight="24"
     android:tint="?attr/colorOnSurfaceVariant">
-    <path android:pathData="M12,4.4 a7.6,7.6 0 1 0 0.01,0 z M12,7.2 a4.8,4.8 0 1 1 -0.01,0 z M11.2,2 h1.6 v3.2 h-1.6 z M11.2,18.8 h1.6 v3.2 h-1.6 z M2,11.2 h3.2 v1.6 h-3.2 z M18.8,11.2 h3.2 v1.6 h-3.2 z" android:fillType="evenOdd" android:fillColor="#FFFFFF" />
+    <path android:pathData="M14.2,20.2 h6 v-6"
+        android:strokeColor="#FFFFFF" android:strokeWidth="2.2"
+        android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M5.8,5.8 L14.2,14.2"
+        android:strokeColor="#FFFFFF" android:strokeWidth="2.2"
+        android:strokeLineCap="round" />
+    <path android:pathData="M9.6,14.2 h4.6 v-4.6"
+        android:strokeColor="#FFFFFF" android:strokeWidth="2.2"
+        android:strokeLineCap="round" android:strokeLineJoin="round" />
 </vector>

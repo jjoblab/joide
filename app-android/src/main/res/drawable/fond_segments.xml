@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Segments soudés du tiroir (preview .segments) : piste sc_high arrondie. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@color/sc_high" />
+    <corners android:radius="18dp" />
+</shape>

@@ -21,4 +21,10 @@
     <item
         android:id="@+id/action_delete"
         android:title="@string/tiroir_menu_supprimer" />
+    <item
+        android:id="@+id/action_gitignore"
+        android:title="@string/tiroir_menu_gitignore" />
+    <item
+        android:id="@+id/action_git_history"
+        android:title="@string/tiroir_menu_git_historique" />
 </menu>

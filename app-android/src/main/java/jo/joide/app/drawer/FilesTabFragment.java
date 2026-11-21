@@ -297,6 +297,29 @@ public final class FilesTabFragment extends Fragment implements FileTreeAdapter.
         return row;
     }
 
+    /** ＋ Indexer (preview) : stage Git des fichiers sélectionnés, réel. */
+    private void stageSelection() {
+        if (root == null || !java.nio.file.Files.isDirectory(root.resolve(".git"))) {
+            toast(getString(R.string.git_tiroir_pas_depot));
+            return;
+        }
+        List<String> paths = new ArrayList<>(selectedPaths);
+        Thread worker = new Thread(() -> {
+            try {
+                jo.joide.coregit.GitOps.open(root).stage(paths);
+                main.post(() -> {
+                    exitSelection();
+                    viewModel.events().publish(
+                            new WorkspaceEvents.GitStateChanged());
+                });
+            } catch (IOException e) {
+                main.post(() -> toast(e.getMessage()));
+            }
+        }, "tiroir-stage");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
     /** Bascule des vues Projet / Android (l'état survit aux rotations). */
     private void setAndroidView(boolean android) {
         if (androidView == android) {
@@ -369,6 +392,7 @@ public final class FilesTabFragment extends Fragment implements FileTreeAdapter.
         binding.treeSelectionMove.setOnClickListener(v ->
                 showMoveDialog(new ArrayList<>(selectedPaths)));
         binding.treeSelectionClose.setOnClickListener(v -> exitSelection());
+        binding.treeSelectionStage.setOnClickListener(v -> stageSelection());
     }
 
     private void enterSelection(String first) {
@@ -1199,12 +1223,53 @@ public final class FilesTabFragment extends Fragment implements FileTreeAdapter.
                 showMoveDialog(paths);
             } else if (id == R.id.action_delete) {
                 deletePaths(paths);
+            } else if (id == R.id.action_gitignore) {
+                ignoreEntry(row);
+            } else if (id == R.id.action_git_history) {
+                openGitTab();
             } else {
                 return false;
             }
             return true;
         });
         menu.show();
+    }
+
+    /** ∓ Ajouter à .gitignore (preview) : le nom du fichier, motif réel. */
+    private void ignoreEntry(TreeRow row) {
+        if (root == null) {
+            return;
+        }
+        String pattern = java.nio.file.Paths.get(row.opPath())
+                .getFileName().toString();
+        if (pattern == null || pattern.isEmpty()) {
+            return;
+        }
+        if (!java.nio.file.Files.isDirectory(root.resolve(".git"))) {
+            toast(getString(R.string.git_tiroir_pas_depot));
+            return;
+        }
+        Thread worker = new Thread(() -> {
+            try {
+                jo.joide.coregit.GitOps.open(root).ignore(pattern);
+                main.post(() -> {
+                    viewModel.events().publish(
+                            new WorkspaceEvents.GitStateChanged());
+                });
+            } catch (IOException e) {
+                main.post(() -> toast(e.getMessage()));
+            }
+        }, "tiroir-gitignore");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /** ⌥ Git : Historique (preview) : ouvre l'onglet Git du tiroir. */
+    private void openGitTab() {
+        Fragment parent = requireParentFragment();
+        if (parent instanceof LeftDrawerFragment drawer) {
+            drawer.openTab(R.id.drawer_tab_git);
+        }
     }
 
     /** Renommage : dialogue prérempli, mouvement atomique, jamais d'écrasement. */
