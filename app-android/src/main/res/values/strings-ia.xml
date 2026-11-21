@@ -162,6 +162,19 @@
     <string name="chat_tool_actions">%1$d actions d\'outils</string>
     <string name="chat_answer_label">Réponse</string>
     <!-- Rendu riche des réponses (Lot 5) -->
+    <!-- Lot 6 : ligne d\'état, Stop, complétion @, état vide agent -->
+    <string name="chat_state_thinking">Réfléchit…</string>
+    <string name="chat_state_writing">Écrit…</string>
+    <string name="chat_state_tool">Exécute %1$s…</string>
+    <string name="chat_stop">Arrêter la génération</string>
+    <string name="chat_mention_cd">Complétion de fichier</string>
+    <string name="chat_empty_agent_title">Que voulez-vous faire sur ce projet ?</string>
+    <string name="chat_empty_agent_explain">Expliquer le fichier ouvert</string>
+    <string name="chat_empty_agent_fix">Corriger les problèmes</string>
+    <string name="chat_empty_agent_test">Écrire un test</string>
+    <string name="chat_prompt_explain">Explique le fichier actuellement ouvert dans l\'éditeur : structure, rôle, points délicats. Cite les lignes importantes.</string>
+    <string name="chat_prompt_fix">Corrige les problèmes du dernier build : liste les diagnostics, propose la correction minimale pour chacun, puis vérifie par un build.</string>
+    <string name="chat_prompt_test">Écris un test pour le fichier ouvert : identifie les méthodes clés et couvre-les (cas nominal + cas limite). Propose le fichier de test.</string>
     <string name="chat_code_copy">Copier</string>
     <string name="chat_code_apply">Appliquer…</string>
     <string name="chat_code_applied">Fichier écrit (via la permission) : %1$s</string>

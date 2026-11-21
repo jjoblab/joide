@@ -12,6 +12,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
 import androidx.fragment.app.Fragment;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
@@ -383,6 +384,141 @@ public final class AiPanelFragment extends Fragment {
      * @param isNew faux pour une relance (Réessayer) : ni bulle ni persistance
      *              en double — la question est déjà au transcript.
      */
+    /** Complétion « @ » sur l'arborescence réelle du projet (Lot 6). */
+    private void wireMentionCompletion() {
+        binding.inputField.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) { }
+
+            @Override public void onTextChanged(CharSequence s, int a, int b, int c) { }
+
+            @Override public void afterTextChanged(android.text.Editable editable) {
+                String text = editable.toString();
+                int cursor = binding.inputField.getSelectionStart();
+                if (cursor < 0) {
+                    cursor = text.length();
+                }
+                String upToCursor = text.substring(0, Math.min(cursor, text.length()));
+                java.util.regex.Matcher mention = java.util.regex.Pattern
+                        .compile("@([\\w./-]*)$")
+                        .matcher(upToCursor);
+                if (!mention.find() || isAssistant()) {
+                    binding.mentionRow.setVisibility(View.GONE);
+                    return;
+                }
+                String typed = mention.group(1);
+                session.suggestMentionFiles(typed, suggestions ->
+                        renderMentionChips(suggestions, typed));
+            }
+        });
+    }
+
+    /** Affiche les fichiers complétant la mention courante. */
+    private void renderMentionChips(List<String> suggestions, String typed) {
+        binding.mentionChips.removeAllViews();
+        if (suggestions.isEmpty()) {
+            binding.mentionRow.setVisibility(View.GONE);
+            return;
+        }
+        for (String path : suggestions) {
+            TextView chip = new TextView(requireContext());
+            chip.setText(path);
+            chip.setTextSize(12f);
+            chip.setTypeface(chip.getTypeface(), android.graphics.Typeface.BOLD);
+            chip.setTextColor(getResources().getColor(R.color.sur));
+            chip.setPadding(dip(12), dip(8), dip(12), dip(8));
+            chip.setMinHeight(dip(36));
+            chip.setBackground(getResources().getDrawable(R.drawable.fond_chip));
+            chip.setContentDescription(getString(R.string.chat_mention_cd) + " " + path);
+            chip.setOnClickListener(v -> completeMention(path, typed));
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            params.setMarginEnd(dip(6));
+            binding.mentionChips.addView(chip, params);
+        }
+        binding.mentionRow.setVisibility(View.VISIBLE);
+    }
+
+    /** Remplace le jeton « @tapé… » par le chemin choisi + espace. */
+    private void completeMention(String path, String typed) {
+        android.text.Editable text = binding.inputField.getText();
+        int cursor = binding.inputField.getSelectionStart();
+        if (cursor < 0) {
+            cursor = text.length();
+        }
+        int start = cursor - 1 - typed.length();
+        if (start < 0 || start >= text.length() || text.charAt(start) != '@') {
+            binding.mentionRow.setVisibility(View.GONE);
+            return;
+        }
+        text.replace(start, cursor, path + " ");
+        binding.mentionRow.setVisibility(View.GONE);
+    }
+
+    /** État vide de l'agent (Lot 6) : trois actions réelles, pas de texte mort. */
+    private void renderAgentEmptyActions() {
+        android.widget.TextView title = new android.widget.TextView(requireContext());
+        title.setText(R.string.chat_empty_agent_title);
+        title.setTextSize(14f);
+        title.setTypeface(title.getTypeface(), android.graphics.Typeface.BOLD);
+        title.setTextColor(getResources().getColor(R.color.sur));
+        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        titleParams.bottomMargin = dip(8);
+        appendView(title);
+        addEmptyAction(R.string.chat_empty_agent_explain, R.string.chat_prompt_explain);
+        addEmptyAction(R.string.chat_empty_agent_fix, R.string.chat_prompt_fix);
+        addEmptyAction(R.string.chat_empty_agent_test, R.string.chat_prompt_test);
+    }
+
+    /** Une carte d'action de l'état vide : un prompt réel, envoyé au clic. */
+    private void addEmptyAction(int labelRes, int promptRes) {
+        TextView action = new TextView(requireContext());
+        action.setText(getString(labelRes));
+        action.setTextSize(13f);
+        action.setTypeface(action.getTypeface(), android.graphics.Typeface.BOLD);
+        action.setTextColor(getResources().getColor(R.color.sur));
+        action.setPadding(dip(16), dip(12), dip(16), dip(12));
+        action.setMinHeight(dip(48));
+        action.setBackground(getResources().getDrawable(R.drawable.fond_carte));
+        action.setOnClickListener(v -> ask(getString(promptRes), true));
+        appendView(action);
+    }
+
+    /** Bouton unique Envoyer/Stop (Lot 6) : Stop pendant la génération. */
+    private void wireSendButton() {
+        binding.sendButton.setOnClickListener(v -> {
+            if (session.isTurnRunning()) {
+                session.cancelTurn();
+                return;
+            }
+            String message = binding.inputField.getText().toString();
+            ask(message, true);
+        });
+    }
+
+    /** Affiche le bouton comme Stop (génération) ou comme Envoyer. */
+    private void setSendAsStop(boolean running) {
+        binding.sendButton.setImageResource(running
+                ? R.drawable.ic_stop : R.drawable.ic_arrow);
+        binding.sendButton.setContentDescription(getString(running
+                ? R.string.chat_stop : R.string.chat_send));
+    }
+
+    /** Ligne d'état du tour (Lot 6) : « Réfléchit… », « Écrit… », « Exécute … ». */
+    private void state(@StringRes int resId) {
+        binding.stateLine.setVisibility(View.VISIBLE);
+        binding.stateLine.setText(getString(resId));
+    }
+
+    private void state(@StringRes int resId, String argument) {
+        binding.stateLine.setVisibility(View.VISIBLE);
+        binding.stateLine.setText(getString(resId, argument));
+    }
+
+    private void clearState() {
+        binding.stateLine.setVisibility(View.GONE);
+    }
+
     private void ask(String message, boolean isNew) {
         if (message == null || message.trim().isEmpty() || session.isTurnRunning()) {
             return;
@@ -403,6 +539,13 @@ public final class AiPanelFragment extends Fragment {
         toolCount = 0;
         if (isNew) {
             binding.inputField.setText("");
+            // Premier message d'une conversation vierge : l'état vide (titre
+            // + cartes d'action de l'agent) laisse place au transcript réel.
+            if (session.conversation() == null
+                    || session.conversation().messages().isEmpty()) {
+                binding.transcriptList.removeAllViews();
+                thinkingBinding = null;
+            }
             appendUserBubble(message);
             binding.chipsRow.setVisibility(View.GONE);
         }
@@ -426,7 +569,8 @@ public final class AiPanelFragment extends Fragment {
         session.prepareContext(isAssistant()
                 ? getString(R.string.chat_assistant_contexte)
                 : realProjectContext());
-        binding.sendButton.setEnabled(false);
+        setSendAsStop(true);
+        state(R.string.chat_state_thinking);
         session.sendTurn(messageForModel, message, isNew, requireContext());
     }
 
@@ -526,8 +670,9 @@ public final class AiPanelFragment extends Fragment {
                     : failure.message() != null ? failure.message()
                     : getString(R.string.chat_error_generic);
             renderError(reason, error);
-            binding.sendButton.setEnabled(true);
+            setSendAsStop(false);
         }
+        clearState();
     }
 
     // ---- Conversations de l'assistant (persistance, rechargement) ------------

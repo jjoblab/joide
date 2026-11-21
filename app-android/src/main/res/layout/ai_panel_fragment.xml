@@ -137,6 +137,36 @@
         android:layout_height="1dp"
         android:background="@color/contour_var" />
 
+    <!-- Ligne d'état du tour (Lot 6) : « Réfléchit… », « Écrit… », « Exécute … ». -->
+    <TextView
+        android:id="@+id/state_line"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="8dp"
+        android:textSize="11.5sp"
+        android:textStyle="bold"
+        android:textColor="@color/sur_var"
+        android:visibility="gone"
+        android:importantForAccessibility="yes" />
+
+    <!-- Complétion « @ » : fichiers du projet correspondants (Lot 6). -->
+    <HorizontalScrollView
+        android:id="@+id/mention_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/mention_chips"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="6dp" />
+    </HorizontalScrollView>
+
     <!-- ===== Composer ===== -->
     <LinearLayout
         android:layout_width="match_parent"
@@ -147,10 +177,10 @@
 
         <ImageView
             android:id="@+id/attach_button"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:layout_marginEnd="10dp"
-            android:background="@drawable/fond_bouton_rond36"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/fond_bouton_rond"
             android:scaleType="center"
             android:src="@drawable/ic_plus"
             android:contentDescription="@string/chat_attach"

@@ -386,6 +386,62 @@ public class AiSessionViewModel extends ViewModel {
         });
     }
 
+    /**
+     * Suggestions de fichiers du projet pour la complétion « @ » (Lot 6) :
+     * parcours borné (profondeur 4, 300 entrées, dossiers générés ignorés)
+     * hors fil UI, résultats rendus sur le fil UI.
+     */
+    public void suggestMentionFiles(String prefix,
+            java.util.function.Consumer<List<String>> onSuggestions) {
+        if (projectPath == null) {
+            onSuggestions.accept(java.util.Collections.emptyList());
+            return;
+        }
+        executor.execute(() -> {
+            List<String> matches = new ArrayList<>();
+            try {
+                java.nio.file.Path root = java.nio.file.Paths.get(projectPath);
+                java.util.Deque<java.nio.file.Path> queue = new java.util.ArrayDeque<>();
+                queue.add(root);
+                int visited = 0;
+                String needle = prefix == null ? "" : prefix.toLowerCase();
+                while (!queue.isEmpty() && matches.size() < 8 && visited < 300) {
+                    java.nio.file.Path dir = queue.poll();
+                    try (var stream = java.nio.file.Files.list(dir)) {
+                        for (java.nio.file.Path child : (Iterable<java.nio.file.Path>) stream::iterator) {
+                            if (visited++ > 300) {
+                                break;
+                            }
+                            String name = child.getFileName().toString();
+                            if (name.equals(".git") || name.equals("build")
+                                    || name.equals(".gradle") || name.startsWith(".")) {
+                                continue;
+                            }
+                            String relative = root.relativize(child).toString();
+                            if (needle.isEmpty()
+                                    || relative.toLowerCase().contains(needle)) {
+                                matches.add(relative);
+                            }
+                            if (matches.size() >= 8) {
+                                break;
+                            }
+                            if (java.nio.file.Files.isDirectory(child)
+                                    && root.relativize(child).getNameCount() < 4) {
+                                queue.add(child);
+                            }
+                        }
+                    } catch (Exception ignored) {
+                        // Dossier illisible : on continue avec les autres.
+                    }
+                }
+            } catch (Exception ignored) {
+                // Projet illisible : aucune suggestion (honnête).
+            }
+            List<String> safe = new ArrayList<>(matches);
+            main.post(() -> onSuggestions.accept(safe));
+        });
+    }
+
     /** Annule les effets du dernier tour (checkpoint) et le dit au modèle. */
     public String undoLastTurn() {
         AgentLoop current = loop;
