@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tiroir gauche (Lot 0 : extraction de WorkbenchFragment sans régression) :
+     switcher Files · Chercher · Structure · Git (chips 32dp, même style),
+     contenu par onglet (fragments enfants conservés par show/hide). Le tiroir
+     reste poussant — la mécanique vit dans WorkbenchFragment.setupDrawers(). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/sc">
+
+    <!-- Switcher (studio : Files · Chercher · Structure, chips 32dp) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="10dp"
+        android:baselineAligned="false">
+
+        <TextView
+            android:id="@+id/drawer_tab_files"
+            style="@style/Chip"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:gravity="center"
+            android:background="@drawable/fond_chip_on"
+            android:text="@string/atelier_files"
+            android:textColor="@color/sur_sc2"
+            android:textSize="@dimen/chip_txt"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/drawer_tab_search"
+            style="@style/Chip"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:layout_marginStart="6dp"
+            android:gravity="center"
+            android:text="@string/atelier_chercher"
+            android:textColor="@color/sur"
+            android:textSize="@dimen/chip_txt"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/drawer_tab_structure"
+            style="@style/Chip"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:layout_marginStart="6dp"
+            android:gravity="center"
+            android:text="@string/atelier_structure"
+            android:textColor="@color/sur"
+            android:textSize="@dimen/chip_txt"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/drawer_tab_git"
+            style="@style/Chip"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:layout_marginStart="6dp"
+            android:gravity="center"
+            android:text="@string/git_title"
+            android:textColor="@color/sur"
+            android:textSize="@dimen/chip_txt"
+            android:textStyle="bold" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <ImageButton
+            android:id="@+id/close_left"
+            style="@style/IconBtn"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:contentDescription="@string/commun_retour"
+            android:src="@drawable/ic_x"
+            android:scaleType="centerInside"
+            app:tint="@color/sur_var" />
+    </LinearLayout>
+
+    <!-- Contenu de l'onglet (fragments enfants : Files, Chercher, Structure) -->
+    <FrameLayout
+        android:id="@+id/tab_container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+</LinearLayout>

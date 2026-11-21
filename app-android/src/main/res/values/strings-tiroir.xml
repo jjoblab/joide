@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tiroir gauche de l'atelier (Fichiers · Chercher · Structure · Git).
+     Textes français ; jamais uniquement dans values-fr/ (le build casse
+     hors français). -->
+<resources>
+
+    <!-- Lot 0 : états « à venir » honnêtes des onglets sans moteur encore. -->
+    <string name="tiroir_search_a_venir_title">Chercher</string>
+    <string name="tiroir_search_a_venir_body">La recherche dans le projet (texte, expressions régulières, remplacement, « aller au fichier ») arrive au lot Recherche.</string>
+    <string name="tiroir_structure_a_venir_title">Structure</string>
+    <string name="tiroir_structure_a_venir_body">Le plan du fichier actif (classes, méthodes, éléments XML) arrive au lot Structure.</string>
+</resources>

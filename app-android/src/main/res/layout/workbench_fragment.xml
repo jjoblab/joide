@@ -596,138 +596,23 @@
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
-    <!-- Tiroir gauche : arborescence du projet + écrans de fonctionnalités
-         (Files · Chercher · Structure), 320dp, pousse le contenu. -->
-    <LinearLayout
+    <!-- Tiroir gauche : LeftDrawerFragment hébergé en fragment enfant
+         (Files · Chercher · Structure · Git), 320dp, pousse le contenu.
+         Largeur fixée à l'exécution (min(320dp, écran − 56dp), dimens). -->
+    <FrameLayout
         android:id="@+id/left_drawer_panel"
         android:layout_width="320dp"
         android:layout_height="match_parent"
-        android:orientation="vertical"
         android:background="@color/sc"
         android:layout_gravity="start"
-            android:clickable="true"
-            android:focusable="true">
+        android:clickable="true"
+        android:focusable="true">
 
-        <!-- Switcher (studio : Files · Chercher · Structure, chips 32dp) -->
-        <LinearLayout
+        <androidx.fragment.app.FragmentContainerView
+            android:id="@+id/left_drawer_container"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:padding="10dp"
-            android:baselineAligned="false">
-
-            <TextView
-                android:id="@+id/drawer_tab_files"
-                style="@style/Chip"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:gravity="center"
-                android:background="@drawable/fond_chip_on"
-                android:text="@string/atelier_files"
-                android:textColor="@color/sur_sc2"
-                android:textSize="@dimen/chip_txt"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/drawer_tab_search"
-                style="@style/Chip"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:layout_marginStart="6dp"
-                android:gravity="center"
-                android:text="@string/atelier_chercher"
-                android:textColor="@color/sur"
-                android:textSize="@dimen/chip_txt"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/drawer_tab_structure"
-                style="@style/Chip"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:layout_marginStart="6dp"
-                android:gravity="center"
-                android:text="@string/atelier_structure"
-                android:textColor="@color/sur"
-                android:textSize="@dimen/chip_txt"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/drawer_tab_git"
-                style="@style/Chip"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:layout_marginStart="6dp"
-                android:gravity="center"
-                android:text="@string/git_title"
-                android:textColor="@color/sur"
-                android:textSize="@dimen/chip_txt"
-                android:textStyle="bold" />
-
-            <View
-                android:layout_width="0dp"
-                android:layout_height="1dp"
-                android:layout_weight="1" />
-
-            <ImageButton
-                android:id="@+id/close_left"
-                style="@style/IconBtn"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:contentDescription="@string/commun_retour"
-                android:src="@drawable/ic_x"
-                android:scaleType="centerInside"
-                app:tint="@color/sur_var" />
-        </LinearLayout>
-
-        <!-- Arborescence (rangées indentées, dossier primaire / fichier contour) -->
-        <ScrollView
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1">
-
-            <LinearLayout
-                android:id="@+id/files_tree"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:paddingTop="10dp" />
-        </ScrollView>
-
-        <!-- Actions basses (studio : Nouveau + corbeille, chips 32dp) -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="10dp">
-
-            <TextView
-                android:id="@+id/tree_new_file"
-                style="@style/Chip"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:gravity="center"
-                android:text="@string/atelier_nouveau_fichier"
-                android:textColor="@color/sur"
-                android:textSize="@dimen/chip_txt"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/tree_delete"
-                style="@style/Chip"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:layout_marginStart="8dp"
-                android:gravity="center"
-                android:text="@string/atelier_corbeille"
-                android:textColor="@color/sur"
-                android:textSize="@dimen/chip_txt"
-                android:textStyle="bold" />
-        </LinearLayout>
-    </LinearLayout>
+            android:layout_height="match_parent" />
+    </FrameLayout>
 
     <!-- Tiroir droit : agent IA (AiPanelFragment hébergé en fragment enfant),
          largeur fixée à l'exécution (≤ 420dp, jamais plus large que l'écran). -->

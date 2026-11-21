@@ -34,8 +34,9 @@ import jo.joide.workbench.WorkMode;
  * nom, pill de mode, save/undo/redo/play/dots), onglets de fichiers 40dp,
  * fil d'Ariane 34dp avec segment code/aperçu, zone code sc_lowest (brique
  * céleris), dock à poignée (barre 52dp + corps repliable : pills d'état du
- * build, onglets Problèmes·Console·Étapes·Journal, sortie mono), tiroir gauche
- * push 320dp (switcher Files·Chercher·Structure + arborescence indentée).
+ * build, onglets Problèmes·Console·Étapes·Journal, sortie mono), tiroir
+ * gauche push 320dp (LeftDrawerFragment : Fichiers · Chercher · Structure ·
+ * Git, Lot 0), tiroir droit agent IA.
  *
  * <p>J2 : le build du mode actif alimente la Console et la section Problèmes
  * (diagnostics avec position). Les états restent honnêtes : les commandes
@@ -45,9 +46,14 @@ import jo.joide.workbench.WorkMode;
  * l'agent du tiroir droit ({@link jo.joide.app.ai.AgentContext}) — fichier
  * actif (tampon vivant de l'éditeur), diagnostics du dernier build,
  * sélection courante. Des valeurs réelles uniquement.</p>
+ *
+ * <p>Lot 0 tiroir gauche : le contenu du tiroir vit dans
+ * {@link jo.joide.app.drawer.LeftDrawerFragment} (contrat
+ * {@link jo.joide.app.drawer.WorkbenchHost}) ; l'atelier garde l'éditeur,
+ * le dock et les deux tiroirs (mécanique de poussée, largeurs aux dimens).</p>
  */
 public class WorkbenchFragment extends Fragment
-        implements jo.joide.app.ai.AgentContext {
+        implements jo.joide.app.ai.AgentContext, jo.joide.app.drawer.WorkbenchHost {
 
     private static final String ARG_PROJECT = "project";
 
@@ -79,9 +85,8 @@ public class WorkbenchFragment extends Fragment
 
         if (projectPath != null) {
             setupDrawers();
-            setupDrawerTabs();
+            attachLeftDrawer();
             setupTopBar();
-            setupFilesTree();
             setupTabs();
             setupDock();
             setupModeVisibility();
@@ -102,8 +107,6 @@ public class WorkbenchFragment extends Fragment
         }
         binding.menuButton.setOnClickListener(v ->
                 binding.drawerLayout.openDrawer(androidx.core.view.GravityCompat.START));
-        binding.closeLeft.setOnClickListener(v ->
-                binding.drawerLayout.closeDrawer(androidx.core.view.GravityCompat.START));
         binding.dotsButton.setOnClickListener(this::showOptionsMenu);
         // Studio : save/undo/redo — la brique céleris porte ces états (L5) ;
         // les boutons disent honnêtement l'état.
@@ -167,24 +170,59 @@ public class WorkbenchFragment extends Fragment
         }
     }
 
-    /** Puces du tiroir gauche : Chercher (recherche du dock), Git (écran git). */
-    private void setupDrawerTabs() {
-        binding.drawerTabSearch.setOnClickListener(v -> {
-            binding.drawerLayout.closeDrawer(androidx.core.view.GravityCompat.START);
-            binding.dockSearch.performClick();
-        });
-        binding.drawerTabGit.setOnClickListener(v -> {
-            binding.drawerLayout.closeDrawer(androidx.core.view.GravityCompat.START);
-            jo.joide.app.git.GitFragment git = new jo.joide.app.git.GitFragment();
-            Bundle args = new Bundle();
-            args.putString("project", projectPath);
-            git.setArguments(args);
-            getParentFragmentManager().beginTransaction()
-                    .replace(((ViewGroup) requireView().getParent()).getId(), git)
-                    .addToBackStack(null)
+    /** Ouvre le tiroir gauche : LeftDrawerFragment (fragment enfant créé à la
+     *  première ouverture, conservé ensuite — l'état survit aux fermetures). */
+    private void attachLeftDrawer() {
+        if (getChildFragmentManager().findFragmentById(R.id.left_drawer_container) == null) {
+            getChildFragmentManager().beginTransaction()
+                    .replace(R.id.left_drawer_container,
+                            jo.joide.app.drawer.LeftDrawerFragment.forProject(projectPath))
                     .commit();
-        });
+        }
     }
+
+    // ---- Contrat WorkbenchHost (le tiroir gauche ne touche jamais l'éditeur) --
+
+    @Override
+    public void openFile(Path file) {
+        activeFile = file;
+        try {
+            String content = new String(Files.readAllBytes(file),
+                    StandardCharsets.UTF_8);
+            attachEditor(file.getFileName().toString(), content);
+        } catch (IOException e) {
+            appendToJournal(getString(R.string.atelier_lecture_impossible,
+                    file.getFileName().toString()));
+        }
+    }
+
+    @Nullable
+    @Override
+    public Path activeFile() {
+        return activeFile;
+    }
+
+    @Override
+    public void closeLeftDrawer() {
+        binding.drawerLayout.closeDrawer(androidx.core.view.GravityCompat.START);
+    }
+
+    @Override
+    public void openGitScreen() {
+        // Comportement conservé du Lot 0 : l'écran Git plein écran (le client
+        // Git dans le tiroir arrive au lot Git).
+        binding.drawerLayout.closeDrawer(androidx.core.view.GravityCompat.START);
+        jo.joide.app.git.GitFragment git = new jo.joide.app.git.GitFragment();
+        Bundle args = new Bundle();
+        args.putString("project", projectPath);
+        git.setArguments(args);
+        getParentFragmentManager().beginTransaction()
+                .replace(((ViewGroup) requireView().getParent()).getId(), git)
+                .addToBackStack(null)
+                .commit();
+    }
+
+    // ---- Contexte vivant de l'agent (Lot 0 : valeurs réelles seulement) ----
 
     // ---- Tiroirs (gauche : fichiers · droite : agent IA) — ils POUSSENT le contenu --
 
@@ -194,11 +232,17 @@ public class WorkbenchFragment extends Fragment
         drawers.setScrimColor(android.graphics.Color.TRANSPARENT);
         drawers.setDrawerElevation(0f);
         int screenWidth = getResources().getDisplayMetrics().widthPixels;
+        // Largeurs par dimensions (Lot 0 tiroir : plus de valeur en dur — le
+        // 320dp du layout et de la doc fait foi, borné par l'écran − 56dp).
         ViewGroup.LayoutParams right = binding.rightDrawer.getLayoutParams();
-        right.width = Math.min(dip(420), screenWidth - dip(56));
+        right.width = Math.min(
+                (int) getResources().getDimension(R.dimen.drawer_droit_l),
+                screenWidth - dip(56));
         binding.rightDrawer.setLayoutParams(right);
         ViewGroup.LayoutParams left = binding.leftDrawerPanel.getLayoutParams();
-        left.width = Math.min(dip(300), screenWidth - dip(56));
+        left.width = Math.min(
+                (int) getResources().getDimension(R.dimen.drawer_gauche_l),
+                screenWidth - dip(56));
         binding.leftDrawerPanel.setLayoutParams(left);
 
         androidx.activity.OnBackPressedCallback closeOnBack =
@@ -380,70 +424,7 @@ public class WorkbenchFragment extends Fragment
         return tab;
     }
 
-    // ---- Tiroir gauche (studio : arborescence indentée à icônes) -----------
-
-    private void setupFilesTree() {
-        binding.filesTree.removeAllViews();
-        List<Path> files = new ArrayList<>();
-        try (var stream = Files.walk(Path.of(projectPath))) {
-            stream.filter(p -> !p.getFileName().toString().startsWith("."))
-                    .filter(Files::isRegularFile)
-                    .limit(50)
-                    .forEach(files::add);
-        } catch (IOException e) {
-            appendToJournal(getString(R.string.atelier_lecture_impossible,
-                    e.getMessage() != null ? e.getMessage() : ""));
-        }
-        files.sort(java.util.Comparator.comparingInt(p -> p.getNameCount()));
-        for (Path file : files) {
-            binding.filesTree.addView(treeRow(file));
-        }
-        // Actions basses du tiroir (studio : Nouveau + corbeille) — honnêtes.
-        binding.treeNewFile.setOnClickListener(v ->
-                toast(getString(R.string.atelier_editeur_brique)));
-        binding.treeDelete.setOnClickListener(v ->
-                toast(getString(R.string.atelier_editeur_brique)));
-    }
-
-    /** Une rangée d'arborescence : indentation par profondeur, dossier/file. */
-    private View treeRow(Path file) {
-        LinearLayout row = new LinearLayout(requireContext());
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        int depth = Math.max(0, file.getNameCount()
-                - Path.of(projectPath).getNameCount() - 1);
-        row.setPadding(dip(6) + depth * dip(18), dip(6), dip(6), dip(6));
-
-        ImageView icon = new ImageView(requireContext());
-        icon.setImageResource(R.drawable.ic_file);
-        icon.setColorFilter(getResources().getColor(R.color.contour));
-        row.addView(icon, new LinearLayout.LayoutParams(dip(16), dip(16)));
-
-        TextView name = new TextView(requireContext());
-        name.setText(file.getFileName().toString());
-        name.setTextSize(13f);
-        name.setTextColor(getResources().getColor(R.color.sur_var));
-        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        nameParams.leftMargin = dip(8);
-        name.setLayoutParams(nameParams);
-        row.addView(name);
-        row.setOnClickListener(v -> openFile(file));
-        return row;
-    }
-
-    /** Ouvre un fichier dans l'éditeur (onglet actif). */
-    private void openFile(Path file) {
-        activeFile = file;
-        try {
-            String content = new String(Files.readAllBytes(file),
-                    StandardCharsets.UTF_8);
-            attachEditor(file.getFileName().toString(), content);
-        } catch (IOException e) {
-            appendToJournal(getString(R.string.atelier_lecture_impossible,
-                    file.getFileName().toString()));
-        }
-    }
+    // ---- Tiroir gauche : contenu extrait (Lot 0) → LeftDrawerFragment -------
 
     // ---- Contexte vivant de l'agent (Lot 0 : valeurs réelles seulement) ----
 
