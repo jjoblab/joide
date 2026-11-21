@@ -60,6 +60,7 @@ include(":build-gradle-core")
 include(":core-git")
 include(":core-files")
 include(":core-search")
+include(":core-outline")
 if (sdkDetecte && !refusAndroid) {
     include(":app-android")
 } else {

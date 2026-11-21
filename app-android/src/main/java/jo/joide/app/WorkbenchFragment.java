@@ -293,6 +293,23 @@ public class WorkbenchFragment extends Fragment
         return recents;
     }
 
+    @Nullable
+    @Override
+    public String activeFileText() {
+        // Tampon vivant (modifications non enregistrées comprises).
+        return editor != null && editor.session() != null
+                ? editor.session().text() : null;
+    }
+
+    @Override
+    public int cursorOffset() {
+        if (editor == null || editor.session() == null) {
+            return -1;
+        }
+        List<Integer> carets = editor.session().selection().carets();
+        return carets.isEmpty() ? -1 : carets.get(carets.size() - 1);
+    }
+
     @NonNull
     @Override
     public List<jo.joide.workbench.Diagnostic> diagnostics() {

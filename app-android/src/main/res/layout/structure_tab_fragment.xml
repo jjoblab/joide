@@ -1,36 +1,127 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Onglet Structure du tiroir gauche (Lot 0) : état « à venir » honnête. -->
+<!-- Onglet Structure du tiroir gauche (Lot 5) : plan du fichier actif —
+     tri Position / A→Z, suivi du curseur, filtre rapide, symboles
+     (RecyclerView). Les états se disent : rien d'ouvert, langage non pris
+     en charge, plan indisponible. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:gravity="center"
-    android:paddingHorizontal="24dp">
+    android:orientation="vertical">
 
-    <ImageView
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:src="@drawable/ic_code"
-        android:importantForAccessibility="no"
-        android:alpha="0.6"
-        app:tint="@color/sur_var" />
-
-    <TextView
-        android:layout_width="wrap_content"
+    <!-- En-tête : fichier actif + outils -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="@string/tiroir_structure_a_venir_title"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="4dp">
+
+        <TextView
+            android:id="@+id/struct_file"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:singleLine="true"
+            android:ellipsize="middle"
+            android:textColor="@color/sur"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <ImageButton
+            android:id="@+id/struct_filter"
+            style="@style/IconBtn"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:contentDescription="@string/tiroir_filtrer"
+            android:src="@drawable/ic_filter"
+            android:scaleType="centerInside"
+            app:tint="@color/sur_var" />
+    </LinearLayout>
+
+    <!-- Tri + suivi du curseur -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingBottom="6dp">
+
+        <TextView
+            android:id="@+id/struct_sort_position"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:gravity="center"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:background="@drawable/fond_chip_on"
+            android:text="@string/tiroir_struct_tri_position"
+            android:textColor="@color/sur_sc2"
+            android:textSize="11.5sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/struct_sort_az"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:layout_marginStart="6dp"
+            android:gravity="center"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:background="@drawable/fond_chip"
+            android:text="@string/tiroir_struct_tri_az"
+            android:textColor="@color/sur"
+            android:textSize="11.5sp"
+            android:textStyle="bold" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <ImageButton
+            android:id="@+id/struct_follow"
+            style="@style/IconBtn"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:contentDescription="@string/tiroir_struct_suivre"
+            android:src="@drawable/ic_suivre"
+            android:scaleType="centerInside"
+            app:tint="@color/primaire" />
+    </LinearLayout>
+
+    <!-- Filtre rapide (caché hors filtrage) -->
+    <EditText
+        android:id="@+id/struct_filter_field"
+        android:layout_width="match_parent"
+        android:layout_height="38dp"
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="10dp"
+        android:layout_marginBottom="6dp"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:background="@drawable/fond_field"
+        android:inputType="text"
+        android:singleLine="true"
+        android:hint="@string/tiroir_struct_filtre_indice"
         android:textColor="@color/sur"
-        android:textSize="@dimen/txt_med"
-        android:textStyle="bold" />
+        android:textColorHint="@color/contour"
+        android:textSize="12.5sp"
+        android:visibility="gone" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:gravity="center"
-        android:text="@string/tiroir_structure_a_venir_body"
-        android:textColor="@color/sur_var"
-        android:textSize="@dimen/txt_body_s" />
+    <!-- Les symboles du plan -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/struct_list"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingBottom="10dp"
+        android:clipToPadding="false" />
 </LinearLayout>

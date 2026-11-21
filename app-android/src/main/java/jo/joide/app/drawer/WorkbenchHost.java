@@ -31,6 +31,19 @@ public interface WorkbenchHost {
      */
     List<Path> recentFiles();
 
+    /**
+     * Texte du fichier actif (tampon vivant, modifications non enregistrées
+     * comprises) — Lot 5 : plan de Structure ; null si aucun fichier.
+     */
+    @Nullable
+    String activeFileText();
+
+    /**
+     * Position du curseur dans le fichier actif (offset) — Lot 5 : suivi du
+     * symbole courant ; −1 si aucun.
+     */
+    int cursorOffset();
+
     /** Fichier actif de l'éditeur ; null si aucun. */
     @Nullable
     Path activeFile();

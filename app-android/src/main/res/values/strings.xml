@@ -345,4 +345,22 @@
     <string name="tiroir_rech_casse_label">Aa</string>
     <string name="tiroir_rech_mot_label">W</string>
     <string name="tiroir_rech_regex_label">.*</string>
+    <!-- Tiroir gauche : onglet Structure (Lot 5) -->
+    <string name="tiroir_struct_tri_position">Position</string>
+    <string name="tiroir_struct_tri_az">A→Z</string>
+    <string name="tiroir_struct_suivre">Suivre le curseur</string>
+    <string name="tiroir_struct_aucun_fichier">Aucun fichier ouvert.</string>
+    <string name="tiroir_struct_aucun_fichier_detail">Ouvrez un fichier depuis l\'arbre : son plan apparaît ici.</string>
+    <string name="tiroir_struct_langage">Langage non pris en charge.</string>
+    <string name="tiroir_struct_langage_detail">Plans disponibles : Java, Kotlin, XML, JSON, Markdown. Un fournisseur LSP pourra s\'y brancher.</string>
+    <string name="tiroir_struct_vide">Plan indisponible (fichier illisible ou vide).</string>
+    <string name="tiroir_struct_filtre_indice">Filtrer les symboles…</string>
+    <string name="tiroir_sym_m">m</string>
+    <string name="tiroir_sym_f">f</string>
+    <string name="tiroir_sym_c">c</string>
+    <string name="tiroir_sym_p">◍</string>
+    <string name="tiroir_sym_i">≡</string>
+    <string name="tiroir_sym_x">⊠</string>
+    <string name="tiroir_sym_t">T</string>
+    <string name="tiroir_sym_k">₵</string>
 </resources>
