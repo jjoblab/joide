@@ -34,12 +34,12 @@
     <color name="alerte">#FFB340</color>
     <color name="info">#5AC8E0</color>
 
-    <color name="ok_soft">#34D05829</color>
-    <color name="err_soft">#FFB4A221</color>
-    <color name="warn_soft">#FFB34024</color>
-    <color name="info_soft">#5AC8E021</color>
+    <color name="ok_soft">#2934D058</color>
+    <color name="err_soft">#21FFB4A2</color>
+    <color name="warn_soft">#24FFB340</color>
+    <color name="info_soft">#215AC8E0</color>
 
-    <color name="scrim">#00000073</color>
+    <color name="scrim">#73000000</color>
     <color name="clavier">#232519</color>
     <color name="clavier_touche">#2F3124</color>
 </resources>

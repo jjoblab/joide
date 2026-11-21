@@ -43,13 +43,13 @@
     <color name="info">#2399B8</color>
 
     <!-- Softs (arrière-plans pastilles, exacts du studio) -->
-    <color name="ok_soft">#2AA84729</color>
-    <color name="err_soft">#8F4C3824</color>
-    <color name="warn_soft">#D9830026</color>
-    <color name="info_soft">#2399B824</color>
+    <color name="ok_soft">#2929A847</color>
+    <color name="err_soft">#248F4C38</color>
+    <color name="warn_soft">#26D98300</color>
+    <color name="info_soft">#242399B8</color>
 
     <!-- Divers -->
-    <color name="scrim">#1B1C1552</color>
+    <color name="scrim">#521B1C15</color>
     <color name="clavier">#D8D7C9</color>
     <color name="clavier_touche">#FDFCF4</color>
 
