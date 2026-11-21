@@ -26,6 +26,8 @@ import jo.joide.ai.KeyVault;
 import jo.joide.ai.PermissionGate;
 import jo.joide.ai.HttpLlmTransport;
 import jo.joide.app.R;
+import jo.joide.app.BuildConfig;
+import jo.joide.app.ModeSetupFragment;
 import jo.joide.app.ai.EncryptedKeyVault;
 import jo.joide.corestore.CrashJournal;
 import jo.joide.corestore.DiagnosticReport;
@@ -271,7 +273,8 @@ public final class SettingsFragment extends Fragment {
             if (!java.nio.file.Files.isRegularFile(log)) {
                 return "";
             }
-            return java.nio.file.Files.readString(log);
+            return new String(java.nio.file.Files.readAllBytes(log),
+                    java.nio.charset.StandardCharsets.UTF_8);
         } catch (IOException e) {
             return "";
         }

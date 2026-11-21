@@ -96,7 +96,8 @@ public final class AiPanelFragment extends Fragment {
         new Thread(() -> {
             String projectRoot = requireArguments().getString("project", null);
             AgentWorkspace workspace = projectRoot != null
-                    ? new AgentWorkspace.OnProject(java.nio.file.Path.of(projectRoot))
+                    ? new AgentWorkspace.OnProject(
+                            new java.io.File(projectRoot).toPath())
                     : new AgentWorkspace.InMemory();
             HttpLlmTransport transport = new HttpLlmTransport();
             AgentLoop loop = new AgentLoop(AiProvider.gateway(transport), transport,
