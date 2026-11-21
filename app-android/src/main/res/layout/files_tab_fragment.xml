@@ -106,6 +106,17 @@
             android:src="@drawable/ic_filter"
             android:scaleType="centerInside"
             app:tint="@color/sur_var" />
+
+        <ImageButton
+            android:id="@+id/tree_settings"
+            style="@style/IconBtn"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_marginStart="2dp"
+            android:contentDescription="@string/tiroir_reglages"
+            android:src="@drawable/ic_gear"
+            android:scaleType="centerInside"
+            app:tint="@color/sur_var" />
     </LinearLayout>
 
     <!-- Filtre en direct (caché hors filtrage ; parcourt l'arbre étendu) -->

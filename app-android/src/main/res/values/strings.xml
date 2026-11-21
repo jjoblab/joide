@@ -413,4 +413,12 @@
     <string name="git_tiroir_jeton">Jeton d\'accès</string>
     <string name="git_tiroir_stasher_ok">Changements remisés</string>
     <string name="git_tiroir_bascule_ok">Bascule vers %1$s</string>
+    <!-- Tiroir gauche : réglages de l'explorateur et Git (Lot 8) -->
+    <string name="tiroir_reglages">Réglages de l\'explorateur</string>
+    <string name="tiroir_reglages_fichiers_caches">Fichiers cachés (.gitignore, dotfiles)</string>
+    <string name="tiroir_reglages_packages">Packages compacts (com.example.app)</string>
+    <string name="tiroir_reglages_badges">Badges d\'éléments des dossiers</string>
+    <string name="tiroir_reglages_suivi">Suivre le fichier actif</string>
+    <string name="git_tiroir_oublier_jeton">Oublier le jeton du distant</string>
+    <string name="git_tiroir_jeton_oublie">Jeton oublié pour %1$s</string>
 </resources>

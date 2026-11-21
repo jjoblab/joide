@@ -678,6 +678,15 @@ public final class GitTabFragment extends Fragment {
                                 new WorkspaceEvents.FileChangedOnDisk(root));
                         publishTreeAndGit();
                     })));
+            box.addView(action(getString(R.string.git_tiroir_oublier_jeton), v ->
+                    opAsync(() -> GitOps.open(root).remoteUrl(), remote -> {
+                        if (remote == null) {
+                            toast(getString(R.string.git_tiroir_pas_depot));
+                            return;
+                        }
+                        credentialsStore.remove(remote);
+                        snackbar(getString(R.string.git_tiroir_jeton_oublie, remote));
+                    })));
             box.addView(action(getString(R.string.git_tiroir_ecran_complet), v -> {
                 WorkbenchHost host = host();
                 if (host != null) {

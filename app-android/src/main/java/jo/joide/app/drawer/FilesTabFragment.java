@@ -110,6 +110,15 @@ public final class FilesTabFragment extends Fragment implements FileTreeAdapter.
     /** Suivre le fichier actif (ouvrir la filiation + défiler vers lui). */
     private boolean followActive = true;
 
+    /** Fichiers cachés montrés (préférence Lot 8, lue au rendu). */
+    private boolean showHiddenFiles = true;
+
+    /** Packages compacts (préférence Lot 8). */
+    private boolean compactPackages = true;
+
+    /** Badges d'éléments des dossiers repliés (préférence Lot 8). */
+    private boolean showBadges = true;
+
     /** Filtre en direct (vide = arbre normal). */
     private String filterQuery = "";
 
@@ -134,6 +143,13 @@ public final class FilesTabFragment extends Fragment implements FileTreeAdapter.
     private Runnable unsubscribeEvents;
     private final Handler main = new Handler(Looper.getMainLooper());
 
+    /** Préférences de l'explorateur (Lot 8 : câblées, matrice + CI). */
+    public static final String EXPLORER_PREFS = "explorateur";
+    public static final String KEY_HIDDEN = "explorateur_fichiers_caches";
+    public static final String KEY_COMPACT = "explorateur_packages_compacts";
+    public static final String KEY_BADGES = "explorateur_badges";
+    public static final String KEY_FOLLOW = "explorateur_suivi_actif";
+
     /** Onglet du tiroir (le projet vient du ViewModel partagé). */
     public static FilesTabFragment newInstance() {
         return new FilesTabFragment();
@@ -149,6 +165,12 @@ public final class FilesTabFragment extends Fragment implements FileTreeAdapter.
         String path = viewModel.projectPath();
         root = path != null ? Paths.get(path) : null;
         androidView = viewModel.androidView();
+        android.content.SharedPreferences prefs = requireContext()
+                .getSharedPreferences(EXPLORER_PREFS, android.content.Context.MODE_PRIVATE);
+        showHiddenFiles = prefs.getBoolean(KEY_HIDDEN, true);
+        compactPackages = prefs.getBoolean(KEY_COMPACT, true);
+        showBadges = prefs.getBoolean(KEY_BADGES, true);
+        followActive = prefs.getBoolean(KEY_FOLLOW, true);
 
         setupTools();
         setupFilter();
@@ -199,9 +221,80 @@ public final class FilesTabFragment extends Fragment implements FileTreeAdapter.
             refreshProblemStates();
         });
         binding.treeFilter.setOnClickListener(v -> toggleFilter());
+        binding.treeSettings.setOnClickListener(v -> showExplorerSettings());
         binding.treeViewProject.setOnClickListener(v -> setAndroidView(false));
         binding.treeViewAndroid.setOnClickListener(v -> setAndroidView(true));
         tintFollow();
+    }
+
+    /**
+     * Réglages de l'explorateur (Lot 8) : quatre interrupteurs **réels**
+     * (préférences lues au rendu — matrice docs/analyse-tiroir.md, contrôlés
+     * par tools/check-cablage-tiroir.sh en CI).
+     */
+    private void showExplorerSettings() {
+        android.content.Context context = requireContext();
+        android.content.SharedPreferences prefs = context
+                .getSharedPreferences(EXPLORER_PREFS, android.content.Context.MODE_PRIVATE);
+        LinearLayout box = new LinearLayout(context);
+        box.setOrientation(LinearLayout.VERTICAL);
+        int padding = dip(20);
+        box.setPadding(padding, dip(8), padding, 0);
+        box.addView(switchRow(context, prefs, R.string.tiroir_reglages_fichiers_caches,
+                KEY_HIDDEN, showHiddenFiles, value -> {
+                    showHiddenFiles = value;
+                    generation.incrementAndGet();
+                    inFlight.clear();
+                    viewModel.listingCache().clear();
+                    renderTree();
+                }));
+        box.addView(switchRow(context, prefs, R.string.tiroir_reglages_packages,
+                KEY_COMPACT, compactPackages, value -> {
+                    compactPackages = value;
+                    viewModel.chainCache().clear();
+                    viewModel.listingCache().clear();
+                    renderTree();
+                }));
+        box.addView(switchRow(context, prefs, R.string.tiroir_reglages_badges,
+                KEY_BADGES, showBadges, value -> {
+                    showBadges = value;
+                    renderTree();
+                }));
+        box.addView(switchRow(context, prefs, R.string.tiroir_reglages_suivi,
+                KEY_FOLLOW, followActive, value -> {
+                    followActive = value;
+                    renderTree();
+                }));
+        new AlertDialog.Builder(context)
+                .setTitle(R.string.tiroir_reglages)
+                .setView(box)
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
+    }
+
+    /** Une rangée d'interrupteur : écrit la préférence et applique l'effet. */
+    private View switchRow(android.content.Context context,
+            android.content.SharedPreferences prefs, int labelRes, String key,
+            boolean current, java.util.function.Consumer<Boolean> onChange) {
+        LinearLayout row = new LinearLayout(context);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        row.setPadding(0, dip(10), 0, dip(10));
+        TextView label = new TextView(context);
+        label.setText(labelRes);
+        label.setTextSize(13f);
+        label.setTextColor(getResources().getColor(R.color.sur));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        row.addView(label, params);
+        androidx.appcompat.widget.SwitchCompat toggle = new androidx.appcompat.widget.SwitchCompat(context);
+        toggle.setChecked(current);
+        toggle.setOnCheckedChangeListener((button, checked) -> {
+            prefs.edit().putBoolean(key, checked).apply();
+            onChange.accept(checked);
+        });
+        row.addView(toggle);
+        return row;
     }
 
     /** Bascule des vues Projet / Android (l'état survit aux rotations). */
@@ -570,7 +663,7 @@ public final class FilesTabFragment extends Fragment implements FileTreeAdapter.
             Map<String, FileTree.Chain> chains = new HashMap<>();
             String error = null;
             try {
-                listing = FileTree.list(root, relative, true,
+                listing = FileTree.list(root, relative, showHiddenFiles,
                         FileTree.DEFAULT_MAX_ENTRIES,
                         () -> generation.get() != gen);
                 for (FileTree.Entry entry : listing.entries()) {
@@ -581,7 +674,8 @@ public final class FilesTabFragment extends Fragment implements FileTreeAdapter.
                                 root.resolve(entry.relativePath()));
                     }
                     kinds.put(entry.relativePath(), kind);
-                    if (entry.directory() && kind == FileKind.PACKAGE) {
+                    if (compactPackages && entry.directory()
+                            && kind == FileKind.PACKAGE) {
                         chains.put(entry.relativePath(), FileTree.compactChain(
                                 root, entry.relativePath(), 10,
                                 () -> generation.get() != gen));
@@ -781,14 +875,15 @@ public final class FilesTabFragment extends Fragment implements FileTreeAdapter.
                     FileKinds.kindOf(childRel, dir));
             // Chaîne compacte : « com.example » sur une ligne (Lot 3).
             FileTree.Chain chain = viewModel.chainCache().get(childRel);
-            boolean compact = dir && chain != null && chain.levels() > 1;
+            boolean compact = compactPackages && dir && chain != null
+                    && chain.levels() > 1;
             String listRel = compact ? chain.lastRelative() : childRel;
             String display = compact ? chain.display() : entry.name();
             boolean open = dir && viewModel.expandedDirs().contains(listRel);
             if (dir && kind == FileKind.FOLDER && open) {
                 kind = FileKind.FOLDER_OPEN;
             }
-            String badge = dir && !open && filterQuery.isEmpty()
+            String badge = showBadges && dir && !open && filterQuery.isEmpty()
                     ? badgeFor(listRel) : null;
             rows.add(new TreeRow(listRel, childRel, display, dir, depth, kind,
                     open, gitStates.get(childRel),
