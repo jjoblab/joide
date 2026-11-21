@@ -234,7 +234,6 @@
     <string name="option_atelier_mode">Changer de mode</string>
     <string name="option_atelier_masquer_notice">Masquer la notice</string>
     <string name="dock_etat_pret">Prêt</string>
-    <string name="git_titre_projet">Git · %1$s</string>
     <string name="git_sans_suivi">Aucune branche distante suivie</string>
     <string name="git_sync_bientot">Synchronisation distante : bientôt disponible</string>
 </resources>
