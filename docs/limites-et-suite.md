@@ -111,15 +111,37 @@
   rotation + écran Git), bus `WorkspaceEvents` branché (mutations agent,
   build, git). Fix au passage : `Path.of` → `Paths.get` (11 usages, API 28).
 
-### Non fait (lots 3 à 8) — raisons
-- **Lot 3** (interactions Fichiers) : menu contextuel (renommer, dupliquer,
-  copier/couper/coller, copier le chemin, .gitignore), sélection multiple,
-  glisser-déposer, corbeille réelle (FsOperations atomiques + restauration),
-  vues Projet/Android, filtre en direct, badges d'éléments des dossiers
-  repliés, RecyclerView + DiffUtil — non commencé, prochaine étape.
-- Lots 4-8 : recherche (`core-search`), structure (`core-outline`),
-  `core-git` robuste, onglet Git dans le tiroir, réglages/robustesse —
-  dans l'ordre après le Lot 3 (aperçu validé : `docs/mockups/tiroir-gauche.html`).
+- **Lot 3** (`891ff2b` + `ed9e220` + `467e3f1`) : les interactions de
+  l'onglet Fichiers, en trois morceaux. Noyau (`891ff2b`) : `FsOperations`
+  (créer/renommer/déplacer atomiques, copie bornée, corbeille restaurable
+  indexée, protégés .git/.joide, confinement — 10 tests), `FileTemplates`
+  (contenus de départ), `FileTree.countAll` (compte récursif borné pour les
+  badges) et `compactChain` (« com.example » sur une ligne — 12 tests).
+  UI (`ed9e220`) : liste aplatie RecyclerView + DiffUtil, menu contextuel
+  (sélectionner, renommer, dupliquer, copier le chemin, déplacer,
+  supprimer), sélection multiple avec barre d'actions, corbeille
+  (restaurer / supprimer définitivement / vider), nouveau fichier (modèle)
+  ou dossier, filtre en direct (l'arbre étendu seulement, correspondances
+  en gras), badges des dossiers repliés (« N+ » au plafond), Snackbar
+  « Annuler » sur suppression, opérations hors fil UI publiées sur le bus
+  (un seul chemin de mise à jour), renommage qui déplace le fichier actif
+  de l'éditeur. Vues (`467e3f1`) : bascule **Projet / Android** —
+  squelette par module (Gradle Scripts, Manifestes, java, res) calculé en
+  JVM testé, adossé aux fichiers réels (un nœud n'existe que si son
+  contenu existe) ; sous le squelette, le pipeline normal (packages
+  compacts, décorations, badges).
+  *Écart honnête* : le glisser-déposer est remplacé par « Déplacer vers… »
+  (destination saisie, conflits suffixés) — l'appui long sert à la
+  sélection multiple (maquette), le geste de glisser natif reste possible
+  en suite (Lot 8).
+
+### Non fait (lots 4 à 8) — raisons
+- **Lot 4** (onglet Chercher) : `core-search` (regex, mot entier, portée,
+  globs, flux annulable), remplacement avec aperçu et annulation,
+  « aller au fichier » flou — non commencé, prochaine étape.
+- Lots 5-8 : structure (`core-outline`), `core-git` robuste, onglet Git
+  dans le tiroir, réglages/robustesse — dans l'ordre après le Lot 4
+  (aperçu validé : `docs/mockups/tiroir-gauche.html`).
 
 ## Comment continuer
 1. `cd /home/z/my-project/joide && git pull` — tout est poussé sur `main`.
