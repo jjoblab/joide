@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/fond">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="16dp">
+
+        <ImageView
+            android:id="@+id/back_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:scaleType="center"
+            android:src="@drawable/ic_arrow"
+            android:rotation="180"
+            android:contentDescription="@string/commun_retour"
+            xmlns:app="http://schemas.android.com/apk/res-auto"
+            app:tint="@color/sur" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:text="@string/settings_ia_providers_title"
+            android:textColor="@color/sur"
+            style="@style/Txt.Xl" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingBottom="24dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="8dp"
+                android:text="@string/settings_ia_eyebrow_provider"
+                style="@style/Txt.Eyebrow" />
+
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none"
+                android:overScrollMode="never">
+
+                <LinearLayout
+                    android:id="@+id/provider_chips"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <include
+                        android:id="@+id/chip_openrouter"
+                        layout="@layout/settings_ia_chip" />
+                    <include
+                        android:id="@+id/chip_gemini"
+                        layout="@layout/settings_ia_chip" />
+                    <include
+                        android:id="@+id/chip_openai"
+                        layout="@layout/settings_ia_chip" />
+                    <include
+                        android:id="@+id/chip_custom"
+                        layout="@layout/settings_ia_chip" />
+                </LinearLayout>
+            </HorizontalScrollView>
+
+            <!-- ===== Carte clé ===== -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/fond_carte"
+                android:padding="16dp"
+                android:layout_marginTop="14dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_ia_key_title"
+                    android:textColor="@color/sur"
+                    android:textSize="13.5sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/settings_ia_key_body"
+                    android:textColor="@color/sur_var"
+                    android:textSize="12sp" />
+
+                <EditText
+                    android:id="@+id/key_field"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:minHeight="48dp"
+                    android:background="@drawable/fond_field_rond"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="10dp"
+                    android:hint="@string/settings_ia_key_hint"
+                    android:inputType="textPassword"
+                    android:textColorHint="@color/sur_var"
+                    android:textColor="@color/sur"
+                    android:textSize="13sp"
+                    android:contentDescription="@string/settings_ia_key_cd"
+                    android:importantForAutofill="no" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="10dp">
+
+                    <TextView
+                        android:id="@+id/key_save_button"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:minHeight="48dp"
+                        android:background="@drawable/fond_bouton_rond"
+                        android:text="@string/settings_ia_key_save"
+                        android:textColor="@color/sur_primaire"
+                        android:textSize="12.5sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/key_show_button"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:gravity="center"
+                        android:minHeight="48dp"
+                        android:background="@drawable/fond_bouton_rond"
+                        android:text="@string/settings_ia_key_show"
+                        android:textColor="@color/sur"
+                        android:textSize="12.5sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/key_test_button"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:gravity="center"
+                        android:minHeight="48dp"
+                        android:background="@drawable/fond_bouton_rond"
+                        android:text="@string/settings_ia_key_test"
+                        android:textColor="@color/sur"
+                        android:textSize="12.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/key_test_state"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:textColor="@color/sur_var"
+                    android:textSize="11.5sp"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- ===== URL de base (passerelle personnalisable seulement) ===== -->
+            <LinearLayout
+                android:id="@+id/base_url_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/fond_carte"
+                android:padding="16dp"
+                android:layout_marginTop="14dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_ia_base_url_title"
+                    android:textColor="@color/sur"
+                    android:textSize="13.5sp"
+                    android:textStyle="bold" />
+
+                <EditText
+                    android:id="@+id/base_url_field"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:minHeight="48dp"
+                    android:background="@drawable/fond_field_rond"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="10dp"
+                    android:hint="http://localhost:11434/v1"
+                    android:inputType="textUri"
+                    android:textColorHint="@color/sur_var"
+                    android:textColor="@color/sur"
+                    android:textSize="13sp"
+                    android:importantForAutofill="no" />
+
+                <TextView
+                    android:id="@+id/base_url_reset"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="10dp"
+                    android:minHeight="48dp"
+                    android:gravity="center"
+                    android:background="@drawable/fond_bouton_rond"
+                    android:text="@string/settings_ia_base_url_reset"
+                    android:textColor="@color/sur"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- ===== Options OpenRouter ===== -->
+            <LinearLayout
+                android:id="@+id/openrouter_options"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/fond_carte"
+                android:padding="16dp"
+                android:layout_marginTop="14dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_ia_or_title"
+                    android:textColor="@color/sur"
+                    android:textSize="13.5sp"
+                    android:textStyle="bold" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/or_attribution"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:minHeight="48dp"
+                    android:text="@string/settings_ia_or_attribution"
+                    android:textColor="@color/sur"
+                    android:textSize="13sp" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/or_allow_fallbacks"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="48dp"
+                    android:text="@string/settings_ia_or_allow_fallbacks"
+                    android:textColor="@color/sur"
+                    android:textSize="13sp" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/or_require_parameters"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="48dp"
+                    android:text="@string/settings_ia_or_require_parameters"
+                    android:textColor="@color/sur"
+                    android:textSize="13sp" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/or_data_collection"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="48dp"
+                    android:text="@string/settings_ia_or_data_collection"
+                    android:textColor="@color/sur"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/settings_ia_or_sort"
+                    android:textColor="@color/sur_var"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:scrollbars="none">
+
+                    <LinearLayout
+                        android:id="@+id/or_sort_chips"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:paddingTop="6dp" />
+                </HorizontalScrollView>
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

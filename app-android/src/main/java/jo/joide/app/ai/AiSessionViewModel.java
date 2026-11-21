@@ -143,14 +143,35 @@ public class AiSessionViewModel extends ViewModel {
         java.util.Map<String, Object> extras =
                 new java.util.LinkedHashMap<>(spec.reasoningBody(apiEffort));
         String key = new jo.joide.app.ai.EncryptedKeyVault(app).apiKey(spec.id());
+        // Attribution OpenRouter (X-Title : JoIDE) si activée (doc officielle).
+        java.util.Map<String, String> headers = null;
+        if ("openrouter".equals(spec.id())
+                && prefs.getBoolean("or_attribution", true)) {
+            headers = java.util.Collections.singletonMap("X-Title", "JoIDE");
+        }
+        // Routage OpenRouter documenté (Lot 7) : seuls les réglages posés
+        // partent — sort, allow_fallbacks, require_parameters, data_collection.
+        if ("openrouter".equals(spec.id())) {
+            String sort = prefs.getString("or_sort", "");
+            extras.putAll(jo.joide.ai.provider.OpenRouterOptions.body(
+                    new jo.joide.ai.provider.OpenRouterOptions.Routing(
+                            sort == null || sort.isEmpty() ? null : sort,
+                            prefs.getBoolean("or_allow_fallbacks", true)
+                                    ? null : Boolean.FALSE,
+                            prefs.getBoolean("or_require_parameters", false)
+                                    ? Boolean.TRUE : null,
+                            prefs.getBoolean("or_data_collection", false)
+                                    ? "deny" : null,
+                            null)));
+        }
         AgentWorkspace workspace = projectPath != null
                 ? new AgentWorkspace.OnProject(Paths.get(projectPath))
                 : new AgentWorkspace.InMemory();
         return new AgentLoop(new HttpLlmTransport(),
-                spec.endpoint(baseUrl, key, null), modelOf(prefs, spec.id()),
+                spec.endpoint(baseUrl, key, headers), modelOf(prefs, spec.id()),
                 workspace, jo.joide.app.settings.SettingsFragment.sharedGate(),
                 null, prefs.getInt("iterations_max", 16), projectPath == null,
-                prefs.getInt("tokens_max", 4096), reasoningEffort, extras,
+                prefs.getInt("tokens_max", 8192), reasoningEffort, extras,
                 null, null);
     }
 

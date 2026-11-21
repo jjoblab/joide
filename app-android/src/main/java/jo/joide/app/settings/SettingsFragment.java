@@ -117,14 +117,14 @@ public final class SettingsFragment extends Fragment {
         binding.rowProviders.getRoot().setOnClickListener(v ->
                 getParentFragmentManager().beginTransaction()
                         .replace(((ViewGroup) requireView().getParent()).getId(),
-                                new SettingsIaPageFragment())
+                                new SettingsIaHubFragment())
                         .addToBackStack(null)
                         .commit());
         // Permissions de l'agent → la porte réelle, réglée depuis la page IA.
         binding.rowAgentPermissions.getRoot().setOnClickListener(v ->
                 getParentFragmentManager().beginTransaction()
                         .replace(((ViewGroup) requireView().getParent()).getId(),
-                                new SettingsIaPageFragment())
+                                new SettingsIaHubFragment())
                         .addToBackStack(null)
                         .commit());
     }

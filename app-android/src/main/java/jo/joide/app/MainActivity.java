@@ -34,6 +34,12 @@ public class MainActivity extends AppCompatActivity {
         // Lot 2 : migration silencieuse des identifiants de fournisseur
         // historiques (« passerelle » → « custom ») avant tout écran IA.
         jo.joide.app.settings.SettingsIaPageFragment.migrateProviders(this);
+        // Lot 7 : le mode de la porte unique se restaure au démarrage
+        // (persisté — avant il vivait en mémoire, perdu à chaque lancement).
+        android.content.SharedPreferences iaPrefs = getSharedPreferences(
+                jo.joide.app.settings.SettingsIaPageFragment.IA_PREFS, MODE_PRIVATE);
+        jo.joide.app.settings.SettingsFragment.sharedGate().setMode(
+                jo.joide.app.settings.SettingsIaHubFragment.modeOf(iaPrefs));
         if (savedInstanceState == null) {
             // Premier lancement (studio HTML) : onboarding (4 pages) → assistant
             // du choix du mode → installation. L'onboarding ne remplace jamais

@@ -24,6 +24,7 @@ jobs:
         run: |
           ./tools/check-langue.sh
           ./tools/check-deps.sh
+          ./tools/check-cablage-ia.sh
       - name: Forge vers mavenLocal (ADR-001, demande F-01)
         run: |
           git clone --depth 1 --branch v0.2.13 https://github.com/jjoblab/forge.git /tmp/forge

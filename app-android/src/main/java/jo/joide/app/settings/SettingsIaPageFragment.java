@@ -6,7 +6,6 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
@@ -15,68 +14,52 @@ import androidx.fragment.app.Fragment;
 import java.util.Arrays;
 import java.util.List;
 import jo.joide.app.R;
-import jo.joide.app.databinding.SettingsIaChipBinding;
-import jo.joide.app.databinding.SettingsIaPageBinding;
 import jo.joide.app.ai.EncryptedKeyVault;
+import jo.joide.app.databinding.SettingsIaChipBinding;
+import jo.joide.app.databinding.SettingsIaProvidersBinding;
 import jo.joide.ai.HttpLlmTransport;
-import jo.joide.ai.PermissionGate;
+import jo.joide.ai.LlmError;
 import jo.joide.ai.provider.ProviderMigration;
 import jo.joide.ai.provider.ProviderRegistry;
 import jo.joide.ai.provider.ProviderSpec;
 
 /**
- * Page « IA · Fournisseurs » (studio HTML : settingsPageScreen) : chips du
- * fournisseur actif, carte clé au coffre chiffré, modèle, effort de
- * raisonnement, switchs Recherche web / Serveur MCP, carte Avancé (pills
- * conteneur_primaire), notice honnête warn_soft.
- *
- * <p>Câblage réel (Lot 2) : fournisseurs du registre (OpenRouter, OpenAI,
- * Gemini, passerelle personnalisable — chacun vérifié dans sa documentation
- * officielle), clé au coffre {@link EncryptedKeyVault} par fournisseur,
- * modèle par fournisseur (saisi, liste vivante au Lot 7), effort, switchs et
- * plafonds persistés en SharedPreferences ({@code joide_reglages_ia}).
- * Les identifiants de maquette (« laboratoire », « passerelle ») ont disparu :
- * la migration les reporte une fois (voir {@link #migrateProviders}).</p>
+ * Page « IA · Fournisseurs » (Lot 7) : chips du fournisseur actif (registre
+ * réel), carte clé au coffre (masquée, afficher/masquer, **Tester la
+ * connexion**), URL de base éditable pour la passerelle personnalisable
+ * (avec Réinitialiser), options OpenRouter (attribution X-Title, routage
+ * documenté : sort, allow_fallbacks, require_parameters, data_collection).
  */
 public final class SettingsIaPageFragment extends Fragment {
 
     /** Préférences IA de la coquille (fournisseur, modèle, effort, plafonds). */
     public static final String IA_PREFS = "joide_reglages_ia";
-    private static final List<String> EFFORTS = Arrays.asList(
-            "defaut", "aucun", "faible", "moyen", "eleve");
-    private static final List<Integer> TOKEN_STEPS = Arrays.asList(
-            2048, 4096, 8192, 16384);
-    private static final List<Integer> ITERATION_STEPS = Arrays.asList(
-            8, 16, 24, 32);
 
-    private SettingsIaPageBinding binding;
+    private SettingsIaProvidersBinding binding;
     private EncryptedKeyVault vault;
+    private boolean keyVisible;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
             @Nullable Bundle savedInstanceState) {
-        binding = SettingsIaPageBinding.inflate(inflater, container, false);
+        binding = SettingsIaProvidersBinding.inflate(inflater, container, false);
         vault = new EncryptedKeyVault(requireContext());
         migrateProviders(requireContext());
         warnLegacyLaboratoireKeyOnce();
-
         binding.backButton.setOnClickListener(v ->
                 requireActivity().getSupportFragmentManager().popBackStack());
-
         wireProviderChips();
         wireKeyCard();
-        wireModelRow();
-        wireEffortChips();
-        wireSwitches();
-        wireAdvanced();
+        wireBaseUrl();
+        wireOpenRouterOptions();
         return binding.getRoot();
     }
 
-    // ---- Fournisseur actif (chips studio) -------------------------------------
+    // ---- Fournisseur actif ----------------------------------------------------
 
     /** Fournisseur persisté : OpenRouter par défaut (premier du registre). */
-    static String providerId(android.content.Context context) {
+    public static String providerId(android.content.Context context) {
         String id = context.getSharedPreferences(IA_PREFS,
                 android.content.Context.MODE_PRIVATE).getString("fournisseur", null);
         return id != null && ProviderRegistry.isKnown(id)
@@ -87,10 +70,12 @@ public final class SettingsIaPageFragment extends Fragment {
         return providerId(requireContext());
     }
 
+    private ProviderSpec spec() {
+        return ProviderRegistry.byId(providerId())
+                .orElseGet(ProviderRegistry::defaultProvider);
+    }
+
     private void wireProviderChips() {
-        // Registre réel (Lot 2) : OpenRouter (recommandé), OpenAI, Gemini,
-        // passerelle personnalisable. Aucune puce ne pointe vers un identifiant
-        // de maquette — plus de trois puces vers le même fournisseur fictif.
         chip(binding.chipOpenrouter, R.string.settings_ia_provider_openrouter, "openrouter");
         chip(binding.chipOpenai, R.string.settings_ia_provider_openai, "openai");
         chip(binding.chipGemini, R.string.settings_ia_provider_gemini, "gemini");
@@ -98,7 +83,6 @@ public final class SettingsIaPageFragment extends Fragment {
         renderProviderChips();
     }
 
-    /** Pose le texte et le clic d'une chip fournisseur. */
     private void chip(SettingsIaChipBinding view, int label, String id) {
         view.iaChip.setText(getString(label));
         view.iaChip.setTag(id);
@@ -106,10 +90,11 @@ public final class SettingsIaPageFragment extends Fragment {
             iaPrefs().edit().putString("fournisseur", id).apply();
             renderProviderChips();
             renderKeyCard();
+            renderBaseUrlCard();
+            renderOpenRouterOptions();
         });
     }
 
-    /** Sélection visible : ON = sc2/sur_sc2 (studio), OFF = chip normal. */
     private void renderProviderChips() {
         String active = providerId();
         for (SettingsIaChipBinding chip : Arrays.asList(
@@ -123,7 +108,7 @@ public final class SettingsIaPageFragment extends Fragment {
         }
     }
 
-    // ---- Clé au coffre (carte studio + champ mono) ---------------------------
+    // ---- Clé : coffre, masquage, test de connexion -----------------------------
 
     private void wireKeyCard() {
         renderKeyCard();
@@ -141,69 +126,192 @@ public final class SettingsIaPageFragment extends Fragment {
             }
             renderKeyCard();
         });
+        binding.keyShowButton.setOnClickListener(v -> {
+            keyVisible = !keyVisible;
+            binding.keyShowButton.setText(keyVisible
+                    ? R.string.settings_ia_key_hide : R.string.settings_ia_key_show);
+            applyKeyVisibility();
+        });
+        binding.keyTestButton.setOnClickListener(v -> testConnection());
     }
 
-    /** Champ mono : la clé existante masquée (sk-ant-••••…), jamais affichée. */
+    private void applyKeyVisibility() {
+        binding.keyField.setTransformationMethod(keyVisible
+                ? null : android.text.method.PasswordTransformationMethod.getInstance());
+    }
+
     private void renderKeyCard() {
         String existing = vault.apiKey(providerId());
+        binding.keyField.setText("");
         if (existing != null) {
             binding.keyField.setHint(masked(existing));
-            binding.keyField.setText("");
         } else {
             binding.keyField.setHint(getString(R.string.settings_ia_key_hint));
-            binding.keyField.setText("");
+        }
+        keyVisible = false;
+        binding.keyShowButton.setText(R.string.settings_ia_key_show);
+        applyKeyVisibility();
+    }
+
+    /** Masque la clé (préfixe court + billes — jamais la clé complète). */
+    private static String masked(String key) {
+        String prefix = key.length() >= 7 ? key.substring(0, 7) : key;
+        return prefix + "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022";
+    }
+
+    /**
+     * Test réel de la connexion (Lot 7) : GET l'endpoint des modèles du
+     * fournisseur avec la clé du coffre — réseau hors fil UI, résultat en
+     * Snackbar et dans la carte (nombre de modèles, ou l'erreur typée).
+     */
+    private void testConnection() {
+        binding.keyTestState.setVisibility(View.VISIBLE);
+        binding.keyTestState.setText(R.string.settings_ia_test_running);
+        String provider = providerId();
+        ProviderSpec spec = spec();
+        String baseUrl = spec.baseUrlEditable()
+                ? iaPrefs().getString("base_url_custom", null) : null;
+        String key = vault.apiKey(provider);
+        java.util.Map<String, String> headers = attributionHeaders(spec);
+        new Thread(() -> {
+            String outcome;
+            int modelCount = 0;
+            try {
+                String body = new HttpLlmTransport().fetchModelsJson(
+                        spec.endpoint(baseUrl, key, headers));
+                modelCount = jo.joide.ai.provider.ModelCatalog.parseIds(body).size();
+                outcome = null;
+            } catch (Exception e) {
+                outcome = e instanceof LlmError error ? error.getMessage()
+                        : (e.getMessage() != null ? e.getMessage() : String.valueOf(e));
+            }
+            final String failure = outcome;
+            final int count = modelCount;
+            requireActivity().runOnUiThread(() -> {
+                if (binding == null) {
+                    return;
+                }
+                if (failure == null) {
+                    binding.keyTestState.setText(
+                            getString(R.string.settings_ia_test_ok, count));
+                } else {
+                    binding.keyTestState.setText(
+                            getString(R.string.settings_ia_test_fail, failure));
+                }
+            });
+        }, "ia-test-connexion").start();
+    }
+
+    /** En-têtes d'attribution (X-Title : JoIDE — doc OpenRouter, Lot 7). */
+    private java.util.Map<String, String> attributionHeaders(ProviderSpec spec) {
+        if ("openrouter".equals(spec.id())
+                && iaPrefs().getBoolean("or_attribution", true)) {
+            return java.util.Collections.singletonMap("X-Title", "JoIDE");
+        }
+        return null;
+    }
+
+    // ---- URL de base (passerelle personnalisable seulement) --------------------
+
+    private void wireBaseUrl() {
+        binding.baseUrlReset.setOnClickListener(v -> {
+            binding.baseUrlField.setText(spec().defaultBaseUrl());
+            saveBaseUrl();
+        });
+        binding.baseUrlField.setOnFocusChangeListener((v, hasFocus) -> {
+            if (!hasFocus) {
+                saveBaseUrl();
+            }
+        });
+        renderBaseUrlCard();
+    }
+
+    private void renderBaseUrlCard() {
+        binding.baseUrlCard.setVisibility(
+                spec().baseUrlEditable() ? View.VISIBLE : View.GONE);
+        binding.baseUrlField.setText(iaPrefs().getString(
+                "base_url_custom", spec().defaultBaseUrl()));
+    }
+
+    private void saveBaseUrl() {
+        String value = binding.baseUrlField.getText().toString().trim();
+        if (!value.isEmpty()) {
+            iaPrefs().edit().putString("base_url_custom", value).apply();
         }
     }
 
-    /** Masque la clé (seuls le préfixe et les 4 derniers caractères restent). */
-    private static String masked(String key) {
-        String prefix = key.length() >= 7 ? key.substring(0, 7) : key;
-        return prefix + "•••••••••••••••";
+    // ---- Options OpenRouter (routage documenté) ---------------------------------
+
+    private static final List<String> SORTS = Arrays.asList(
+            "", "price", "throughput", "latency");
+    private static final List<Integer> SORT_LABELS = Arrays.asList(
+            R.string.settings_ia_sort_default, R.string.settings_ia_sort_price,
+            R.string.settings_ia_sort_throughput, R.string.settings_ia_sort_latency);
+
+    private void wireOpenRouterOptions() {
+        binding.orAttribution.setChecked(iaPrefs().getBoolean("or_attribution", true));
+        binding.orAttribution.setOnCheckedChangeListener((b, checked) ->
+                iaPrefs().edit().putBoolean("or_attribution", checked).apply());
+        binding.orAllowFallbacks.setChecked(iaPrefs().getBoolean("or_allow_fallbacks", true));
+        binding.orAllowFallbacks.setOnCheckedChangeListener((b, checked) ->
+                iaPrefs().edit().putBoolean("or_allow_fallbacks", checked).apply());
+        binding.orRequireParameters.setChecked(
+                iaPrefs().getBoolean("or_require_parameters", false));
+        binding.orRequireParameters.setOnCheckedChangeListener((b, checked) ->
+                iaPrefs().edit().putBoolean("or_require_parameters", checked).apply());
+        binding.orDataCollection.setChecked(
+                iaPrefs().getBoolean("or_data_collection", false));
+        binding.orDataCollection.setOnCheckedChangeListener((b, checked) ->
+                iaPrefs().edit().putBoolean("or_data_collection", checked).apply());
+        renderSortChips();
+        renderOpenRouterOptions();
     }
 
-    // ---- Modèle (rangée + chevD) ---------------------------------------------
-
-    private void wireModelRow() {
-        renderModelRow();
-        binding.modelRow.setOnClickListener(v -> promptModel());
+    private void renderSortChips() {
+        binding.orSortChips.removeAllViews();
+        String active = iaPrefs().getString("or_sort", "");
+        for (int i = 0; i < SORTS.size(); i++) {
+            String value = SORTS.get(i);
+            TextView chip = new TextView(requireContext());
+            chip.setText(SORT_LABELS.get(i));
+            chip.setTextSize(12.5f);
+            chip.setTypeface(chip.getTypeface(), android.graphics.Typeface.BOLD);
+            chip.setPadding(dip(14), dip(8), dip(14), dip(8));
+            chip.setMinHeight(dip(36));
+            boolean on = value.equals(active);
+            chip.setBackgroundResource(on ? R.drawable.fond_chip_on : R.drawable.fond_chip);
+            chip.setTextColor(getResources().getColor(on ? R.color.sur_sc2 : R.color.sur));
+            chip.setOnClickListener(v -> {
+                iaPrefs().edit().putString("or_sort", value).apply();
+                renderSortChips();
+            });
+            android.widget.LinearLayout.LayoutParams params =
+                    new android.widget.LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT);
+            params.setMarginEnd(dip(6));
+            binding.orSortChips.addView(chip, params);
+        }
     }
 
-    /** Modèle persisté POUR CE fournisseur (saisi ; liste vivante au Lot 7). */
-    private void renderModelRow() {
-        String model = iaPrefs().getString("modele_" + providerId(), null);
-        binding.modelName.setText(model == null || model.isEmpty()
-                ? getString(R.string.settings_ia_model_none) : model);
+    private void renderOpenRouterOptions() {
+        binding.openrouterOptions.setVisibility(
+                "openrouter".equals(providerId()) ? View.VISIBLE : View.GONE);
     }
 
-    /** Saisie du modèle (identifiant du catalogue du fournisseur). */
-    private void promptModel() {
-        android.widget.EditText input = new android.widget.EditText(requireContext());
-        String current = iaPrefs().getString("modele_" + providerId(), "");
-        input.setText(current);
-        input.setHint(R.string.settings_ia_model_hint);
-        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.settings_ia_model_dialog_title)
-                .setView(input)
-                .setPositiveButton(R.string.commun_ok, (d, w) -> {
-                    iaPrefs().edit()
-                            .putString("modele_" + providerId(),
-                                    input.getText().toString().trim())
-                            .apply();
-                    renderModelRow();
-                })
-                .setNegativeButton(R.string.commun_annuler, null)
-                .show();
+    private int dip(int value) {
+        return (int) (value * getResources().getDisplayMetrics().density);
     }
 
-    /** Migration unique des identifiants de maquette (Lot 2, silencieuse). */
+    // ---- Migration + avertissement hérités --------------------------------------
+
     public static void migrateProviders(android.content.Context context) {
         android.content.SharedPreferences prefs = context.getSharedPreferences(
-                IA_PREFS, android.content.Context.MODE_PRIVATE);
+                IA_PREFS, Context.MODE_PRIVATE);
         ProviderMigration.migrateIds(key -> prefs.getString(key, null), (key, value) ->
                 prefs.edit().putString(key, value).apply());
     }
 
-    /** Avertit une fois d'une clé restée sous l'identifiant « laboratoire » supprimé. */
     private void warnLegacyLaboratoireKeyOnce() {
         if (iaPrefs().getBoolean("laboratoire_averti", false)) {
             return;
@@ -218,93 +326,6 @@ public final class SettingsIaPageFragment extends Fragment {
                     .show();
         }
     }
-
-    // ---- Effort de raisonnement (chips) --------------------------------------
-
-    private void wireEffortChips() {
-        effortChip(binding.chipEffortDefault, R.string.settings_ia_effort_default, "defaut");
-        effortChip(binding.chipEffortNone, R.string.settings_ia_effort_none, "aucun");
-        effortChip(binding.chipEffortLow, R.string.settings_ia_effort_low, "faible");
-        effortChip(binding.chipEffortMedium, R.string.settings_ia_effort_medium, "moyen");
-        effortChip(binding.chipEffortHigh, R.string.settings_ia_effort_high, "eleve");
-        renderEffortChips();
-    }
-
-    private void effortChip(SettingsIaChipBinding view, int label, String id) {
-        view.iaChip.setText(getString(label));
-        view.iaChip.setTag(id);
-        view.iaChip.setOnClickListener(v -> {
-            iaPrefs().edit().putString("effort", id).apply();
-            renderEffortChips();
-        });
-    }
-
-    private void renderEffortChips() {
-        String active = effort();
-        for (SettingsIaChipBinding chip : Arrays.asList(
-                binding.chipEffortDefault, binding.chipEffortNone,
-                binding.chipEffortLow, binding.chipEffortMedium,
-                binding.chipEffortHigh)) {
-            boolean on = active.equals(chip.iaChip.getTag());
-            chip.iaChip.setBackgroundResource(on
-                    ? R.drawable.fond_chip_on : R.drawable.fond_chip);
-            chip.iaChip.setTextColor(getResources().getColor(
-                    on ? R.color.sur_sc2 : R.color.sur));
-        }
-    }
-
-    /** Effort persisté (moyen par défaut, comme l'écran du studio). */
-    static String effort() {
-        return effortOf(null);
-    }
-
-    /** Effort d'un contexte (null : préférences de ce processus). */
-    static String effortOf(Context context) {
-        if (context == null) {
-            return "moyen";
-        }
-        return context.getSharedPreferences(IA_PREFS, Context.MODE_PRIVATE)
-                .getString("effort", "moyen");
-    }
-
-    // ---- Switchs (Recherche web / Serveur MCP) -------------------------------
-
-    private void wireSwitches() {
-        binding.webSwitch.setChecked(
-                iaPrefs().getBoolean("recherche_web", true));
-        binding.webSwitch.setOnCheckedChangeListener((button, checked) ->
-                iaPrefs().edit().putBoolean("recherche_web", checked).apply());
-        binding.mcpSwitch.setChecked(
-                iaPrefs().getBoolean("serveur_mcp", false));
-        binding.mcpSwitch.setOnCheckedChangeListener((button, checked) ->
-                iaPrefs().edit().putBoolean("serveur_mcp", checked).apply());
-    }
-
-    // ---- Avancé (tokens max / itérations max) ---------------------------------
-
-    private void wireAdvanced() {
-        binding.tokensPill.setText(String.valueOf(
-                iaPrefs().getInt("tokens_max", 8192)));
-        binding.tokensRow.setOnClickListener(v -> {
-            int current = iaPrefs().getInt("tokens_max", 8192);
-            int next = TOKEN_STEPS.get(
-                    (TOKEN_STEPS.indexOf(current) + 1) % TOKEN_STEPS.size());
-            iaPrefs().edit().putInt("tokens_max", next).apply();
-            binding.tokensPill.setText(String.valueOf(next));
-        });
-
-        binding.iterationsPill.setText(String.valueOf(
-                iaPrefs().getInt("iterations_max", 16)));
-        binding.iterationsRow.setOnClickListener(v -> {
-            int current = iaPrefs().getInt("iterations_max", 16);
-            int next = ITERATION_STEPS.get(
-                    (ITERATION_STEPS.indexOf(current) + 1) % ITERATION_STEPS.size());
-            iaPrefs().edit().putInt("iterations_max", next).apply();
-            binding.iterationsPill.setText(String.valueOf(next));
-        });
-    }
-
-    // ---- Préférences ----------------------------------------------------------
 
     private SharedPreferences iaPrefs() {
         return requireContext().getSharedPreferences(IA_PREFS, Context.MODE_PRIVATE);

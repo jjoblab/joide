@@ -39,6 +39,7 @@ import jo.joide.app.databinding.CarteErreurBinding;
 import jo.joide.app.databinding.CarteOutilBinding;
 import jo.joide.app.databinding.CarteQuestionBinding;
 import jo.joide.app.databinding.ChipActionBinding;
+import jo.joide.app.settings.SettingsIaHubFragment;
 import jo.joide.app.settings.SettingsIaPageFragment;
 
 /**
@@ -267,14 +268,14 @@ public final class AiPanelFragment extends Fragment {
         if (isAssistant()) {
             getParentFragmentManager().beginTransaction()
                     .replace(((ViewGroup) requireView().getParent()).getId(),
-                            new SettingsIaPageFragment())
+                            new SettingsIaHubFragment())
                     .addToBackStack(null)
                     .commit();
         } else {
             // Agent (fragment enfant du tiroir) : la page s'ouvre par-dessus
             // l'atelier sur le conteneur de l'activité, pas dans le tiroir.
             requireActivity().getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.container, new SettingsIaPageFragment())
+                    .replace(R.id.container, new SettingsIaHubFragment())
                     .addToBackStack(null)
                     .commit();
         }
