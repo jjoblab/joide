@@ -96,22 +96,26 @@
 
     <string name="settings_ia_page_title">IA · Fournisseurs</string>
     <string name="settings_ia_eyebrow_provider">Fournisseur actif</string>
-    <string name="settings_ia_provider_anthropic">Anthropic</string>
+    <string name="settings_ia_provider_openrouter">OpenRouter</string>
     <string name="settings_ia_provider_gemini">Gemini</string>
     <string name="settings_ia_provider_openai">OpenAI</string>
-    <string name="settings_ia_provider_gateway">Passerelle</string>
+    <string name="settings_ia_provider_custom">Passerelle</string>
 
-    <string name="settings_ia_key_title">Clé Anthropic</string>
+    <string name="settings_ia_key_title">Clé du fournisseur</string>
     <string name="settings_ia_key_body">Mise au coffre chiffré (Keystore matériel). Jamais dans les journaux ni le rapport de diagnostic.</string>
-    <string name="settings_ia_key_hint">sk-ant-••••••••••••••••••••</string>
+    <string name="settings_ia_key_hint">sk-or-v1-••••••••••••••••••••</string>
     <string name="settings_ia_key_save">Mettre la clé au coffre</string>
     <string name="settings_ia_key_stored">Clé mise au coffre chiffré</string>
     <string name="settings_ia_key_removed">Clé retirée du coffre</string>
     <string name="settings_ia_key_cd">Champ de clé API</string>
 
     <string name="settings_ia_eyebrow_model">Modèle</string>
-    <string name="settings_ia_model_default">claude-4-sonnet</string>
-    <string name="settings_ia_model_next">Modèle suivant</string>
+    <string name="settings_ia_model_none">Aucun modèle choisi</string>
+    <string name="settings_ia_model_next">Choisir le modèle</string>
+    <string name="settings_ia_model_dialog_title">Modèle du fournisseur</string>
+    <string name="settings_ia_model_hint">Identifiant du modèle (catalogue du fournisseur)</string>
+    <string name="settings_ia_legacy_key_notice">Une clé de l\'ancien fournisseur de maquette (« laboratoire », supprimé) existe encore au coffre : elle ne sert plus.</string>
+    <string name="settings_ia_legacy_key_remove">Supprimer</string>
 
     <string name="settings_ia_eyebrow_effort">Effort de raisonnement</string>
     <string name="settings_ia_effort_default">Défaut</string>
@@ -149,6 +153,8 @@
     <string name="chat_menu_create_project">Créer un projet depuis cette conversation</string>
     <string name="chat_tool_actions">%1$d actions d\'outils</string>
     <string name="chat_answer_label">Réponse</string>
+    <string name="chat_model_none">Choisir un modèle</string>
+    <string name="chat_no_model">Aucun modèle choisi pour ce fournisseur : choisissez-en un dans Réglages IA → Modèles (identifiant du catalogue du fournisseur).</string>
     <string name="chat_error_generic">Le tour a échoué (réseau ou fournisseur) : réessayez, ou vérifiez les réglages du fournisseur.</string>
     <string name="chat_attach_bientot">Les pièces jointes arrivent avec le nouveau composer (à venir).</string>
 

@@ -21,7 +21,9 @@ import java.nio.file.Paths;
 import java.util.List;
 import jo.joide.ai.AgentLoop;
 import jo.joide.ai.AgentWorkspace;
-import jo.joide.ai.AiProvider;
+import jo.joide.ai.provider.Efforts;
+import jo.joide.ai.provider.ProviderRegistry;
+import jo.joide.ai.provider.ProviderSpec;
 import jo.joide.ai.Conversation;
 import jo.joide.ai.ConversationHistory;
 import jo.joide.ai.ConversationStore;
@@ -205,22 +207,29 @@ public final class AiPanelFragment extends Fragment {
 
     // ---- Réglages réellement lus (fournisseur, modèle, clé, itérations) ------
 
-    /** Fournisseur actif persisté (page Réglage IA). */
+    /** Fournisseur actif persisté (page Réglage IA ; défaut : premier du registre). */
     private String providerId() {
-        return requireContext()
+        String id = requireContext()
                 .getSharedPreferences(SettingsIaPageFragment.IA_PREFS,
                         android.content.Context.MODE_PRIVATE)
-                .getString("fournisseur", "laboratoire");
+                .getString("fournisseur", null);
+        return id != null && ProviderRegistry.isKnown(id)
+                ? id : ProviderRegistry.defaultProvider().id();
     }
 
-    /** Modèle persisté POUR CE fournisseur (repli : premier modèle statique). */
-    private String persistedModel(String provider, AiProvider ai) {
+    /** Spécification du fournisseur actif (registre — jamais devinée). */
+    private ProviderSpec providerSpec() {
+        return ProviderRegistry.byId(providerId())
+                .orElseGet(ProviderRegistry::defaultProvider);
+    }
+
+    /** Modèle persisté POUR CE fournisseur ; null si aucun (l'état se dit). */
+    private String persistedModel(String provider) {
         String model = requireContext()
                 .getSharedPreferences(SettingsIaPageFragment.IA_PREFS,
                         android.content.Context.MODE_PRIVATE)
                 .getString("modele_" + provider, null);
-        return model != null ? model
-                : (ai.staticModels().isEmpty() ? provider : ai.staticModels().get(0));
+        return model == null || model.trim().isEmpty() ? null : model;
     }
 
     /** Clé du fournisseur actif au coffre chiffré. */
@@ -235,26 +244,29 @@ public final class AiPanelFragment extends Fragment {
      */
     private AgentLoop buildLoop() {
         HttpLlmTransport transport = new HttpLlmTransport();
-        String provider = providerId();
-        AiProvider ai = "passerelle".equals(provider)
-                ? AiProvider.gateway(transport)
-                : AiProvider.laboratory(transport);
+        ProviderSpec spec = providerSpec();
+        String provider = spec.id();
+        android.content.SharedPreferences prefs = requireContext()
+                .getSharedPreferences(SettingsIaPageFragment.IA_PREFS,
+                        android.content.Context.MODE_PRIVATE);
+        String baseUrl = spec.baseUrlEditable()
+                ? prefs.getString("base_url_custom", null) : null;
+        String apiEffort = Efforts.toApi(prefs.getString("effort", null));
+        // Le raisonnement part sous la forme du fournisseur : objet dedicace
+        // OpenRouter, champ plat OpenAI, rien tant que non confirmé ailleurs.
+        String reasoningEffort = spec.reasoningFormat()
+                == ProviderSpec.ReasoningFormat.EFFORT_FIELD ? apiEffort : null;
+        java.util.Map<String, Object> extras =
+                new java.util.LinkedHashMap<>(spec.reasoningBody(apiEffort));
         String root = projectRoot();
         AgentWorkspace workspace = root != null
                 ? new AgentWorkspace.OnProject(Paths.get(root))
                 : new AgentWorkspace.InMemory();
-        int maxIterations = requireContext()
-                .getSharedPreferences(SettingsIaPageFragment.IA_PREFS,
-                        android.content.Context.MODE_PRIVATE)
-                .getInt("iterations_max", 16);
-        int maxTokens = requireContext()
-                .getSharedPreferences(SettingsIaPageFragment.IA_PREFS,
-                        android.content.Context.MODE_PRIVATE)
-                .getInt("tokens_max", 4096);
-        return new AgentLoop(ai, transport, ai.defaultBaseUrl(), vaultKey(provider),
-                persistedModel(provider, ai), workspace,
+        return new AgentLoop(transport, spec.endpoint(baseUrl, vaultKey(provider), null),
+                persistedModel(provider), workspace,
                 jo.joide.app.settings.SettingsFragment.sharedGate(),
-                maxIterations, null, root == null, maxTokens, null);
+                prefs.getInt("iterations_max", 16), null, root == null,
+                prefs.getInt("tokens_max", 4096), reasoningEffort, extras);
     }
 
     /** Ouvre la page Réglage IA (fournisseurs, clé, modèle) — plein écran. */
@@ -348,15 +360,12 @@ public final class AiPanelFragment extends Fragment {
         renderPermissionPill();
     }
 
-    /** Pill modèle : le modèle réellement persisté pour le fournisseur actif. */
+    /** Pill modèle : le modèle réellement persisté (ou le choix à faire). */
     private void renderModelPill() {
-        HttpLlmTransport transport = new HttpLlmTransport();
-        String provider = providerId();
-        AiProvider ai = "passerelle".equals(provider)
-                ? AiProvider.gateway(transport)
-                : AiProvider.laboratory(transport);
-        binding.modelPill.setText(getString(R.string.chat_model_pill,
-                persistedModel(provider, ai)));
+        String model = persistedModel(providerId());
+        binding.modelPill.setText(model != null
+                ? getString(R.string.chat_model_pill, model)
+                : getString(R.string.chat_model_none));
     }
 
     // ---- Demande : un tour de la boucle d'agent ------------------------------
@@ -370,6 +379,11 @@ public final class AiPanelFragment extends Fragment {
      */
     private void ask(String message, boolean isNew) {
         if (message == null || message.trim().isEmpty() || turnRunning) {
+            return;
+        }
+        if (persistedModel(providerId()) == null) {
+            // Aucun modèle choisi : l'état se dit, la requête ne part pas.
+            renderError(getString(R.string.chat_no_model), null);
             return;
         }
         turnRunning = true;
@@ -552,11 +566,11 @@ public final class AiPanelFragment extends Fragment {
 
     /** État honnête : sans clé (fournisseur distant actif), le panneau le dit. */
     private void renderNoKeyIfAbsent() {
-        String provider = providerId();
-        if ("passerelle".equals(provider)) {
-            return; // passerelle locale : fonctionne sans clé
+        ProviderSpec spec = providerSpec();
+        if (spec.keyOptional()) {
+            return; // passerelle personnalisable : un serveur local marche sans clé
         }
-        if (vaultKey(provider) == null) {
+        if (vaultKey(spec.id()) == null) {
             renderError(getString(R.string.chat_no_key), null);
         }
     }

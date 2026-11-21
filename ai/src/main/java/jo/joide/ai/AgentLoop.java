@@ -77,10 +77,8 @@ public final class AgentLoop {
         String run(AgentWorkspace workspace, String argumentsJson) throws Exception;
     }
 
-    private final AiProvider provider;
     private final LlmTransport transport;
-    private final String baseUrl;
-    private final String apiKey;
+    private final LlmTransport.Endpoint endpoint;
     private final String model;
     private final AgentWorkspace workspace;
     private final PermissionGate gate;
@@ -90,53 +88,38 @@ public final class AgentLoop {
     private final boolean toolsEnabled;
     private final int maxTokens;
     private final String reasoningEffort;
+    private final java.util.Map<String, Object> extras;
 
     /** Boucle standard : plafond d'itérations par tour (défaut 16), sans build. */
-    public AgentLoop(AiProvider provider, LlmTransport transport, String baseUrl,
-            String apiKey, String model, AgentWorkspace workspace, PermissionGate gate) {
-        this(provider, transport, baseUrl, apiKey, model, workspace, gate, 16, null, true);
+    public AgentLoop(LlmTransport transport, LlmTransport.Endpoint endpoint, String model,
+            AgentWorkspace workspace, PermissionGate gate) {
+        this(transport, endpoint, model, workspace, gate, 16, null, true);
     }
 
-    /** Boucle avec outil de build : l'agent construit via le BuildBackend du mode actif. */
-    public AgentLoop(AiProvider provider, LlmTransport transport, String baseUrl,
-            String apiKey, String model, AgentWorkspace workspace, PermissionGate gate,
-            BuildRunner buildRunner) {
-        this(provider, transport, baseUrl, apiKey, model, workspace, gate, 16, buildRunner, true);
+    /** Boucle avec plafond d'itérations explicite. */
+    public AgentLoop(LlmTransport transport, LlmTransport.Endpoint endpoint, String model,
+            AgentWorkspace workspace, PermissionGate gate, int maxIterations) {
+        this(transport, endpoint, model, workspace, gate, maxIterations, null, true);
     }
 
-    public AgentLoop(AiProvider provider, LlmTransport transport, String baseUrl,
-            String apiKey, String model, AgentWorkspace workspace, PermissionGate gate,
-            int maxIterations) {
-        this(provider, transport, baseUrl, apiKey, model, workspace, gate, maxIterations, null, true);
-    }
-
-    public AgentLoop(AiProvider provider, LlmTransport transport, String baseUrl,
-            String apiKey, String model, AgentWorkspace workspace, PermissionGate gate,
-            int maxIterations, BuildRunner buildRunner) {
-        this(provider, transport, baseUrl, apiKey, model, workspace, gate,
-                maxIterations, buildRunner, true);
-    }
-
-    public AgentLoop(AiProvider provider, LlmTransport transport, String baseUrl,
-            String apiKey, String model, AgentWorkspace workspace, PermissionGate gate,
-            int maxIterations, BuildRunner buildRunner, boolean toolsEnabled) {
-        this(provider, transport, baseUrl, apiKey, model, workspace, gate,
-                maxIterations, buildRunner, toolsEnabled, 4096, null);
+    public AgentLoop(LlmTransport transport, LlmTransport.Endpoint endpoint, String model,
+            AgentWorkspace workspace, PermissionGate gate, int maxIterations,
+            BuildRunner buildRunner, boolean toolsEnabled) {
+        this(transport, endpoint, model, workspace, gate, maxIterations, buildRunner,
+                toolsEnabled, 4096, null, null);
     }
 
     /**
-     * Boucle complète (Lot 1) : plafond de tokens de sortie et effort de
-     * raisonnement (mapping fournisseur au Lot 2) paramétrés, enfin lus des
-     * réglages par l'hôte — plus de 4096 figé.
+     * Boucle complète (Lots 1-2) : point de terminaison du fournisseur (urls,
+     * clé, en-têtes — voir {@code ProviderSpec.endpoint}), plafond de tokens
+     * de sortie et effort de raisonnement enfin paramétrés.
      */
-    public AgentLoop(AiProvider provider, LlmTransport transport, String baseUrl,
-            String apiKey, String model, AgentWorkspace workspace, PermissionGate gate,
-            int maxIterations, BuildRunner buildRunner, boolean toolsEnabled,
-            int maxTokens, String reasoningEffort) {
-        this.provider = provider;
+    public AgentLoop(LlmTransport transport, LlmTransport.Endpoint endpoint, String model,
+            AgentWorkspace workspace, PermissionGate gate, int maxIterations,
+            BuildRunner buildRunner, boolean toolsEnabled, int maxTokens,
+            String reasoningEffort, java.util.Map<String, Object> extras) {
         this.transport = transport;
-        this.baseUrl = baseUrl;
-        this.apiKey = apiKey;
+        this.endpoint = endpoint;
         this.model = model;
         this.workspace = workspace;
         this.gate = gate;
@@ -145,6 +128,7 @@ public final class AgentLoop {
         this.toolsEnabled = toolsEnabled;
         this.maxTokens = maxTokens;
         this.reasoningEffort = reasoningEffort;
+        this.extras = extras == null ? java.util.Collections.emptyMap() : extras;
     }
 
     /** Historique complet (transcript persisté par l'hôte si besoin). */
@@ -187,9 +171,9 @@ public final class AgentLoop {
             Usage[] usage = {Usage.unknown()};
             LlmError[] failure = {null};
             try {
-                transport.chat(baseUrl, apiKey,
+                transport.chat(endpoint,
                         new LlmTransport.ChatRequest(model, messages, specs,
-                                maxTokens, reasoningEffort, cancellation),
+                                maxTokens, reasoningEffort, cancellation, extras),
                         event -> {
                             if (event instanceof LlmTransport.StreamEvent.Text t) {
                                 text.append(t.delta());
@@ -249,7 +233,7 @@ public final class AgentLoop {
         messages.add(LlmTransport.ChatMessage.system(SystemPrompt.WRAP_UP));
         StringBuilder text = new StringBuilder();
         try {
-            transport.chat(baseUrl, apiKey,
+            transport.chat(endpoint,
                     new LlmTransport.ChatRequest(model, messages, java.util.List.of(),
                             Math.min(1024, maxTokens), null, cancellation),
                     event -> {

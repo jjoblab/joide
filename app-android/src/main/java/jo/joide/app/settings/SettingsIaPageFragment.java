@@ -18,9 +18,11 @@ import jo.joide.app.R;
 import jo.joide.app.databinding.SettingsIaChipBinding;
 import jo.joide.app.databinding.SettingsIaPageBinding;
 import jo.joide.app.ai.EncryptedKeyVault;
-import jo.joide.ai.AiProvider;
 import jo.joide.ai.HttpLlmTransport;
 import jo.joide.ai.PermissionGate;
+import jo.joide.ai.provider.ProviderMigration;
+import jo.joide.ai.provider.ProviderRegistry;
+import jo.joide.ai.provider.ProviderSpec;
 
 /**
  * Page « IA · Fournisseurs » (studio HTML : settingsPageScreen) : chips du
@@ -28,11 +30,13 @@ import jo.joide.ai.PermissionGate;
  * raisonnement, switchs Recherche web / Serveur MCP, carte Avancé (pills
  * conteneur_primaire), notice honnête warn_soft.
  *
- * <p>Câblage réel conservé (lot L8, conception §8) : fournisseur actif et clé
- * au coffre {@link EncryptedKeyVault} (« laboratoire » / « passerelle » — les
- * identifiants historiques), modèle par fournisseur, effort, switchs et
- * plafonds persistés en SharedPreferences ({@code joide_reglages_ia}) comme
- * pour le mode de permission de la porte partagée.</p>
+ * <p>Câblage réel (Lot 2) : fournisseurs du registre (OpenRouter, OpenAI,
+ * Gemini, passerelle personnalisable — chacun vérifié dans sa documentation
+ * officielle), clé au coffre {@link EncryptedKeyVault} par fournisseur,
+ * modèle par fournisseur (saisi, liste vivante au Lot 7), effort, switchs et
+ * plafonds persistés en SharedPreferences ({@code joide_reglages_ia}).
+ * Les identifiants de maquette (« laboratoire », « passerelle ») ont disparu :
+ * la migration les reporte une fois (voir {@link #migrateProviders}).</p>
  */
 public final class SettingsIaPageFragment extends Fragment {
 
@@ -54,6 +58,8 @@ public final class SettingsIaPageFragment extends Fragment {
             @Nullable Bundle savedInstanceState) {
         binding = SettingsIaPageBinding.inflate(inflater, container, false);
         vault = new EncryptedKeyVault(requireContext());
+        migrateProviders(requireContext());
+        warnLegacyLaboratoireKeyOnce();
 
         binding.backButton.setOnClickListener(v ->
                 requireActivity().getSupportFragmentManager().popBackStack());
@@ -69,18 +75,26 @@ public final class SettingsIaPageFragment extends Fragment {
 
     // ---- Fournisseur actif (chips studio) -------------------------------------
 
-    /** Fournisseur persisté : « laboratoire » par défaut (identifiant du coffre). */
+    /** Fournisseur persisté : OpenRouter par défaut (premier du registre). */
+    static String providerId(android.content.Context context) {
+        String id = context.getSharedPreferences(IA_PREFS,
+                android.content.Context.MODE_PRIVATE).getString("fournisseur", null);
+        return id != null && ProviderRegistry.isKnown(id)
+                ? id : ProviderRegistry.defaultProvider().id();
+    }
+
     private String providerId() {
-        return iaPrefs().getString("fournisseur", "laboratoire");
+        return providerId(requireContext());
     }
 
     private void wireProviderChips() {
-        // Les chips du studio (Anthropic, Gemini, OpenAI, Passerelle) mappent les
-        // deux fournisseurs réels du port : laboratoire et passerelle.
-        chip(binding.chipAnthropic, R.string.settings_ia_provider_anthropic, "laboratoire");
-        chip(binding.chipGemini, R.string.settings_ia_provider_gemini, "laboratoire");
-        chip(binding.chipOpenai, R.string.settings_ia_provider_openai, "laboratoire");
-        chip(binding.chipGateway, R.string.settings_ia_provider_gateway, "passerelle");
+        // Registre réel (Lot 2) : OpenRouter (recommandé), OpenAI, Gemini,
+        // passerelle personnalisable. Aucune puce ne pointe vers un identifiant
+        // de maquette — plus de trois puces vers le même fournisseur fictif.
+        chip(binding.chipOpenrouter, R.string.settings_ia_provider_openrouter, "openrouter");
+        chip(binding.chipOpenai, R.string.settings_ia_provider_openai, "openai");
+        chip(binding.chipGemini, R.string.settings_ia_provider_gemini, "gemini");
+        chip(binding.chipCustom, R.string.settings_ia_provider_custom, "custom");
         renderProviderChips();
     }
 
@@ -99,8 +113,8 @@ public final class SettingsIaPageFragment extends Fragment {
     private void renderProviderChips() {
         String active = providerId();
         for (SettingsIaChipBinding chip : Arrays.asList(
-                binding.chipAnthropic, binding.chipGemini,
-                binding.chipOpenai, binding.chipGateway)) {
+                binding.chipOpenrouter, binding.chipOpenai,
+                binding.chipGemini, binding.chipCustom)) {
             boolean on = active.equals(chip.iaChip.getTag());
             chip.iaChip.setBackgroundResource(on
                     ? R.drawable.fond_chip_on : R.drawable.fond_chip);
@@ -150,20 +164,59 @@ public final class SettingsIaPageFragment extends Fragment {
     // ---- Modèle (rangée + chevD) ---------------------------------------------
 
     private void wireModelRow() {
-        String provider = providerId();
-        AiProvider ai = "passerelle".equals(provider)
-                ? AiProvider.gateway(new HttpLlmTransport())
-                : AiProvider.laboratory(new HttpLlmTransport());
-        List<String> models = ai.staticModels();
-        String current = iaPrefs().getString("modele_" + provider,
-                models.isEmpty() ? "claude-4-sonnet" : models.get(0));
-        binding.modelName.setText(current);
-        binding.modelRow.setOnClickListener(v -> {
-            int next = (models.indexOf(current) + 1) % Math.max(models.size(), 1);
-            String value = models.isEmpty() ? current : models.get(next);
-            iaPrefs().edit().putString("modele_" + provider, value).apply();
-            binding.modelName.setText(value);
-        });
+        renderModelRow();
+        binding.modelRow.setOnClickListener(v -> promptModel());
+    }
+
+    /** Modèle persisté POUR CE fournisseur (saisi ; liste vivante au Lot 7). */
+    private void renderModelRow() {
+        String model = iaPrefs().getString("modele_" + providerId(), null);
+        binding.modelName.setText(model == null || model.isEmpty()
+                ? getString(R.string.settings_ia_model_none) : model);
+    }
+
+    /** Saisie du modèle (identifiant du catalogue du fournisseur). */
+    private void promptModel() {
+        android.widget.EditText input = new android.widget.EditText(requireContext());
+        String current = iaPrefs().getString("modele_" + providerId(), "");
+        input.setText(current);
+        input.setHint(R.string.settings_ia_model_hint);
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.settings_ia_model_dialog_title)
+                .setView(input)
+                .setPositiveButton(R.string.commun_ok, (d, w) -> {
+                    iaPrefs().edit()
+                            .putString("modele_" + providerId(),
+                                    input.getText().toString().trim())
+                            .apply();
+                    renderModelRow();
+                })
+                .setNegativeButton(R.string.commun_annuler, null)
+                .show();
+    }
+
+    /** Migration unique des identifiants de maquette (Lot 2, silencieuse). */
+    public static void migrateProviders(android.content.Context context) {
+        android.content.SharedPreferences prefs = context.getSharedPreferences(
+                IA_PREFS, android.content.Context.MODE_PRIVATE);
+        ProviderMigration.migrateIds(key -> prefs.getString(key, null), (key, value) ->
+                prefs.edit().putString(key, value).apply());
+    }
+
+    /** Avertit une fois d'une clé restée sous l'identifiant « laboratoire » supprimé. */
+    private void warnLegacyLaboratoireKeyOnce() {
+        if (iaPrefs().getBoolean("laboratoire_averti", false)) {
+            return;
+        }
+        if (ProviderMigration.hasLegacyLaboratoireKey(vault::apiKey)) {
+            iaPrefs().edit().putBoolean("laboratoire_averti", true).apply();
+            com.google.android.material.snackbar.Snackbar.make(
+                    binding.getRoot(), R.string.settings_ia_legacy_key_notice,
+                    com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                    .setAction(R.string.settings_ia_legacy_key_remove, v ->
+                            vault.removeApiKey("laboratoire"))
+                    .show();
+        }
     }
 
     // ---- Effort de raisonnement (chips) --------------------------------------

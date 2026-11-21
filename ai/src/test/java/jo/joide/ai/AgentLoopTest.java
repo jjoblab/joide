@@ -49,12 +49,12 @@ class AgentLoopTest {
         }
 
         @Override
-        public List<String> listModels(String baseUrl, String apiKey) {
-            return List.of("modele-mock-a", "modele-mock-b");
+        public String fetchModelsJson(Endpoint endpoint) {
+            return "{\"data\":[{\"id\":\"modele-mock-a\"},{\"id\":\"modele-mock-b\"}]}";
         }
 
         @Override
-        public void chat(String baseUrl, String apiKey, ChatRequest request,
+        public void chat(Endpoint endpoint, ChatRequest request,
                 Consumer<StreamEvent> onEvent) throws LlmError {
             requestCount++;
             sentMessages.add(request.messages());
@@ -81,8 +81,10 @@ class AgentLoopTest {
 
     private AgentLoop loop(MockTransport transport, AgentWorkspace workspace,
             PermissionGate gate) {
-        return new AgentLoop(AiProvider.gateway(transport), transport,
-                "http://localhost:11434", "cle-mock", "modele-mock", workspace, gate, 3);
+        return new AgentLoop(transport,
+                new LlmTransport.Endpoint("http://localhost:11434/v1/chat/completions",
+                        "http://localhost:11434/v1/models", "cle-mock"),
+                "modele-mock", workspace, gate, 3);
     }
 
     @Test
@@ -222,9 +224,10 @@ class AgentLoopTest {
         MockTransport transport = new MockTransport();
         transport.respond(new MockTransport.Response("Voilà une explication.", List.of()));
         List<AgentLoop.LoopEvent> events = new CopyOnWriteArrayList<>();
-        AgentLoop assistantLoop = new AgentLoop(AiProvider.gateway(transport), transport,
-                "http://localhost:11434", null, "modele-mock",
-                new AgentWorkspace.InMemory(),
+        AgentLoop assistantLoop = new AgentLoop(transport,
+                new LlmTransport.Endpoint("http://localhost:11434/v1/chat/completions",
+                        "http://localhost:11434/v1/models", null),
+                "modele-mock", new AgentWorkspace.InMemory(),
                 new PermissionGate.Scripted(PermissionGate.Mode.AUTO_ACCEPT),
                 4, null, false);
         assistantLoop.setProjectContext("Aucun projet ouvert : conversation générale.");
@@ -393,24 +396,6 @@ class AgentLoopTest {
         vault.removeApiKey("laboratoire");
         assertTrue(vault.isEmpty());
         assertFalse("sk-12345678901234567890".isBlank());
-    }
-
-    @Test
-    void providersListFallsBackToStaticWhenEndpointFails() {
-        // Transport dont la liste vivante échoue : repli statique, jamais vide.
-        LlmTransport failing = new LlmTransport() {
-            @Override public List<String> listModels(String baseUrl, String apiKey) {
-                throw new IllegalStateException("réseau absent");
-            }
-            @Override public void chat(String baseUrl, String apiKey, ChatRequest request,
-                    Consumer<StreamEvent> onEvent) {
-                throw new IllegalStateException("jamais appelé");
-            }
-        };
-        AiProvider provider = AiProvider.laboratory(failing);
-        List<String> models = provider.listModels("https://x", "cle");
-        assertFalse(models.isEmpty(), "le repli statique fournit toujours une liste");
-        assertTrue(models.contains("laboratoire-v1"));
     }
 
     // ---- Support ----------------------------------------------------------

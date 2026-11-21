@@ -49,28 +49,19 @@ public final class HttpLlmTransport implements LlmTransport {
     }
 
     @Override
-    public List<String> listModels(String baseUrl, String apiKey) throws Exception {
-        HttpURLConnection connection = open("GET", url(baseUrl, "/v1/models"), apiKey, null);
+    public String fetchModelsJson(Endpoint endpoint) throws Exception {
+        HttpURLConnection connection = open("GET", endpoint.modelsUrl(),
+                endpoint.apiKey(), endpoint.headers(), null);
         int status = connection.getResponseCode();
         if (status != 200) {
             throw LlmError.fromStatus(status, readBody(connection),
                     header(connection, "Retry-After"));
         }
-        Map<String, Object> body = Json.parseObject(readBody(connection));
-        List<String> models = new ArrayList<>();
-        Object data = body.get("data");
-        if (data instanceof List<?> entries) {
-            for (Object entry : entries) {
-                if (entry instanceof Map<?, ?> model && model.get("id") instanceof String id) {
-                    models.add(id);
-                }
-            }
-        }
-        return models;
+        return readBody(connection);
     }
 
     @Override
-    public void chat(String baseUrl, String apiKey, ChatRequest request,
+    public void chat(Endpoint endpoint, ChatRequest request,
             java.util.function.Consumer<StreamEvent> onEvent) throws Exception {
         CancellationToken cancellation = request.cancellation();
         // Reprises : uniquement tant qu'aucune sortie n'a été émise (un
@@ -78,7 +69,7 @@ public final class HttpLlmTransport implements LlmTransport {
         for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
             EmissionGuard guard = new EmissionGuard(onEvent, cancellation);
             try {
-                streamOnce(baseUrl, apiKey, request, guard);
+                streamOnce(endpoint, request, guard);
                 guard.flushFinish();
                 return;
             } catch (LlmError error) {
@@ -107,11 +98,11 @@ public final class HttpLlmTransport implements LlmTransport {
     }
 
     /** Une tentative complète de requête en flux. */
-    private void streamOnce(String baseUrl, String apiKey, ChatRequest request,
+    private void streamOnce(Endpoint endpoint, ChatRequest request,
             EmissionGuard guard) throws Exception {
         CancellationToken cancellation = request.cancellation();
-        HttpURLConnection connection = open("POST", url(baseUrl, "/v1/chat/completions"),
-                apiKey, cancellation);
+        HttpURLConnection connection = open("POST", endpoint.chatUrl(),
+                endpoint.apiKey(), endpoint.headers(), cancellation);
         try {
             connection.setRequestProperty("Content-Type", "application/json");
             connection.setDoOutput(true);
@@ -308,13 +299,19 @@ public final class HttpLlmTransport implements LlmTransport {
         if (request.reasoningEffort() != null && !request.reasoningEffort().isEmpty()) {
             body.put("reasoning_effort", request.reasoningEffort());
         }
+        // Champs propres au fournisseur (routage OpenRouter, raisonnement
+        // specifique…) : fusionnés tels quels, ils priment sur les génériques.
+        if (request.extras() != null && !request.extras().isEmpty()) {
+            body.putAll(request.extras());
+        }
         return Json.write(body);
     }
 
     // ---- Connexion -----------------------------------------------------------
 
     private HttpURLConnection open(String method, String url, String apiKey,
-            CancellationToken cancellation) throws Exception {
+            java.util.Map<String, String> headers, CancellationToken cancellation)
+            throws Exception {
         HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
         connection.setRequestMethod(method);
         connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
@@ -322,20 +319,18 @@ public final class HttpLlmTransport implements LlmTransport {
         if (apiKey != null && !apiKey.isEmpty()) {
             connection.setRequestProperty("Authorization", "Bearer " + apiKey);
         }
+        if (headers != null) {
+            for (java.util.Map.Entry<String, String> header : headers.entrySet()) {
+                if (header.getValue() != null && !header.getValue().isEmpty()) {
+                    connection.setRequestProperty(header.getKey(), header.getValue());
+                }
+            }
+        }
         if (cancellation != null) {
             // Stop : la fermeture interrompt l'attente bloquante en lecture.
             cancellation.onCancel(connection::disconnect);
         }
         return connection;
-    }
-
-    /** URL complète ; la barre finale de la base est tolérée. */
-    static String url(String baseUrl, String path) {
-        String base = baseUrl == null ? "" : baseUrl.trim();
-        if (base.endsWith("/")) {
-            base = base.substring(0, base.length() - 1);
-        }
-        return base + path;
     }
 
     private static String readBody(HttpURLConnection connection) {

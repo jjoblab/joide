@@ -75,7 +75,7 @@
                     android:orientation="horizontal">
 
                     <include
-                        android:id="@+id/chip_anthropic"
+                        android:id="@+id/chip_openrouter"
                         layout="@layout/settings_ia_chip" />
 
                     <include
@@ -87,7 +87,7 @@
                         layout="@layout/settings_ia_chip" />
 
                     <include
-                        android:id="@+id/chip_gateway"
+                        android:id="@+id/chip_custom"
                         layout="@layout/settings_ia_chip" />
                 </LinearLayout>
             </HorizontalScrollView>
@@ -169,7 +169,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/settings_ia_model_default"
+                    android:text="@string/settings_ia_model_none"
                     style="@style/Txt.Sm" />
 
                 <ImageView
@@ -177,7 +177,7 @@
                     android:layout_height="18dp"
                     android:src="@drawable/ic_chevd"
                     android:importantForAccessibility="no"
-                    android:contentDescription="@string/settings_ia_model_next"
+                    android:contentDescription="@string/settings_ia_model_dialog_title"
                     app:tint="@color/sur_var" />
             </LinearLayout>
 

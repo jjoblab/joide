@@ -9,7 +9,6 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import jo.joide.ai.AiProvider;
 import jo.joide.ai.InteractivePermissionGate;
 import jo.joide.ai.KeyVault;
 import jo.joide.ai.PermissionGate;

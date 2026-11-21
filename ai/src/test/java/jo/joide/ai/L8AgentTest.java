@@ -91,12 +91,12 @@ class L8AgentTest {
         }
 
         @Override
-        public List<String> listModels(String baseUrl, String apiKey) {
-            return List.of("m");
+        public String fetchModelsJson(Endpoint endpoint) {
+            return "{\"data\":[{\"id\":\"m\"}]}";
         }
 
         @Override
-        public void chat(String baseUrl, String apiKey, ChatRequest request,
+        public void chat(Endpoint endpoint, ChatRequest request,
                 java.util.function.Consumer<StreamEvent> onEvent) {
             requests.add(request);
             Response response = script.remove(0);
@@ -126,8 +126,11 @@ class L8AgentTest {
         transport.respond(new MockTransport.Response("le build est bon", List.of()));
         AgentWorkspace.InMemory workspace = new AgentWorkspace.InMemory();
 
-        new AgentLoop(AiProvider.gateway(transport), transport, "http://l", null, "m",
-                workspace, new PermissionGate.Scripted(PermissionGate.Mode.PLAN_ONLY), runner)
+        new AgentLoop(transport,
+                new LlmTransport.Endpoint("http://l/chat/completions",
+                        "http://l/models", null),
+                "m", workspace, new PermissionGate.Scripted(PermissionGate.Mode.PLAN_ONLY),
+                16, runner, true)
                 .turn("construis", e -> { });
 
         assertEquals(List.of("/proj/essai"), builtRoots,
@@ -142,8 +145,10 @@ class L8AgentTest {
     @Test
     void noBuildToolWithoutRunner() {
         MockTransport transport = new MockTransport();
-        AgentLoop loop = new AgentLoop(AiProvider.gateway(transport), transport,
-                "http://l", null, "m", new AgentWorkspace.InMemory(),
+        AgentLoop loop = new AgentLoop(transport,
+                new LlmTransport.Endpoint("http://l/chat/completions",
+                        "http://l/models", null),
+                "m", new AgentWorkspace.InMemory(),
                 new PermissionGate.Scripted(PermissionGate.Mode.PLAN_ONLY));
         boolean hasBuild = loop.tools().stream()
                 .anyMatch(t -> "construire_module".equals(t.name()));

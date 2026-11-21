@@ -31,6 +31,9 @@ public class MainActivity extends AppCompatActivity {
         });
         MainActivityBinding binding = MainActivityBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        // Lot 2 : migration silencieuse des identifiants de fournisseur
+        // historiques (« passerelle » → « custom ») avant tout écran IA.
+        jo.joide.app.settings.SettingsIaPageFragment.migrateProviders(this);
         if (savedInstanceState == null) {
             // Premier lancement (studio HTML) : onboarding (4 pages) → assistant
             // du choix du mode → installation. L'onboarding ne remplace jamais

@@ -23,6 +23,8 @@
     <string name="assistant_sous_titre">Choisissez votre mode de travail</string>
     <string name="assistant_choisir">Installer ce mode</string>
     <string name="commun_retour">Retour</string>
+    <string name="commun_ok">OK</string>
+    <string name="commun_annuler">Annuler</string>
     <string name="assistant_commencer">Commencer</string>
     <string name="mode_forge_limites">Limites : AAR et ViewBinding non supportés ; les composants Android (aapt2, plateformes) ne sont pas encore publiés par Forge.</string>
     <string name="mode_gradle_limites">Limites : plus lourd (environnement Linux complet à télécharger) ; le premier build est plus lent.</string>

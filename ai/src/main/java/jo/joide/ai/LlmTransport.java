@@ -11,6 +11,21 @@ import java.util.List;
  */
 public interface LlmTransport {
 
+    /**
+     * Point de terminaison complet (Lot 2) : URLs du chat et des modèles (les
+     * chemins varient selon le fournisseur — voir {@code ProviderSpec}), clé,
+     * en-têtes additionnels (attribution OpenRouter). Construit via
+     * {@code ProviderSpec.endpoint(...)} — jamais à la main.
+     */
+    record Endpoint(String chatUrl, String modelsUrl, String apiKey,
+            java.util.Map<String, String> headers) {
+
+        /** Endpoint simple (clé, pas d'en-têtes additionnels). */
+        public Endpoint(String chatUrl, String modelsUrl, String apiKey) {
+            this(chatUrl, modelsUrl, apiKey, java.util.Collections.emptyMap());
+        }
+    }
+
     /** Message de la conversation (rôles du format passerelle). */
     record ChatMessage(String role, String content, List<ToolCall> toolCalls,
             String toolCallId) {
@@ -52,14 +67,28 @@ public interface LlmTransport {
         }
     }
 
-    /** Requête de complétion (jeton d'annulation et effort optionnels). */
+    /**
+     * Requête de complétion (jeton d'annulation, effort et champs propres au
+     * fournisseur optionnels — les extras sont fusionnés tels quels dans le
+     * corps, valeurs déjà prêtes pour le JSON).
+     */
     record ChatRequest(String model, List<ChatMessage> messages, List<ToolSpec> tools,
-            int maxTokens, String reasoningEffort, CancellationToken cancellation) {
+            int maxTokens, String reasoningEffort, CancellationToken cancellation,
+            java.util.Map<String, Object> extras) {
 
-        /** Requête simple (sans annulation ni effort). */
+        /** Requête simple (sans annulation ni effort ni extras). */
         public ChatRequest(String model, List<ChatMessage> messages,
                 List<ToolSpec> tools, int maxTokens) {
-            this(model, messages, tools, maxTokens, null, null);
+            this(model, messages, tools, maxTokens, null, null,
+                    java.util.Collections.emptyMap());
+        }
+
+        /** Requête avec annulation et effort (sans extras). */
+        public ChatRequest(String model, List<ChatMessage> messages,
+                List<ToolSpec> tools, int maxTokens, String reasoningEffort,
+                CancellationToken cancellation) {
+            this(model, messages, tools, maxTokens, reasoningEffort, cancellation,
+                    java.util.Collections.emptyMap());
         }
     }
 
@@ -86,19 +115,19 @@ public interface LlmTransport {
     }
 
     /**
-     * Liste vivante des modèles du compte (endpoint /models) ; peut échouer —
-     * l'appelant retombe sur sa liste statique.
+     * Corps brut de la liste des modèles ({@code GET modelsUrl}) ; l'analyse
+     * vit dans {@code ModelCatalog} (format enrichi ou simple). Peut échouer —
+     * l'appelant retombe sur son cache.
      */
-    List<String> listModels(String baseUrl, String apiKey) throws Exception;
+    String fetchModelsJson(Endpoint endpoint) throws Exception;
 
     /**
      * Lance une requête de complétion en flux.
      *
-     * @param baseUrl   base de l'endpoint (fournisseur ou passerelle).
-     * @param apiKey    clé du fournisseur (peut être nulle sur serveur local).
-     * @param request   requête (modèle, messages, outils, jeton d'annulation).
-     * @param onEvent   consommateur de chaque delta (thread transport).
+     * @param endpoint point de terminaison complet (URLs, clé, en-têtes).
+     * @param request  requête (modèle, messages, outils, jeton d'annulation, extras).
+     * @param onEvent  consommateur de chaque delta (thread transport).
      */
-    void chat(String baseUrl, String apiKey, ChatRequest request,
+    void chat(Endpoint endpoint, ChatRequest request,
             java.util.function.Consumer<StreamEvent> onEvent) throws Exception;
 }

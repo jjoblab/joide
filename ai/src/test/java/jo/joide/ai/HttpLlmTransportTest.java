@@ -78,6 +78,12 @@ class HttpLlmTransportTest {
         return "data: " + json + "\n\n";
     }
 
+    /** Endpoint du faux serveur (paths au format canonique /v1). */
+    private LlmTransport.Endpoint endpoint() {
+        return new LlmTransport.Endpoint(base + "/v1/chat/completions",
+                base + "/v1/models", "cle-test");
+    }
+
     private List<LlmTransport.StreamEvent> chat(List<byte[]> chunks) throws Exception {
         return chat(chunks, null);
     }
@@ -87,10 +93,8 @@ class HttpLlmTransportTest {
         respond(sse(chunks.toArray(new byte[0][])));
         HttpLlmTransport transport = new HttpLlmTransport();
         List<LlmTransport.StreamEvent> events = new CopyOnWriteArrayList<>();
-        transport.chat(base, "cle-test",
-                new LlmTransport.ChatRequest("modele", List.of(), List.of(), 128,
-                        null, cancellation),
-                events::add);
+        transport.chat(endpoint(), new LlmTransport.ChatRequest("modele", List.of(),
+                List.of(), 128, null, cancellation), events::add);
         return events;
     }
 
@@ -243,9 +247,8 @@ class HttpLlmTransportTest {
         });
         HttpLlmTransport transport = new HttpLlmTransport();
         LlmError error = assertThrows(LlmError.class, () ->
-                transport.chat(base, "cle-test",
-                        new LlmTransport.ChatRequest("m", List.of(), List.of(), 64),
-                        e -> { }));
+                transport.chat(endpoint(), new LlmTransport.ChatRequest(
+                        "m", List.of(), List.of(), 64), e -> { }));
         assertEquals(LlmError.Kind.AUTH, error.kind());
         assertFalse(error.getMessage().contains("sk-or-v1-abcdef123456"), "clé rédigée");
     }
@@ -262,9 +265,8 @@ class HttpLlmTransportTest {
         });
         HttpLlmTransport transport = new HttpLlmTransport();
         LlmError error = assertThrows(LlmError.class, () ->
-                transport.chat(base, "cle-test",
-                        new LlmTransport.ChatRequest("m", List.of(), List.of(), 64),
-                        e -> { }));
+                transport.chat(endpoint(), new LlmTransport.ChatRequest(
+                        "m", List.of(), List.of(), 64), e -> { }));
         assertEquals(LlmError.Kind.RATE_LIMIT, error.kind());
         assertEquals(17, error.retryAfterSeconds());
     }
@@ -328,9 +330,8 @@ class HttpLlmTransportTest {
         List<Throwable> failures = new CopyOnWriteArrayList<>();
         Thread worker = new Thread(() -> {
             try {
-                transport.chat(base, "cle-test",
-                        new LlmTransport.ChatRequest("m", List.of(), List.of(), 64,
-                                null, cancellation),
+                transport.chat(endpoint(), new LlmTransport.ChatRequest(
+                        "m", List.of(), List.of(), 64, null, cancellation),
                         events::add);
             } catch (Throwable t) {
                 failures.add(t);
@@ -377,9 +378,8 @@ class HttpLlmTransportTest {
         });
         HttpLlmTransport transport = new HttpLlmTransport();
         List<LlmTransport.StreamEvent> events = new ArrayList<>();
-        transport.chat(base, "cle-test",
-                new LlmTransport.ChatRequest("m", List.of(), List.of(), 64),
-                events::add);
+        transport.chat(endpoint(), new LlmTransport.ChatRequest(
+                "m", List.of(), List.of(), 64), events::add);
         assertEquals(2, served.get(), "une reprise avant la première sortie");
         assertEquals("enfin", texts(events));
     }
@@ -400,9 +400,8 @@ class HttpLlmTransportTest {
         });
         HttpLlmTransport transport = new HttpLlmTransport();
         List<LlmTransport.StreamEvent> events = new ArrayList<>();
-        transport.chat(base, "cle-test",
-                new LlmTransport.ChatRequest("m", List.of(), List.of(), 64),
-                events::add);
+        transport.chat(endpoint(), new LlmTransport.ChatRequest(
+                "m", List.of(), List.of(), 64), events::add);
         // Une sortie a été émise : aucune reprise, le tour échoue honnêtement
         // (le transport laisse la boucle juger : ici le flux se termine sans
         // [DONE] ni finish — pas de rejeu, pas de duplication).
@@ -413,7 +412,7 @@ class HttpLlmTransportTest {
     // ---- listModels ----------------------------------------------------------
 
     @Test
-    void listModelsParsesCatalogue() throws Exception {
+    void fetchModelsJsonReturnsBodyForCatalogueParsing() throws Exception {
         server.createContext("/v1/models", exchange -> {
             byte[] body = utf8("{\"data\":[{\"id\":\"m-a\"},{\"id\":\"m-b\"}]}");
             exchange.sendResponseHeaders(200, body.length);
@@ -421,8 +420,26 @@ class HttpLlmTransportTest {
                 out.write(body);
             }
         });
+        String json = new HttpLlmTransport().fetchModelsJson(endpoint());
         assertEquals(List.of("m-a", "m-b"),
-                new HttpLlmTransport().listModels(base, "cle"));
+                jo.joide.ai.provider.ModelCatalog.parseIds(json));
+    }
+
+    @Test
+    void extrasAreMergedIntoRequestBody() {
+        HttpLlmTransport transport = new HttpLlmTransport();
+        java.util.Map<String, Object> extras = new java.util.LinkedHashMap<>();
+        java.util.Map<String, Object> reasoning = new java.util.LinkedHashMap<>();
+        reasoning.put("effort", "high");
+        extras.put("reasoning", reasoning);
+        extras.put("models", java.util.List.of("exemple/a", "exemple/b"));
+        String json = transport.requestJson(new LlmTransport.ChatRequest("m",
+                List.of(LlmTransport.ChatMessage.user("q")), List.of(), 64,
+                null, null, extras));
+        assertTrue(json.contains("\"reasoning\":{\"effort\":\"high\"}"),
+                "objet reasoning OpenRouter fusionné");
+        assertTrue(json.contains("\"models\":[\"exemple/a\",\"exemple/b\"]"),
+                "replis de modèles fusionnés");
     }
 
     @Test
