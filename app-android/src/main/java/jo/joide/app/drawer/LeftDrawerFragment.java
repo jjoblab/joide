@@ -62,7 +62,7 @@ public final class LeftDrawerFragment extends Fragment {
         binding.drawerTabFiles.setOnClickListener(v -> selectTab(R.id.drawer_tab_files));
         binding.drawerTabSearch.setOnClickListener(v -> selectTab(R.id.drawer_tab_search));
         binding.drawerTabStructure.setOnClickListener(v -> selectTab(R.id.drawer_tab_structure));
-        binding.drawerTabGit.setOnClickListener(v -> host().openGitScreen());
+        binding.drawerTabGit.setOnClickListener(v -> selectTab(R.id.drawer_tab_git));
         binding.closeLeft.setOnClickListener(v -> host().closeLeftDrawer());
 
         int restored = savedInstanceState != null
@@ -81,7 +81,7 @@ public final class LeftDrawerFragment extends Fragment {
     /** Onglet hébergé visible ; les autres sont cachés (état conservé). */
     private void selectTab(int tabId) {
         if (tabId != R.id.drawer_tab_files && tabId != R.id.drawer_tab_search
-                && tabId != R.id.drawer_tab_structure) {
+                && tabId != R.id.drawer_tab_structure && tabId != R.id.drawer_tab_git) {
             tabId = R.id.drawer_tab_files;
         }
         currentTab = tabId;
@@ -111,18 +111,21 @@ public final class LeftDrawerFragment extends Fragment {
      */
     public void openTab(int tabId) {
         if (tabId == R.id.drawer_tab_search || tabId == R.id.drawer_tab_structure
-                || tabId == R.id.drawer_tab_files) {
+                || tabId == R.id.drawer_tab_files || tabId == R.id.drawer_tab_git) {
             selectTab(tabId);
         }
     }
 
-    /** Fabrique l'onglet hébergé (Git n'est jamais hébergé au Lot 0). */
+    /** Fabrique l'onglet hébergé (Lot 7 : Git vit dans le tiroir). */
     private Fragment fragmentFor(int tabId) {
         if (tabId == R.id.drawer_tab_search) {
             return new SearchTabFragment();
         }
         if (tabId == R.id.drawer_tab_structure) {
             return new StructureTabFragment();
+        }
+        if (tabId == R.id.drawer_tab_git) {
+            return new GitTabFragment();
         }
         return FilesTabFragment.newInstance();
     }
@@ -132,9 +135,8 @@ public final class LeftDrawerFragment extends Fragment {
         styleTab(binding.drawerTabFiles, currentTab == R.id.drawer_tab_files);
         styleTab(binding.drawerTabSearch, currentTab == R.id.drawer_tab_search);
         styleTab(binding.drawerTabStructure, currentTab == R.id.drawer_tab_structure);
-        // Git n'est pas un onglet hébergé : sa chip reste au repos (comportement
-        // conservé — elle ouvre l'écran Git).
-        styleTab(binding.drawerTabGit, false);
+        // Lot 7 : Git est un onglet hébergé — sa chip s'allume aussi.
+        styleTab(binding.drawerTabGit, currentTab == R.id.drawer_tab_git);
     }
 
     private void styleTab(TextView chip, boolean on) {
