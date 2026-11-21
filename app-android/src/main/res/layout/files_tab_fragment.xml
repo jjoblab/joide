@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Onglet Fichiers du tiroir gauche (Lot 2) : barre d'outils (tout replier,
-     tout déplier, suivre le fichier actif, actualiser), arborescence réelle
-     sur core-files (rangées file_tree_row), actions basses Nouveau +
-     Corbeille. Les états (chargement, erreur, dossier vide) s'insèrent dans
-     l'arbre — jamais d'état muet. -->
+<!-- Onglet Fichiers du tiroir gauche (Lots 2-3) : outils (replier, déplier,
+     suivre, actualiser, filtrer), champ de filtre en direct (caché), barre
+     de sélection multiple (cachée), liste aplatie RecyclerView + DiffUtil,
+     actions basses Nouveau + Corbeille. Les états (chargement, erreur,
+     dossier vide) sont des rangées — jamais d'état muet. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -63,25 +63,133 @@
             android:src="@drawable/ic_actualiser"
             android:scaleType="centerInside"
             app:tint="@color/sur_var" />
+
+        <ImageButton
+            android:id="@+id/tree_filter"
+            style="@style/IconBtn"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_marginStart="2dp"
+            android:contentDescription="@string/tiroir_filtrer"
+            android:src="@drawable/ic_filter"
+            android:scaleType="centerInside"
+            app:tint="@color/sur_var" />
     </LinearLayout>
 
-    <!-- Arborescence réelle (rangées guides + chevron + icône + décorations) -->
-    <ScrollView
-        android:id="@+id/tree_scroll"
+    <!-- Filtre en direct (caché hors filtrage ; parcourt l'arbre étendu) -->
+    <LinearLayout
+        android:id="@+id/tree_filter_box"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="10dp"
+        android:layout_marginBottom="6dp"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:background="@drawable/fond_field"
+        android:visibility="gone">
+
+        <EditText
+            android:id="@+id/tree_filter_field"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_weight="1"
+            android:inputType="text"
+            android:imeOptions="actionSearch"
+            android:singleLine="true"
+            android:background="@null"
+            android:hint="@string/tiroir_filtre_indice"
+            android:textColor="@color/sur"
+            android:textColorHint="@color/contour"
+            android:textSize="12.5sp" />
+
+        <TextView
+            android:id="@+id/tree_filter_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:textColor="@color/sur_var"
+            android:textSize="11sp"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- Barre de sélection multiple (cachée hors sélection) -->
+    <LinearLayout
+        android:id="@+id/tree_selection_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="10dp"
+        android:paddingEnd="6dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:background="@color/sc2"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tree_selection_count"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="@color/sur_sc2"
+            android:textSize="11.5sp"
+            android:textStyle="bold" />
+
+        <ImageButton
+            android:id="@+id/tree_selection_trash"
+            style="@style/IconBtn"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:contentDescription="@string/tiroir_selection_supprimer"
+            android:src="@drawable/ic_trash"
+            android:scaleType="centerInside"
+            app:tint="@color/sur_sc2" />
+
+        <ImageButton
+            android:id="@+id/tree_selection_copy"
+            style="@style/IconBtn"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:contentDescription="@string/tiroir_selection_copier"
+            android:src="@drawable/ic_copy"
+            android:scaleType="centerInside"
+            app:tint="@color/sur_sc2" />
+
+        <ImageButton
+            android:id="@+id/tree_selection_move"
+            style="@style/IconBtn"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:contentDescription="@string/tiroir_selection_deplacer"
+            android:src="@drawable/ic_arrow"
+            android:scaleType="centerInside"
+            app:tint="@color/sur_sc2" />
+
+        <ImageButton
+            android:id="@+id/tree_selection_close"
+            style="@style/IconBtn"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:contentDescription="@string/tiroir_action_annuler"
+            android:src="@drawable/ic_x"
+            android:scaleType="centerInside"
+            app:tint="@color/sur_sc2" />
+    </LinearLayout>
+
+    <!-- Liste aplatie de l'arborescence (recyclage + DiffUtil, Lot 3) -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/tree_list"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
-
-        <LinearLayout
-            android:id="@+id/files_tree"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingStart="10dp"
-            android:paddingEnd="10dp"
-            android:paddingTop="2dp"
-            android:paddingBottom="10dp" />
-    </ScrollView>
+        android:layout_weight="1"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="2dp"
+        android:paddingBottom="10dp"
+        android:clipToPadding="false" />
 
     <!-- Actions basses (studio : Nouveau + corbeille, chips 32dp) -->
     <LinearLayout

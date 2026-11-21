@@ -116,7 +116,7 @@ public final class FileTree {
     }
 
     /** Résout un chemin relatif confiné à la racine (traversée refusée). */
-    static Path resolve(Path root, String relative) throws IOException {
+    public static Path resolve(Path root, String relative) throws IOException {
         if (relative == null || relative.isEmpty() || ".".equals(relative)) {
             return root;
         }

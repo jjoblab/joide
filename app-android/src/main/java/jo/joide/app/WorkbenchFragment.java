@@ -195,21 +195,34 @@ public class WorkbenchFragment extends Fragment
         }
         workspaceEvents.subscribe(event -> {
             java.nio.file.Path changed = null;
+            java.nio.file.Path renamedFrom = null;
             if (event instanceof jo.joide.workbench.WorkspaceEvents.FileChangedOnDisk changedEvent) {
                 changed = changedEvent.file();
             } else if (event instanceof jo.joide.workbench.WorkspaceEvents.FileCreated created) {
                 changed = created.file();
             } else if (event instanceof jo.joide.workbench.WorkspaceEvents.FileRenamed renamed) {
                 changed = renamed.to();
+                renamedFrom = renamed.from();
             }
             if (changed == null || activeFile == null) {
                 return;
             }
             java.nio.file.Path finalChanged = changed;
+            java.nio.file.Path finalRenamedFrom = renamedFrom;
             requireActivity().runOnUiThread(() -> {
                 // L'onglet actif concerné se relit depuis le disque : l'agent
                 // écrit, l'atelier suit — sans action de l'utilisateur.
-                if (activeFile != null && activeFile.equals(finalChanged)) {
+                if (activeFile == null) {
+                    return;
+                }
+                // Lot 3 tiroir : un renommage depuis l'arbre déplace le fichier
+                // actif (l'onglet suit son nouveau chemin, jamais un chemin mort).
+                if (finalRenamedFrom != null && finalRenamedFrom.equals(activeFile)) {
+                    activeFile = finalChanged;
+                    openFile(finalChanged);
+                    return;
+                }
+                if (activeFile.equals(finalChanged)) {
                     openFile(finalChanged);
                 }
             });

@@ -141,8 +141,9 @@ public final class FsOperations {
     /**
      * Met un chemin à la corbeille (déplacement réel, restaurable) :
      * {@code .joide/corbeille/<millisecondes>_<nom>} + ligne d'index.
+     * Retourne l'entrée créée (pour un « Annuler » immédiat côté UI).
      */
-    public static void toTrash(Path root, String relative) throws IOException {
+    public static TrashEntry toTrash(Path root, String relative) throws IOException {
         Path source = readable(root, relative);
         if (isProtected(relative)) {
             throw new IOException("Chemin protégé : " + relative);
@@ -170,6 +171,7 @@ public final class FsOperations {
         List<String> lines = new ArrayList<>(indexLines(root));
         lines.add(relative + "\t" + when + "\t" + size + "\t" + trashName);
         writeIndex(root, lines);
+        return new TrashEntry(relative, when, size, trashName);
     }
 
     /** Entrées de corbeille (index filtré des fichiers absents). */
