@@ -4,7 +4,8 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -14,6 +15,13 @@ import androidx.fragment.app.Fragment;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import jo.joide.app.R;
+import jo.joide.app.databinding.AiPanelFragmentBinding;
+import jo.joide.app.databinding.BulleReflexionBinding;
+import jo.joide.app.databinding.BulleUserBinding;
+import jo.joide.app.databinding.CarteErreurBinding;
+import jo.joide.app.databinding.CarteOutilBinding;
+import jo.joide.app.databinding.CarteQuestionBinding;
+import jo.joide.app.databinding.ChipActionBinding;
 import jo.joide.ai.AgentLoop;
 import jo.joide.ai.AgentWorkspace;
 import jo.joide.ai.AiProvider;
@@ -26,68 +34,117 @@ import jo.joide.ai.PermissionGate;
  * tourne jamais sur le fil UI (§10) : la boucle s'exécute sur son pool mono-
  * thread, les deltas reviennent sur le fil UI.
  *
- * <p>Critère du lot : conversation avec un fournisseur (mock en test), appro-
- * bation des actions de l'agent (porte unique : demander à chaque fois /
+ * <p>Rendu studio (joide-previews-ecrans.html, chatScreen + drawer IA de
+ * editorScreen) : barre à pastille conteneur_primaire + pills modèle /
+ * permission, transcript à bulles utilisateur (sc2), carte de réflexion
+ * (sc_high + barre 7×11 primaire), cartes d'outils (sc_high rayon 8, état
+ * spinner), carte question (conteneur_tertiaire) et carte erreur
+ * (conteneur_erreur) avec chips d'action.</p>
+ *
+ * <p>Critère du lot : conversation avec un fournisseur (mock en test),
+ * approbation des actions de l'agent (porte unique : demander à chaque fois /
  * accepter / plan seulement), clés au coffre chiffré ({@link EncryptedKeyVault}).</p>
  */
 public final class AiPanelFragment extends Fragment {
 
-    private LinearLayout conversationList;
-    private ScrollView conversationScroll;
-    private android.widget.EditText input;
-    private Button sendButton;
+    private AiPanelFragmentBinding binding;
     private String lastQuestion;
     private PermissionGate gate;
+    private int toolCount;
+    private int fileCount;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
             @Nullable Bundle savedInstanceState) {
-        LinearLayout root = new LinearLayout(requireContext());
-        root.setOrientation(LinearLayout.VERTICAL);
+        binding = AiPanelFragmentBinding.inflate(inflater, container, false);
 
-        // Conversation à bulles (studio HTML, onglet Chat IA) : question de
-        // l'utilisateur, réponse en cours (réflexion), cartes d'outils, erreur.
-        conversationList = new LinearLayout(requireContext());
-        conversationList.setOrientation(LinearLayout.VERTICAL);
-        int pad = (int) (12 * getResources().getDisplayMetrics().density);
-        conversationList.setPadding(pad, pad, pad, pad);
-        conversationScroll = new ScrollView(requireContext());
-        conversationScroll.addView(conversationList);
-        root.addView(conversationScroll, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
-
-        input = new android.widget.EditText(requireContext());
-        input.setHint(getString(R.string.ia_hint_demande));
-        root.addView(input, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-
-        sendButton = new Button(requireContext());
-        sendButton.setText(getString(R.string.ia_envoyer));
-        sendButton.setOnClickListener(v -> ask(input.getText().toString()));
-        root.addView(sendButton, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        // Composer : envoyer la demande (bouton rond 48 primaire du studio).
+        binding.sendButton.setOnClickListener(v -> ask(binding.inputField
+                .getText().toString()));
+        // Pills de la barre : le modèle ouvre la page Réglage IA, la permission
+        // cycle les trois modes réels de la porte partagée (REF-117).
+        binding.modelPill.setOnClickListener(v -> openSettingsIa());
+        binding.permPill.setOnClickListener(v -> cyclePermissionMode());
+        binding.moreButton.setOnClickListener(v -> openSettingsIa());
 
         // État honnête : sans clé au coffre, le tiroir le dit au lieu d'échouer
-        // en silence (le réglage des fournisseurs est au lot paramètres L8).
+        // en silence (le réglage des fournisseurs est à la page Réglage IA).
         EncryptedKeyVault vault = new EncryptedKeyVault(requireContext());
         if (vault.apiKey("laboratoire") == null && vault.apiKey("passerelle") == null) {
-            appendBubble(getString(R.string.ia_sans_cle), BubbleKind.ERROR);
+            renderError(getString(R.string.chat_no_key), null);
         }
-        return root;
+        return binding.getRoot();
     }
 
-    /** Nature d'une bulle (styles du studio : utilisateur, réflexion, outil, erreur). */
-    enum BubbleKind { USER, THINKING, TOOL, ERROR }
+    /** Ouvre la page Réglage IA (fournisseurs, clé, modèle) dans le même hôte. */
+    private void openSettingsIa() {
+        getParentFragmentManager().beginTransaction()
+                .replace(((ViewGroup) requireView().getParent()).getId(),
+                        new jo.joide.app.settings.SettingsIaPageFragment())
+                .addToBackStack(null)
+                .commit();
+    }
+
+    /** La pill permission affiche le mode réel de la porte partagée. */
+    private void renderPermissionPill() {
+        jo.joide.ai.InteractivePermissionGate shared =
+                jo.joide.app.settings.SettingsFragment.sharedGate();
+        PermissionGate.Mode mode = shared.mode();
+        binding.permPill.setText(mode == PermissionGate.Mode.AUTO_ACCEPT
+                ? getString(R.string.chat_perm_auto)
+                : mode == PermissionGate.Mode.PLAN_ONLY
+                ? getString(R.string.chat_perm_plan)
+                : getString(R.string.chat_perm_ask));
+    }
+
+    /** Cycle la permission (demander → plan → auto) sur la porte partagée. */
+    private void cyclePermissionMode() {
+        jo.joide.ai.InteractivePermissionGate shared =
+                jo.joide.app.settings.SettingsFragment.sharedGate();
+        PermissionGate.Mode next = switch (shared.mode()) {
+            case ASK_EACH -> PermissionGate.Mode.PLAN_ONLY;
+            case PLAN_ONLY -> PermissionGate.Mode.AUTO_ACCEPT;
+            case AUTO_ACCEPT -> PermissionGate.Mode.ASK_EACH;
+        };
+        shared.setMode(next);
+        renderPermissionPill();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        renderPermissionPill();
+        renderModelPill();
+    }
+
+    /** Pill modèle : identifiant persisté du fournisseur actif (page IA). */
+    private void renderModelPill() {
+        String provider = requireContext()
+                .getSharedPreferences(jo.joide.app.settings.SettingsIaPageFragment.IA_PREFS,
+                        android.content.Context.MODE_PRIVATE)
+                .getString("fournisseur", "laboratoire");
+        binding.modelPill.setText(getString(R.string.chat_model_pill,
+                "passerelle".equals(provider) ? "modele-local" : "claude-4"));
+    }
 
     /** Demande de l'utilisateur : un tour de la boucle d'agent. */
     private void ask(String message) {
-        if (message.isBlank()) {
+        if (message == null || message.isBlank()) {
             return;
         }
         lastQuestion = message;
-        appendBubble(message, BubbleKind.USER);
-        thinkingBubble();
+        toolCount = 0;
+        fileCount = 0;
+        binding.inputField.setText("");
+
+        // Bulle utilisateur (studio : sc2 à droite, rayons 20/20/6/20).
+        BulleUserBinding user = BulleUserBinding.inflate(getLayoutInflater());
+        user.userBubble.setText(message);
+        appendView(user.getRoot());
+
+        // Carte de réflexion (studio : sc_high rayon 14, « En réflexion… »).
+        startThinking();
 
         // Porte interactive partagée avec les paramètres (porte unique, REF-117) :
         // le décideur affiche le dialogue AVEC le diff dans l'invite, et rend
@@ -120,26 +177,154 @@ public final class AiPanelFragment extends Fragment {
         }, "agent-ia").start();
     }
 
-    /** Rendu d'un événement de boucle : bulles typées (studio Chat IA). */
+    /** Rendu d'un événement de boucle : états du studio Chat IA. */
     private void render(AgentLoop.LoopEvent event) {
         if (event instanceof AgentLoop.LoopEvent.Delta delta) {
-            appendBubble(delta.text(), BubbleKind.THINKING);
+            // Le texte du modèle alimente la carte de réflexion (mono onCreate
+            // et autres fragments de code restent lisibles dans le flux).
+            appendThinkingDelta(delta.text());
         } else if (event instanceof AgentLoop.LoopEvent.ToolStarted started) {
-            appendBubble(getString(R.string.ia_outil_en_cours) + " · " + started.name(),
-                    BubbleKind.TOOL);
+            // Carte d'outil en cours : spinner + « nom · chemin ».
+            endThinking();
+            appendToolCard(started.name(), true, false);
         } else if (event instanceof AgentLoop.LoopEvent.ToolResult result) {
-            appendBubble(getString(R.string.ia_outil_fait,
-                    result.isError() ? "refusé" : "fait", result.summary()),
-                    BubbleKind.TOOL);
+            appendToolCard(result.summary(), false, result.isError());
         } else if (event instanceof AgentLoop.LoopEvent.TurnCompleted completed) {
             endThinking();
+            renderUsage(completed.iterations());
         } else if (event instanceof AgentLoop.LoopEvent.TurnFailed failure) {
             endThinking();
             // Studio : l'échec de tour rend la carte 401 (clé rejetée, actions).
             String reason = failure.message() != null && failure.message().contains("401")
-                    ? failure.message() : getString(R.string.ia_erreur_401);
-            appendBubble(reason, BubbleKind.ERROR);
+                    ? failure.message() : getString(R.string.chat_error_body_401);
+            renderError(reason, failure.message());
         }
+    }
+
+    /** Compteur du tour (carte d'outil : « N outils · M fichiers » du studio). */
+    private void renderUsage(int iterations) {
+        if (toolCount > 0) {
+            appendToolCard(getString(R.string.chat_tool_files, toolCount, fileCount),
+                    false, false);
+        }
+    }
+
+    /** Amorce du transcript vide : rien (le vrai transcript part d'ask()). */
+
+    // ---- Événements de boucle : fabrique de vues --------------------------------
+
+    /** Carte de réflexion (studio : fond sc_high rayon 14, barre 7×11 primaire). */
+    private void startThinking() {
+        endThinking();
+        thinkingBinding = BulleReflexionBinding.inflate(getLayoutInflater());
+        thinkingBinding.thinkingText.setText("");
+        appendView(thinkingBinding.getRoot());
+    }
+
+    private BulleReflexionBinding thinkingBinding;
+
+    /** Un delta de texte allonge la carte de réflexion (le flux du modèle). */
+    private void appendThinkingDelta(String text) {
+        if (thinkingBinding == null) {
+            startThinking();
+        }
+        thinkingBinding.thinkingText.append(text);
+        scrollDown();
+    }
+
+    /** Ferme la carte de réflexion (fin de tour ou nouvelle carte). */
+    private void endThinking() {
+        if (thinkingBinding != null) {
+            binding.transcriptList.removeView(thinkingBinding.getRoot());
+            thinkingBinding = null;
+        }
+    }
+
+    /** Carte d'outil : état Terminé (ic_check ok + « +N −M lignes ») ou en cours (spinner). */
+    private void appendToolCard(String label, boolean running, boolean isError) {
+        CarteOutilBinding tool = CarteOutilBinding.inflate(getLayoutInflater());
+        tool.toolLabel.setText(label);
+        int cote = (int) (14 * getResources().getDisplayMetrics().density);
+        if (running) {
+            // Spinner : anneau primaire 14dp (indéterminé), à la place de l'icône.
+            tool.toolIcon.setVisibility(View.INVISIBLE);
+            ImageView spinner = new ImageView(requireContext());
+            spinner.setImageResource(R.drawable.fond_spinner);
+            LinearLayout.LayoutParams spinParams = new LinearLayout.LayoutParams(cote, cote);
+            spinParams.setMarginEnd(
+                    (int) (8 * getResources().getDisplayMetrics().density));
+            ((LinearLayout) tool.getRoot()).addView(spinner, indexOfIcon(tool), spinParams);
+            tool.toolSide.setText("");
+            toolCount++;
+        } else {
+            tool.toolIcon.setImageResource(R.drawable.ic_check);
+            tool.toolIcon.setColorFilter(
+                    getResources().getColor(isError ? R.color.erreur : R.color.ok));
+            tool.toolSide.setText("");
+            toolCount++;
+            fileCount++;
+        }
+        appendView(tool.getRoot());
+    }
+
+    /** Position de l'icône dans la carte d'outil (premier enfant). */
+    private int indexOfIcon(CarteOutilBinding tool) {
+        LinearLayout row = (LinearLayout) tool.getRoot();
+        for (int i = 0; i < row.getChildCount(); i++) {
+            if (row.getChildAt(i) == tool.toolIcon) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    /** Carte question (studio : conteneur_tertiaire, chips sc_highest). */
+    private void renderQuestion(String title, String body, String[] choices) {
+        CarteQuestionBinding question = CarteQuestionBinding.inflate(getLayoutInflater());
+        question.questionTitle.setText(title);
+        question.questionBody.setText(body);
+        for (String choice : choices) {
+            ChipActionBinding chip = ChipActionBinding.inflate(getLayoutInflater());
+            chip.choiceChip.setText(choice);
+            chip.choiceChip.setOnClickListener(v -> ask(choice));
+            LinearLayout.LayoutParams chipParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
+            chipParams.setMarginEnd(
+                    (int) (8 * getResources().getDisplayMetrics().density));
+            question.questionChoices.addView(chip.getRoot(), chipParams);
+        }
+        appendView(question.getRoot());
+    }
+
+    /** Carte erreur (studio : conteneur_erreur, ic_bell, chips Réessayer / Ouvrir Paramètres). */
+    private void renderError(String body, String rawMessage) {
+        CarteErreurBinding error = CarteErreurBinding.inflate(getLayoutInflater());
+        error.errorTitle.setText(getString(R.string.chat_error_title));
+        error.errorBody.setText(rawMessage != null && rawMessage.contains("401")
+                ? getString(R.string.chat_error_body_401) : body);
+        error.errorRetry.setOnClickListener(v -> {
+            binding.transcriptList.removeView(error.getRoot());
+            if (lastQuestion != null) {
+                ask(lastQuestion);
+            }
+        });
+        error.errorSettings.setOnClickListener(v -> openSettingsIa());
+        appendView(error.getRoot());
+    }
+
+    /** Pose une vue dans le transcript et déroule vers le bas. */
+    private void appendView(View view) {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.bottomMargin = (int) (10 * getResources().getDisplayMetrics().density);
+        binding.transcriptList.addView(view, params);
+        scrollDown();
+    }
+
+    private void scrollDown() {
+        binding.transcriptScroll.post(() ->
+                binding.transcriptScroll.fullScroll(View.FOCUS_DOWN));
     }
 
     /** Dialogue d'approbation : le diff AVANT d'agir vit DANS l'invite (REF-117). */
@@ -147,11 +332,11 @@ public final class AiPanelFragment extends Fragment {
             java.util.function.Consumer<jo.joide.ai.InteractivePermissionGate.Decision> onAnswer) {
         android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(
                 requireContext());
-        StringBuilder message = new StringBuilder("L'agent veut : ")
-                .append(request.tool()).append(" — ").append(request.path());
+        StringBuilder message = new StringBuilder(
+                getString(R.string.ia_permission_titre))
+                .append("\n").append(request.tool()).append(" — ").append(request.path());
         if (request.preview() != null && !request.preview().isEmpty()) {
-            message.append("\n\nAperçu du fichier (avant) :\n")
-                    .append(request.preview());
+            message.append("\n\n").append(request.preview());
         }
         builder.setTitle(R.string.ia_permission_titre)
                 .setMessage(message)
@@ -169,85 +354,10 @@ public final class AiPanelFragment extends Fragment {
         builder.show();
     }
 
-    /** Pose une bulle dans la conversation (l'utilisateur à droite, le reste à gauche). */
-    private void appendBubble(String text, BubbleKind kind) {
-        endThinking();
-        int pad = (int) (10 * getResources().getDisplayMetrics().density);
-        if (kind == BubbleKind.ERROR) {
-            // Studio : carte d'erreur avec titre + actions Réessayer / Ouvrir Paramètres.
-            LinearLayout card = new LinearLayout(requireContext());
-            card.setOrientation(LinearLayout.VERTICAL);
-            card.setPadding(pad * 2, pad, pad * 2, pad);
-            TextView title = new TextView(requireContext());
-            title.setText(getString(R.string.ia_erreur_titre));
-            title.setTextAppearance(requireContext(),
-                    com.google.android.material.R.style.TextAppearance_Material3_TitleSmall);
-            card.addView(title);
-            TextView detail = new TextView(requireContext());
-            detail.setText(text);
-            detail.setTextAppearance(requireContext(),
-                    com.google.android.material.R.style.TextAppearance_Material3_BodySmall);
-            card.addView(detail);
-            LinearLayout actions = new LinearLayout(requireContext());
-            actions.setOrientation(LinearLayout.HORIZONTAL);
-            Button retry = new Button(requireContext());
-            retry.setText(getString(R.string.ia_erreur_reessayer));
-            retry.setOnClickListener(v -> {
-                conversationList.removeView(card);
-                ask(lastQuestion);
-            });
-            actions.addView(retry, new LinearLayout.LayoutParams(0,
-                    ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-            Button open = new Button(requireContext());
-            open.setText(getString(R.string.ia_erreur_parametres));
-            open.setOnClickListener(v ->
-                    getParentFragmentManager().beginTransaction()
-                            .replace(((ViewGroup) requireView().getParent()).getId(),
-                                    new jo.joide.app.settings.SettingsFragment())
-                            .addToBackStack(null)
-                            .commit());
-            actions.addView(open, new LinearLayout.LayoutParams(0,
-                    ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-            card.addView(actions);
-            conversationList.addView(card);
-            conversationScroll.post(() -> conversationScroll.fullScroll(View.FOCUS_DOWN));
-            return;
-        }
-        TextView bubble = new TextView(requireContext());
-        bubble.setText(text);
-        bubble.setTextAppearance(requireContext(),
-                com.google.android.material.R.style.TextAppearance_Material3_BodyMedium);
-        bubble.setPadding(pad * 2, pad, pad * 2, pad);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        params.topMargin = pad;
-        bubble.setLayoutParams(params);
-        if (kind == BubbleKind.USER) {
-            params.gravity = android.view.Gravity.END;
-        }
-        conversationList.addView(bubble);
-        conversationScroll.post(() -> conversationScroll.fullScroll(View.FOCUS_DOWN));
-    }
-
-    private TextView thinkingView;
-
-    /** État « réponse en cours » : bulle de réflexion, remplacée à chaque delta. */
-    private void thinkingBubble() {
-        endThinking();
-        thinkingView = new TextView(requireContext());
-        thinkingView.setText(getString(R.string.ia_etat_reflexion));
-        thinkingView.setTextAppearance(requireContext(),
-                com.google.android.material.R.style.TextAppearance_Material3_BodySmall);
-        int pad = (int) (10 * getResources().getDisplayMetrics().density);
-        thinkingView.setPadding(pad * 2, pad, pad * 2, pad);
-        conversationList.addView(thinkingView);
-    }
-
-    /** Ferme la bulle de réflexion (fin de tour ou nouvelle bulle). */
-    private void endThinking() {
-        if (thinkingView != null) {
-            conversationList.removeView(thinkingView);
-            thinkingView = null;
-        }
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        binding = null;
+        thinkingBinding = null;
     }
 }

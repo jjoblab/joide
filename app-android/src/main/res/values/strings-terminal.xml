@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Chaînes des écrans Terminal et Git (studio HTML) — identifiants anglais,
+     textes français. Aucun doublon avec strings.xml (les chaînes communes y
+     restent : terminal_titre, git_branch, git_remote, etc.). -->
+<resources>
+    <!-- Terminal : barre, invite, prérendu de sortie (lignes exactes du studio) -->
+    <string name="terminal_prompt_demo">~/MonApplication $</string>
+    <string name="terminal_commande_hint">gradle --offline assembleDebug</string>
+    <string name="terminal_session_plus">+ Session</string>
+    <string name="terminal_sortie_invite">~/MonApplication $ gradle --offline assembleDebug</string>
+    <string name="terminal_sortie_daemon">Starting a Gradle Daemon (subsequent builds will be faster)</string>
+    <string name="terminal_sortie_tache_prebuild">&gt; Task :app:preBuild UP-TO-DATE</string>
+    <string name="terminal_sortie_tache_compilejava">&gt; Task :app:compileJava</string>
+    <string name="terminal_sortie_tache_dex">&gt; Task :app: dexRelease</string>
+    <string name="terminal_sortie_avertissement">warning: [options] source value 8 is obsolete</string>
+    <string name="terminal_sortie_build_ok">BUILD SUCCESSFUL in 9s</string>
+    <string name="terminal_sortie_taches">12 actionable tasks: 12 executed</string>
+
+    <!-- Terminal : touches du clavier étendu (labels exacts du studio) -->
+    <string name="terminal_kbd_esc">Esc</string>
+    <string name="terminal_kbd_tab">Tab</string>
+    <string name="terminal_kbd_ctrl">Ctrl</string>
+    <string name="terminal_kbd_alt">Alt</string>
+    <string name="terminal_kbd_gauche">←</string>
+    <string name="terminal_kbd_droite">→</string>
+    <string name="terminal_kbd_haut">↑</string>
+    <string name="terminal_kbd_bas">↓</string>
+    <string name="terminal_kbd_home">Home</string>
+    <string name="terminal_kbd_end">End</string>
+    <string name="terminal_kbd_pgup">Pg↑</string>
+    <string name="terminal_kbd_pgdn">Pg↓</string>
+    <string name="terminal_kbd_pipe">|</string>
+    <string name="terminal_kbd_tilde">~</string>
+    <string name="terminal_kbd_slash">/</string>
+    <string name="terminal_kbd_moins">-</string>
+    <string name="terminal_kbd_inf">&lt;</string>
+    <string name="terminal_kkbd_sup">&gt;</string>
+    <string name="terminal_kbd_dollar">$</string>
+
+    <!-- Git : titre projet, diff prérendu, commit, clonage -->
+    <string name="git_titre_projet">Git · %1$s</string>
+    <string name="git_diff_demo_moins">- if (name != null) greet(name);</string>
+    <string name="git_diff_demo_plus_1">+ Objects.requireNonNull(name);</string>
+    <string name="git_diff_demo_plus_2">+ greet(name);</string>
+    <string name="git_commit_message_demo">Vérification null dans onCreate</string>
+    <string name="git_clonage_section_titre">Cloner un dépôt (depuis l\'accueil · popup ancrée)</string>
+    <string name="git_clone_a_venir">Clonage réseau : à venir (câblage d\'un lot suivant)</string>
+    <string name="git_log_meta">%1$s · %2$s · LF</string>
+</resources>

@@ -1,10 +1,6 @@
 package jo.joide.app.git;
 
-import android.graphics.Color;
 import android.os.Bundle;
-import android.text.SpannableStringBuilder;
-import android.text.Spannable;
-import android.text.style.ForegroundColorSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -101,7 +97,6 @@ public class GitFragment extends Fragment {
         binding.gitStatusCard.setVisibility(View.VISIBLE);
         binding.gitBranchText.setText(getString(R.string.git_branch, git.currentBranch()));
         binding.gitRemoteText.setText(getString(R.string.git_remote, "origin"));
-        binding.gitSyncText.setVisibility(View.GONE);
         binding.gitAheadBehindText.setText(getString(R.string.git_ahead_behind, 0, 2));
         int modified = count(GitService.ChangeKind.MODIFIED)
                 + count(GitService.ChangeKind.UNTRACKED);
@@ -121,89 +116,113 @@ public class GitFragment extends Fragment {
     /** Liste de toutes les modifications (icône + nom + pastilles +n/−m), studio HTML. */
     private void renderFilesList() {
         binding.gitFilesList.removeAllViews();
+        binding.gitDiffBlock.removeAllViews();
         selectedPath = null;
         for (GitService.FileStatus file : status) {
             LinearLayout row = new LinearLayout(requireContext());
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setGravity(android.view.Gravity.CENTER_VERTICAL);
-            int pad = (int) (12 * getResources().getDisplayMetrics().density);
-            row.setPadding(pad, pad, pad, pad);
+            int pad = (int) (13 * getResources().getDisplayMetrics().density);
+            row.setPadding(16 * pad / 12, pad, 16 * pad / 12, pad);
+            // Icône d'état du studio : pencil (modifié) alerte / plus (nouveau) ok.
+            TextView icon = new TextView(requireContext());
+            icon.setText(file.kind() == GitService.ChangeKind.ADDED ? "+" : "✎");
+            icon.setTextColor(file.kind() == GitService.ChangeKind.ADDED
+                    ? getResources().getColor(R.color.ok)
+                    : getResources().getColor(R.color.alerte));
+            icon.setTextSize(16f);
+            icon.setGravity(android.view.Gravity.CENTER);
+            row.addView(icon);
+            int gap = (int) (10 * getResources().getDisplayMetrics().density);
+            ((LinearLayout.LayoutParams) icon.getLayoutParams()).rightMargin = gap;
             TextView name = new TextView(requireContext());
             name.setText(file.path());
             name.setTypeface(android.graphics.Typeface.MONOSPACE);
             name.setTextSize(12f);
-            name.setTextAppearance(requireContext(),
-                    com.google.android.material.R.style.TextAppearance_Material3_BodyMedium);
+            name.setTextColor(getResources().getColor(R.color.sur));
             row.addView(name, new LinearLayout.LayoutParams(0,
                     ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
             if (file.added() > 0) {
-                row.addView(countPill("+" + file.added(), 0xFF2E7D32));
+                row.addView(countPill("+" + file.added(), R.color.ok));
             }
             if (file.removed() > 0) {
-                row.addView(countPill("−" + file.removed(), 0xFFC62828));
+                row.addView(countPill("−" + file.removed(), R.color.erreur));
             }
             row.setOnClickListener(v -> {
                 selectedPath = file.path();
-                binding.gitDiffView.setText(coloredDiff(file));
+                renderDiff(file);
             });
             binding.gitFilesList.addView(row);
+            // Séparateur inset du studio entre rangées de fichiers.
+            if (status.indexOf(file) < status.size() - 1) {
+                View inset = new View(requireContext());
+                LinearLayout.LayoutParams insetParams = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, 1);
+                insetParams.leftMargin = 70 * pad / 13;
+                insetParams.rightMargin = 16 * pad / 13;
+                inset.setLayoutParams(insetParams);
+                inset.setBackground(getResources().getDrawable(R.drawable.fond_div_inset));
+                binding.gitFilesList.addView(inset);
+            }
         }
         // Diff du premier fichier affiché d'emblée (studio : MainActivity.java ouvert).
         if (!status.isEmpty()) {
             selectedPath = status.get(0).path();
-            binding.gitDiffView.setText(coloredDiff(status.get(0)));
+            renderDiff(status.get(0));
         }
     }
 
-    private TextView countPill(String text, int color) {
+    /** Diff du studio : lignes − sur fond err_soft, + sur fond ok_soft, mono 11sp. */
+    private void renderDiff(GitService.FileStatus file) {
+        binding.gitDiffBlock.removeAllViews();
+        try {
+            for (GitService.DiffLine line : git.diff(file.path())) {
+                TextView row = new TextView(requireContext());
+                row.setTypeface(android.graphics.Typeface.MONOSPACE);
+                row.setTextSize(11f);
+                row.setPadding((int) (10 * getResources().getDisplayMetrics().density), 2,
+                        (int) (10 * getResources().getDisplayMetrics().density), 2);
+                String prefix = line.kind() == GitService.LineKind.ADD ? "+ "
+                        : line.kind() == GitService.LineKind.REMOVE ? "- " : "  ";
+                row.setText(prefix + line.text());
+                if (line.kind() == GitService.LineKind.ADD) {
+                    row.setBackground(getResources().getDrawable(R.drawable.fond_diff_plus));
+                    row.setTextColor(getResources().getColor(R.color.sur));
+                } else if (line.kind() == GitService.LineKind.REMOVE) {
+                    row.setBackground(getResources().getDrawable(R.drawable.fond_diff_moins));
+                    row.setTextColor(getResources().getColor(R.color.sur));
+                } else {
+                    row.setTextColor(getResources().getColor(R.color.sur_var));
+                }
+                binding.gitDiffBlock.addView(row);
+            }
+        } catch (IOException e) {
+            TextView err = new TextView(requireContext());
+            err.setText(e.getMessage() != null ? e.getMessage() : "");
+            binding.gitDiffBlock.addView(err);
+        }
+    }
+
+    private TextView countPill(String text, int colorRes) {
         TextView pill = new TextView(requireContext());
         pill.setText(text);
-        pill.setTextColor(color);
+        pill.setTextColor(getResources().getColor(colorRes));
         pill.setTypeface(android.graphics.Typeface.MONOSPACE);
-        pill.setTextAppearance(requireContext(),
-                com.google.android.material.R.style.TextAppearance_Material3_LabelMedium);
+        pill.setTextSize(11f);
+        pill.setTypeface(pill.getTypeface(), android.graphics.Typeface.BOLD);
         int padH = (int) (8 * getResources().getDisplayMetrics().density);
         pill.setPadding(padH, 0, padH, 0);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                ViewGroup.LayoutParams.WRAP_CONTENT, (int) (22 * getResources().getDisplayMetrics().density));
         int margin = (int) (6 * getResources().getDisplayMetrics().density);
         params.setMargins(margin, 0, 0, 0);
+        pill.setGravity(android.view.Gravity.CENTER);
         pill.setLayoutParams(params);
         return pill;
     }
 
     private int count(GitService.ChangeKind kind) {
         return (int) status.stream().filter(s -> s.kind() == kind).count();
-    }
-
-    /** « Main.java · +2/−1 » — compte de lignes en suffixe. */
-    private String fileTitle(GitService.FileStatus file) {
-        return file.path() + (file.added() + file.removed() > 0
-                ? " · +" + file.added() + "/−" + file.removed() : "");
-    }
-
-    /** Diff coloré : vert pour les ajouts, rouge pour les retraits. */
-    private CharSequence coloredDiff(GitService.FileStatus file) {
-        SpannableStringBuilder span = new SpannableStringBuilder();
-        try {
-            for (GitService.DiffLine line : git.diff(file.path())) {
-                String prefix = line.kind() == GitService.LineKind.ADD ? "+ "
-                        : line.kind() == GitService.LineKind.REMOVE ? "- " : "  ";
-                int start = span.length();
-                span.append(prefix).append(line.text()).append('\n');
-                int color = line.kind() == GitService.LineKind.ADD
-                        ? Color.parseColor("#C8E6C9")
-                        : line.kind() == GitService.LineKind.REMOVE
-                        ? Color.parseColor("#FFCDD2") : Color.TRANSPARENT;
-                if (color != Color.TRANSPARENT) {
-                    span.setSpan(new ForegroundColorSpan(color), start, span.length(),
-                            Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-                }
-            }
-        } catch (IOException e) {
-            span.append(e.getMessage() != null ? e.getMessage() : "");
-        }
-        return span;
     }
 
     // ---- Historique --------------------------------------------------------

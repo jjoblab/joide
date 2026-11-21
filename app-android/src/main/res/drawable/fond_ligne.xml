@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Barre du studio : ligne 1dp contour varié. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@color/contour_var" />
+    <corners android:radius="0dp" />
+</shape>

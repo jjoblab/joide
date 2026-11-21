@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dock du studio : surface 3, hauts arrondis 26. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@color/sc" />
+    <corners android:topLeftRadius="26dp" android:topRightRadius="26dp" />
+</shape>

@@ -1,25 +1,14 @@
 package jo.joide.app.settings;
 
-import android.content.ClipData;
-import android.content.ClipboardManager;
 import android.content.Context;
 import android.os.Bundle;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.LinearLayout;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
-import android.widget.ScrollView;
-import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import java.io.IOException;
-import java.util.List;
 import jo.joide.ai.AiProvider;
 import jo.joide.ai.InteractivePermissionGate;
 import jo.joide.ai.KeyVault;
@@ -29,24 +18,28 @@ import jo.joide.app.R;
 import jo.joide.app.BuildConfig;
 import jo.joide.app.ModeSetupFragment;
 import jo.joide.app.ai.EncryptedKeyVault;
-import jo.joide.corestore.CrashJournal;
-import jo.joide.corestore.DiagnosticReport;
+import jo.joide.app.databinding.SettingsFragmentBinding;
+import jo.joide.app.databinding.SettingsHubRowBinding;
 import jo.joide.corestore.ModeManager;
 import jo.joide.corestore.ModePreferences;
 import jo.joide.workbench.WorkMode;
 
 /**
- * Écran Paramètres (lot L8, conception §11) : trois volets — IA (fournisseur,
- * modèle par fournisseur, clé au coffre chiffré, mode de permission + notice
- * honnête de ce qui part de l'appareil), Modes (bascule / réparation /
- * désinstallation, ADR-002 : le changement de mode vit ici), Diagnostic
- * (rapport copiable avec secrets rédigés, §10).
+ * Hub Paramètres (studio HTML : settingsScreen) : barre sticky, carte profil
+ * conteneur_primaire, quatre sections de rangées (Éditeur, IA, Construction,
+ * Système) — pastille + titre + desc + chevR, séparateurs inset.
+ *
+ * <p>Câblage réel conservé (lot L8, conception §11) : IA → page Réglage IA
+ * (fournisseur, clé au coffre, porte de permission), Moteurs de build →
+ * installation / bascule / réparation / désinstallation réelles (ADR-002),
+ * Diagnostic → rapport copiable avec secrets rédigés (§10).</p>
  */
 public final class SettingsFragment extends Fragment {
 
     private KeyVault vault;
     private InteractivePermissionGate gate;
     private ModeManager modes;
+    private SettingsFragmentBinding binding;
 
     @Nullable
     @Override
@@ -57,226 +50,137 @@ public final class SettingsFragment extends Fragment {
         gate = sharedGate();
         modes = new ModeManager(context.getFilesDir().toPath().resolve("modes"),
                 new ModePreferences(ModeSetupFragment.preferencesFile(context)));
+        binding = SettingsFragmentBinding.inflate(inflater, container, false);
 
-        ScrollView scroll = new ScrollView(context);
-        LinearLayout root = new LinearLayout(context);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(32, 32, 32, 32);
-        scroll.addView(root);
-        addAiSection(root, context);
-        addModesSection(root, context);
-        addDiagnosticSection(root, context);
-        return scroll;
+        // Barre : retour.
+        binding.backButton.setOnClickListener(v ->
+                requireActivity().getSupportFragmentManager().popBackStack());
+
+        // Carte profil : mode actif réel + nombre de projets récents du stockage.
+        binding.profileSubtitle.setText(getString(
+                R.string.settings_profile_mode_active,
+                activeMode().name(),
+                recentProjectCount()));
+
+        wireEditorRows();
+        wireIaRows();
+        wireBuildRows(context);
+        wireSystemRows(context);
+        return binding.getRoot();
     }
 
-    // ---- IA -----------------------------------------------------------------
-
-    private void addAiSection(LinearLayout root, Context context) {
-        root.addView(sectionTitle(context, context.getString(R.string.parametres_section_ia)));
-
-        // Fournisseur (laboratoire / passerelle) + modèle par fournisseur.
-        RadioGroup provider = new RadioGroup(context);
-        AiProvider laboratory = AiProvider.laboratory(new HttpLlmTransport());
-        AiProvider gateway = AiProvider.gateway(new HttpLlmTransport());
-        RadioButton labButton = radioButton(context, laboratory.displayName(), true);
-        RadioButton gatewayButton = radioButton(context, gateway.displayName(), false);
-        provider.addView(labButton);
-        provider.addView(gatewayButton);
-        root.addView(provider);
-
-        // Clé au coffre (laboratoire ; la passerelle locale n'en demande pas).
-        android.widget.EditText keyField = new android.widget.EditText(context);
-        keyField.setHint(context.getString(R.string.parametres_ia_cle_hint));
-        String existing = vault.apiKey("laboratoire");
-        if (existing != null) {
-            keyField.setText(existing);
-        }
-        root.addView(keyField);
-        Button saveKey = new Button(context);
-        saveKey.setText(context.getString(R.string.parametres_ia_cle_poser));
-        saveKey.setOnClickListener(v -> {
-            String value = keyField.getText().toString().trim();
-            if (value.isEmpty()) {
-                vault.removeApiKey("laboratoire");
-                Toast.makeText(context, R.string.parametres_ia_cle_retiree,
-                        Toast.LENGTH_SHORT).show();
-            } else {
-                vault.putApiKey("laboratoire", value);
-                Toast.makeText(context, R.string.parametres_ia_cle_coffre,
-                        Toast.LENGTH_SHORT).show();
-            }
-        });
-        root.addView(saveKey);
-
-        // Mode de permission (porte unique, trois modes persistés — REF-117).
-        root.addView(label(context, context.getString(R.string.parametres_ia_permission)));
-        RadioGroup permission = new RadioGroup(context);
-        RadioButton ask = radioButton(context,
-                context.getString(R.string.parametres_ia_permission_ask), true);
-        RadioButton auto = radioButton(context,
-                context.getString(R.string.parametres_ia_permission_auto), false);
-        RadioButton plan = radioButton(context,
-                context.getString(R.string.parametres_ia_permission_plan), false);
-        permission.addView(ask);
-        permission.addView(auto);
-        permission.addView(plan);
-        PermissionGate.Mode current = gate.mode();
-        ask.setChecked(current == PermissionGate.Mode.ASK_EACH);
-        auto.setChecked(current == PermissionGate.Mode.AUTO_ACCEPT);
-        plan.setChecked(current == PermissionGate.Mode.PLAN_ONLY);
-        permission.setOnCheckedChangeListener((g, checkedId) -> {
-            if (checkedId == ask.getId()) {
-                gate.setMode(PermissionGate.Mode.ASK_EACH);
-            } else if (checkedId == auto.getId()) {
-                gate.setMode(PermissionGate.Mode.AUTO_ACCEPT);
-            } else if (checkedId == plan.getId()) {
-                gate.setMode(PermissionGate.Mode.PLAN_ONLY);
-            }
-        });
-        root.addView(permission);
-
-        // Notice honnête (conception §9 : ce qui sort de l'appareil).
-        TextView notice = new TextView(context);
-        notice.setText(context.getString(R.string.parametres_ia_notice));
-        notice.setPadding(0, 16, 0, 0);
-        root.addView(notice);
+    /** Mode actif réel (ModePreferences — même lecture que l'atelier). */
+    private WorkMode activeMode() {
+        ModePreferences preferences = new ModePreferences(
+                ModeSetupFragment.preferencesFile(requireContext()));
+        jo.joide.corestore.ModeChoice choice = preferences.read();
+        return choice != null && choice.chosenMode() != null
+                ? choice.chosenMode() : WorkMode.FORGE;
     }
 
-    // ---- Modes (bascule, réparation, désinstallation — ADR-002) -------------
-
-    private void addModesSection(LinearLayout root, Context context) {
-        root.addView(sectionTitle(context, context.getString(R.string.parametres_section_modes)));
-        for (WorkMode mode : WorkMode.values()) {
-            LinearLayout row = new LinearLayout(context);
-            row.setOrientation(LinearLayout.VERTICAL);
-            String state = modes.isInstalled(mode)
-                    ? context.getString(R.string.parametres_mode_installe)
-                    : context.getString(R.string.parametres_mode_absent);
-            long bytes = modes.occupiedBytes(mode);
-            String size = bytes > 0
-                    ? String.format(java.util.Locale.getDefault(), " — %.1f Mo",
-                            bytes / 1024.0 / 1024.0)
-                    : "";
-            row.addView(label(context, mode + " : " + state + size));
-
-            Button install = new Button(context);
-            install.setText(context.getString(R.string.parametres_mode_installer));
-            // L'installation vit désormais sur l'écran dédié (studio HTML :
-            // composants à tailles, progression, annulation, phases vérifiées).
-            install.setOnClickListener(v ->
-                    getParentFragmentManager().beginTransaction()
-                            .replace(((ViewGroup) requireView().getParent()).getId(),
-                                    jo.joide.app.install.InstallFragment
-                                            .forMode(mode))
-                            .addToBackStack(null)
-                            .commit());
-            row.addView(install);
-
-            Button use = new Button(context);
-            use.setText(context.getString(R.string.parametres_mode_basculer));
-            use.setOnClickListener(v -> {
-                try {
-                    modes.switchTo(mode);
-                    Toast.makeText(context, R.string.parametres_mode_bascule_ok,
-                            Toast.LENGTH_SHORT).show();
-                } catch (Exception e) {
-                    Toast.makeText(context, e.getMessage(), Toast.LENGTH_LONG).show();
-                }
-            });
-            row.addView(use);
-
-            Button repair = new Button(context);
-            repair.setText(context.getString(R.string.parametres_mode_reparer));
-            repair.setOnClickListener(v -> {
-                try {
-                    modes.repair(mode);
-                    Toast.makeText(context, R.string.parametres_mode_fait,
-                            Toast.LENGTH_SHORT).show();
-                } catch (IOException e) {
-                    Toast.makeText(context, e.getMessage(), Toast.LENGTH_LONG).show();
-                }
-            });
-            row.addView(repair);
-
-            Button uninstall = new Button(context);
-            uninstall.setText(context.getString(R.string.parametres_mode_desinstaller));
-            uninstall.setOnClickListener(v -> {
-                try {
-                    modes.uninstall(mode);
-                    Toast.makeText(context, R.string.parametres_mode_desinstalle,
-                            Toast.LENGTH_SHORT).show();
-                } catch (IOException e) {
-                    Toast.makeText(context, e.getMessage(), Toast.LENGTH_LONG).show();
-                }
-            });
-            row.addView(uninstall);
-            root.addView(row);
-        }
+    /** Projets récents (répertoire projects du stockage interne, borné à 9). */
+    private int recentProjectCount() {
+        java.io.File projects = new java.io.File(
+                requireContext().getFilesDir(), "projects");
+        java.io.File[] entries = projects.listFiles();
+        return entries != null ? Math.min(entries.length, 9) : 0;
     }
 
-    // ---- Diagnostic (§10 : rapport copiable, secrets rédigés) ---------------
+    // ---- Section Éditeur (rangées studio : Apparence, Éditeur & clavier, Raccourcis)
 
-    private void addDiagnosticSection(LinearLayout root, Context context) {
-        root.addView(sectionTitle(context,
-                context.getString(R.string.parametres_section_diagnostic)));
-        Button copy = new Button(context);
-        copy.setText(context.getString(R.string.parametres_diagnostic_copier));
-        copy.setOnClickListener(v -> {
-            String report = diagnosticReport(context);
-            ClipboardManager clipboard = (ClipboardManager) context
-                    .getSystemService(Context.CLIPBOARD_SERVICE);
-            clipboard.setPrimaryClip(ClipData.newPlainText("JoIDE diagnostic", report));
-            Toast.makeText(context, R.string.parametres_diagnostic_copie,
-                    Toast.LENGTH_SHORT).show();
-        });
-        root.addView(copy);
-        Button share = new Button(context);
-        share.setText(context.getString(R.string.parametres_diagnostic_partager));
-        share.setOnClickListener(v -> {
-            android.content.Intent send = new android.content.Intent(
-                    android.content.Intent.ACTION_SEND);
-            send.setType("text/plain");
-            send.putExtra(android.content.Intent.EXTRA_TEXT, diagnosticReport(context));
-            send.putExtra(android.content.Intent.EXTRA_TITLE,
-                    context.getString(R.string.parametres_diagnostic_titre));
-            startActivity(android.content.Intent.createChooser(send, null));
-        });
-        root.addView(share);
+    private void wireEditorRows() {
+        row(binding.rowAppearance, R.drawable.ic_wb,
+                R.string.settings_row_appearance, R.string.settings_row_appearance_desc);
+        row(binding.rowEditorKeyboard, R.drawable.ic_code,
+                R.string.settings_row_editor_keyboard,
+                R.string.settings_row_editor_keyboard_desc);
+        row(binding.rowShortcuts, R.drawable.ic_book,
+                R.string.settings_row_shortcuts, R.string.settings_row_shortcuts_desc);
+        // Rangées descriptives du studio : rien à régler encore (lots suivants) —
+        // le retour honnête est le toast.
+        binding.rowAppearance.getRoot().setOnClickListener(v ->
+                notYet(R.string.settings_row_appearance));
+        binding.rowEditorKeyboard.getRoot().setOnClickListener(v ->
+                notYet(R.string.settings_row_editor_keyboard));
+        binding.rowShortcuts.getRoot().setOnClickListener(v ->
+                notYet(R.string.settings_row_shortcuts));
     }
 
-    /** Le rapport réel : versions (constatées), états de modes, journal borné du dernier build, écroulements. */
-    private String diagnosticReport(Context context) {
-        CrashJournal crashes = new CrashJournal(
-                context.getFilesDir().toPath().resolve("journal/ecroulements.txt"));
-        String lastBuildLog = lastBuildLog(context);
-        DiagnosticReport report = new DiagnosticReport(
-                new DiagnosticReport.Versions(
-                        BuildConfig.VERSION_NAME, "0.2.6", "8.11.1",
-                        "céleris, code-lsp, LayoutLib"),
-                List.of(
-                        new DiagnosticReport.ModeState("FORGE",
-                                modes.isInstalled(WorkMode.FORGE) ? "INSTALLED"
-                                        : "NOT_INSTALLED"),
-                        new DiagnosticReport.ModeState("GRADLE",
-                                modes.isInstalled(WorkMode.GRADLE) ? "INSTALLED"
-                                        : "NOT_INSTALLED")),
-                lastBuildLog, crashes.read());
-        return report.render();
+    // ---- Section IA (rangées studio : Fournisseurs, Permissions de l'agent) ----
+
+    private void wireIaRows() {
+        row(binding.rowProviders, R.drawable.ic_spark,
+                R.string.settings_row_providers, R.string.settings_row_providers_desc);
+        row(binding.rowAgentPermissions, R.drawable.ic_person,
+                R.string.settings_row_agent_permissions,
+                R.string.settings_row_agent_permissions_desc);
+        // Fournisseurs → page Réglage IA (fournisseur actif, clé, modèle, effort).
+        binding.rowProviders.getRoot().setOnClickListener(v ->
+                getParentFragmentManager().beginTransaction()
+                        .replace(((ViewGroup) requireView().getParent()).getId(),
+                                new SettingsIaPageFragment())
+                        .addToBackStack(null)
+                        .commit());
+        // Permissions de l'agent → la porte réelle, réglée depuis la page IA.
+        binding.rowAgentPermissions.getRoot().setOnClickListener(v ->
+                getParentFragmentManager().beginTransaction()
+                        .replace(((ViewGroup) requireView().getParent()).getId(),
+                                new SettingsIaPageFragment())
+                        .addToBackStack(null)
+                        .commit());
     }
 
-    /** Journal borné du dernier build (constaté sous filesDir/journal/build.txt). */
-    private String lastBuildLog(Context context) {
-        try {
-            java.nio.file.Path log = context.getFilesDir().toPath()
-                    .resolve("journal/build.txt");
-            if (!java.nio.file.Files.isRegularFile(log)) {
-                return "";
-            }
-            return new String(java.nio.file.Files.readAllBytes(log),
-                    java.nio.charset.StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            return "";
-        }
+    // ---- Section Construction (moteurs, terminal) -----------------------------
+
+    private void wireBuildRows(Context context) {
+        row(binding.rowBuildEngines, R.drawable.ic_play,
+                R.string.settings_row_build_engines,
+                R.string.settings_row_build_engines_desc);
+        row(binding.rowTerminal, R.drawable.ic_terminal,
+                R.string.settings_row_terminal, R.string.settings_row_terminal_desc);
+
+        // Moteurs de build : la rangée porte le bascuule réel du mode actif
+        // (ADR-002 : le changement de mode vit ici) ; l'installation vit sur
+        // l'écran dédié InstallFragment.
+        binding.rowBuildEngines.getRoot().setOnClickListener(v ->
+                getParentFragmentManager().beginTransaction()
+                        .replace(((ViewGroup) requireView().getParent()).getId(),
+                                jo.joide.app.install.InstallFragment.forMode(activeMode()))
+                        .addToBackStack(null)
+                        .commit());
+        // Terminal : sessions réelles du mode Gradle.
+        binding.rowTerminal.getRoot().setOnClickListener(v ->
+                getParentFragmentManager().beginTransaction()
+                        .replace(((ViewGroup) requireView().getParent()).getId(),
+                                new jo.joide.app.terminal.TerminalFragment())
+                        .addToBackStack(null)
+                        .commit());
+    }
+
+    // ---- Section Système (stockage, diagnostic, à propos) ---------------------
+
+    private void wireSystemRows(Context context) {
+        row(binding.rowStorage, R.drawable.ic_folder,
+                R.string.settings_row_storage, R.string.settings_row_storage_desc);
+        row(binding.rowDiagnostic, R.drawable.ic_gear,
+                R.string.settings_row_diagnostic, R.string.settings_row_diagnostic_desc);
+        row(binding.rowAbout, R.drawable.ic_star,
+                R.string.settings_row_about, R.string.settings_row_about_desc);
+
+        // Diagnostic : l'écran dédié (studio HTML) — versions constatées, modes,
+        // journaux bornés, copier/partager réels (secrets rédigés, §10).
+        binding.rowDiagnostic.getRoot().setOnClickListener(v ->
+                getParentFragmentManager().beginTransaction()
+                        .replace(((ViewGroup) requireView().getParent()).getId(),
+                                new DiagnosticFragment())
+                        .addToBackStack(null)
+                        .commit());
+        // À propos : version réelle de la coquille.
+        binding.rowAbout.getRoot().setOnClickListener(v ->
+                Toast.makeText(context, BuildConfig.VERSION_NAME, Toast.LENGTH_SHORT).show());
+        // Stockage : rien de destructif sans écran dédié — honnête.
+        binding.rowStorage.getRoot().setOnClickListener(v ->
+                notYet(R.string.settings_row_storage));
     }
 
     // ---- La porte interactive partagée avec le tiroir IA ---------------------
@@ -292,23 +196,21 @@ public final class SettingsFragment extends Fragment {
 
     // ---- Petits composants ---------------------------------------------------
 
-    private static TextView sectionTitle(Context context, String text) {
-        TextView title = new TextView(context, null, android.R.attr.listSeparatorTextViewStyle);
-        title.setText(text);
-        return title;
+    /** Remplit une rangée incluse (icône, titre, description — jamais de texte dur). */
+    private void row(SettingsHubRowBinding row, int icon, int title, int desc) {
+        row.rowIcon.setImageResource(icon);
+        row.rowTitle.setText(getString(title));
+        row.rowDesc.setText(getString(desc));
     }
 
-    private static TextView label(Context context, String text) {
-        TextView label = new TextView(context);
-        label.setText(text);
-        label.setPadding(0, 12, 0, 4);
-        return label;
+    /** Rangées dont l'écran dédié n'existe pas encore : retour honnête. */
+    private void notYet(int which) {
+        Toast.makeText(requireContext(), getString(which), Toast.LENGTH_SHORT).show();
     }
 
-    private static RadioButton radioButton(Context context, String text, boolean checked) {
-        RadioButton button = new RadioButton(context);
-        button.setText(text);
-        button.setChecked(checked);
-        return button;
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        binding = null;
     }
 }

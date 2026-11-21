@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tiroir IA (studio HTML : chatScreen + drawer IA de editorScreen).
+     Barre (pastille pc / Assistant / pills modèle + permission / ic_dots),
+     transcript scrollé (bulles, réflexion, cartes d'outils, question, erreur),
+     composer (bouton + 36, champ arrondi 24, bouton envoyer 48 primaire). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/sc">
+
+    <!-- ===== Barre du tiroir ===== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="10dp">
+
+        <FrameLayout
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:background="@drawable/fond_pastille"
+            android:layout_marginEnd="8dp">
+
+            <ImageView
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_spark"
+                android:importantForAccessibility="no"
+                app:tint="@color/sur_conteneur_primaire" />
+        </FrameLayout>
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/chat_assistant_title"
+            style="@style/Txt.Sm" />
+
+        <TextView
+            android:id="@+id/model_pill"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/fond_pill_sc_highest"
+            android:textColor="@color/sur"
+            android:text="@string/chat_model_default"
+            style="@style/Pill" />
+
+        <TextView
+            android:id="@+id/perm_pill"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/fond_pill_tc"
+            android:textColor="@color/sur_conteneur_tertiaire"
+            android:text="@string/chat_perm_auto"
+            style="@style/Pill" />
+
+        <ImageView
+            android:id="@+id/more_button"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_dots"
+            android:background="@drawable/fond_iconbtn"
+            android:contentDescription="@string/chat_more_actions"
+            android:padding="10dp"
+            app:tint="@color/sur_var" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/contour_var" />
+
+    <!-- ===== Zone scroll du transcript ===== -->
+    <ScrollView
+        android:id="@+id/transcript_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true"
+        android:scrollbars="none"
+        android:overScrollMode="never">
+
+        <LinearLayout
+            android:id="@+id/transcript_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="12dp" />
+    </ScrollView>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/contour_var" />
+
+    <!-- ===== Composer ===== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="12dp">
+
+        <ImageView
+            android:id="@+id/attach_button"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginEnd="10dp"
+            android:background="@drawable/fond_bouton_rond36"
+            android:scaleType="center"
+            android:src="@drawable/ic_plus"
+            android:contentDescription="@string/chat_attach"
+            app:tint="@color/sur_var" />
+
+        <EditText
+            android:id="@+id/input_field"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="10dp"
+            android:minHeight="48dp"
+            android:background="@drawable/fond_field_rond"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="10dp"
+            android:hint="@string/chat_input_hint"
+            android:textColorHint="@color/sur_var"
+            android:textColor="@color/sur"
+            android:textSize="14sp"
+            android:maxLines="6"
+            android:inputType="textMultiLine|textCapSentences"
+            android:importantForAutofill="no" />
+
+        <ImageView
+            android:id="@+id/send_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/fond_bouton_rond"
+            android:scaleType="center"
+            android:src="@drawable/ic_arrow"
+            android:contentDescription="@string/chat_send"
+            app:tint="@color/sur_primaire" />
+    </LinearLayout>
+</LinearLayout>

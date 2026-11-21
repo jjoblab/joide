@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dimensions — lues sur le studio (CSS, px → dp) : chips 38dp, CTA 64dp,
+     pastilles 40dp, barre 52dp, onglets 40dp, dock 26dp… -->
+<resources>
+    <!-- Composants communs (studio) -->
+    <dimen name="chip_hauteur">38dp</dimen>
+    <dimen name="chip_padding_h">15dp</dimen>
+    <dimen name="chip_txt">13sp</dimen>
+    <dimen name="ctah_hauteur">64dp</dimen>
+    <dimen name="tonal64_cote">64dp</dimen>
+    <dimen name="tonal64_txt">10.5sp</dimen>
+    <dimen name="iconbtn_cote">40dp</dimen>
+    <dimen name="avatar_cote">44dp</dimen>
+    <dimen name="pastille_cote">40dp</dimen>
+    <dimen name="carte_rayon">26dp</dimen>
+    <dimen name="rowitem_padding_v">13dp</dimen>
+    <dimen name="rowitem_padding_h">16dp</dimen>
+    <dimen name="switch_l">50dp</dimen>
+    <dimen name="switch_h">30dp</dimen>
+    <dimen name="switch_pouce">22dp</dimen>
+    <dimen name="navbar_hauteur">78dp</dimen>
+    <dimen name="nav_txt">10.5sp</dimen>
+    <dimen name="nav_icone">22dp</dimen>
+    <dimen name="field_rayon">12dp</dimen>
+    <dimen name="field_padding_v">13dp</dimen>
+    <dimen name="field_padding_h">14dp</dimen>
+    <dimen name="pill_hauteur">26dp</dimen>
+    <dimen name="pill_padding_h">12dp</dimen>
+    <dimen name="pill_txt">11.5sp</dimen>
+    <dimen name="handle_l">38dp</dimen>
+    <dimen name="handle_h">5dp</dimen>
+
+    <!-- Typo (échelle M3 expressive lue) -->
+    <dimen name="txt_xl">22sp</dimen>
+    <dimen name="txt_med">17sp</dimen>
+    <dimen name="txt_sm">15sp</dimen>
+    <dimen name="txt_body">14sp</dimen>
+    <dimen name="txt_body_s">12.5sp</dimen>
+    <dimen name="txt_label">14sp</dimen>
+    <dimen name="txt_eyebrow">12sp</dimen>
+    <dimen name="txt_pill">11.5sp</dimen>
+    <dimen name="txt_mono_s">13sp</dimen>
+    <dimen name="txt_code">12.5sp</dimen>
+    <dimen name="txt_out">11.5sp</dimen>
+
+    <!-- Éditeur (studio) -->
+    <dimen name="topbar_hauteur">52dp</dimen>
+    <dimen name="onglets_hauteur">40dp</dimen>
+    <dimen name="onglet_h">32dp</dimen>
+    <dimen name="breadcrumb_hauteur">34dp</dimen>
+    <dimen name="drawer_gauche_l">320dp</dimen>
+    <dimen name="drawer_droit_l">420dp</dimen>
+    <dimen name="dock_rayon">26dp</dimen>
+    <dimen name="dockbar_hauteur">52dp</dimen>
+    <dimen name="kbd_touche_h">36dp</dimen>
+    <dimen name="kbd_pleine_h">258dp</dimen>
+</resources>

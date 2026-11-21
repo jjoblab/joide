@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Terminal intégré (mode Gradle, studio HTML) : barre + bandeau de sessions à
-     pastilles vivantes + sortie colorée + entrée avec invite + clavier étendu. -->
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Terminal intégré (mode Gradle, studio HTML terminalScreen) : barre,
+     bandeau de sessions à pastilles vivantes, sortie monospace prérendue,
+     entrée avec invite verte, clavier étendu beige. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:background="@color/fond">
 
     <!-- Avis honnête : environnement non installé (jamais d'écran vide muet) -->
     <TextView
@@ -14,80 +15,117 @@
         android:layout_height="wrap_content"
         android:padding="16dp"
         android:visibility="gone"
-        android:textAppearance="?attr/textAppearanceBodyMedium"
-        android:textColor="?attr/colorOnSurfaceVariant" />
+        android:text="@string/terminal_non_installe"
+        android:textColor="@color/sur_var"
+        android:textSize="@dimen/txt_body_s" />
 
-    <!-- Barre : retour, titre, pastille Gradle env, + session -->
+    <!-- Barre : retour, titre, pill Gradle env, + session (studio) -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="52dp"
+        android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingStart="12dp"
-        android:paddingEnd="12dp">
+        android:paddingEnd="12dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp">
 
         <ImageButton
             android:id="@+id/terminal_back_button"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/terminal_titre"
-            android:src="@drawable/ic_arrow_back" />
+            style="IconBtn"
+            android:layout_width="@dimen/iconbtn_cote"
+            android:layout_height="@dimen/iconbtn_cote"
+            android:contentDescription="@string/commun_retour"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_back" />
 
         <TextView
             android:id="@+id/terminal_title_text"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="8dp"
-            android:text="@string/terminal_titre"
-            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:layout_marginStart="6dp"
             android:maxLines="1"
-            android:ellipsize="end" />
+            android:ellipsize="end"
+            android:text="@string/terminal_titre"
+            android:textColor="@color/sur"
+            style="Txt.Sm" />
 
         <TextView
             android:id="@+id/terminal_env_badge"
+            style="Pill"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textAppearance="?attr/textAppearanceLabelMedium"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp" />
+            android:layout_height="@dimen/pill_hauteur"
+            android:layout_marginStart="6dp"
+            android:background="@drawable/fond_pill_info"
+            android:text="@string/terminal_env_gradle"
+            android:textColor="@color/info"
+            android:textSize="@dimen/txt_pill"
+            android:textStyle="bold" />
 
-        <Button
+        <ImageButton
             android:id="@+id/new_session_button"
-            style="?attr/materialButtonOutlinedStyle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:minWidth="0dp"
-            android:layout_marginStart="8dp"
-            android:text="@string/terminal_nouvelle_session" />
+            style="IconBtn"
+            android:layout_width="@dimen/iconbtn_cote"
+            android:layout_height="@dimen/iconbtn_cote"
+            android:layout_marginStart="6dp"
+            android:contentDescription="@string/terminal_nouvelle_session"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_plus" />
     </LinearLayout>
 
     <!-- Bandeau des sessions (pastilles vivantes, horizontal) -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/sessions_recycler"
+    <HorizontalScrollView
+        android:id="@+id/sessions_scroller"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal" />
+        android:scrollbars="none"
+        android:overScrollMode="never">
 
-    <!-- Sortie colorée de la session active -->
-    <TextView
-        android:id="@+id/terminal_output"
+        <LinearLayout
+            android:id="@+id/sessions_row"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp" />
+    </HorizontalScrollView>
+
+    <!-- Sortie monospace (fond sc_lowest, prérendu du studio) -->
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:fontFamily="monospace"
-        android:textSize="12sp"
-        android:padding="14dp"
-        android:background="#0B1008" />
+        android:background="@color/sc_lowest"
+        android:scrollbars="none"
+        android:fillViewport="true">
 
-    <!-- Entrée : invite + champ + bouton envoyer -->
+        <TextView
+            android:id="@+id/terminal_output"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:textSize="12sp"
+            android:lineSpacingMultiplier="1.75"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp"
+            android:textColor="@color/sur" />
+    </ScrollView>
+
+    <!-- Entrée : invite verte + champ mono + bouton rond primaire -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:padding="10dp">
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp">
 
         <TextView
             android:id="@+id/terminal_prompt"
@@ -95,30 +133,83 @@
             android:layout_height="wrap_content"
             android:fontFamily="monospace"
             android:textSize="12sp"
-            android:textAppearance="?attr/textAppearanceBodySmall" />
+            android:text="@string/terminal_prompt_demo"
+            android:textColor="@color/ok" />
 
-        <com.google.android.material.textfield.TextInputEditText
+        <EditText
             android:id="@+id/terminal_input"
+            style="Champ"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:minHeight="38dp"
+            android:paddingTop="9dp"
+            android:paddingBottom="9dp"
             android:fontFamily="monospace"
             android:textSize="12.5sp"
             android:maxLines="1"
-            android:importantForAutofill="no" />
+            android:imeOptions="actionDone"
+            android:inputType="textNoSuggestions|textVisiblePassword"
+            android:importantForAutofill="no"
+            android:hint="@string/terminal_commande_hint"
+            android:text="@string/terminal_commande_demo" />
 
         <ImageButton
             android:id="@+id/terminal_send_button"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/fond_envoyer"
             android:contentDescription="@string/terminal_envoyer"
-            android:src="@drawable/ic_arrow_send" />
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_arrow"
+            android:tint="@color/sur_primaire" />
     </LinearLayout>
 
-    <!-- Clavier étendu interne (Ctrl/Alt/Échap/Tab/flèches ; GPLv3 évité) -->
-    <jo.joide.app.terminal.ExtendedKeyboardRow
-        android:id="@+id/extended_keyboard"
+    <!-- Clavier étendu du terminal (studio : beige, touches kbd-key) -->
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="44dp" />
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@color/clavier"
+        android:paddingTop="6dp"
+        android:paddingBottom="4dp">
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="none"
+            android:overScrollMode="never">
+
+            <LinearLayout
+                android:id="@+id/kbd_row"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp">
+
+                <TextView android:tag="esc" style="KbdTouche" android:text="@string/terminal_kbd_esc" />
+                <TextView android:tag="tab" style="KbdTouche" android:text="@string/terminal_kbd_tab" />
+                <TextView android:tag="ctrl" style="KbdTouche" android:text="@string/terminal_kbd_ctrl" />
+                <TextView android:tag="alt" style="KbdTouche" android:text="@string/terminal_kbd_alt" />
+                <TextView android:tag="left" style="KbdTouche" android:text="@string/terminal_kbd_gauche" />
+                <TextView android:tag="right" style="KbdTouche" android:text="@string/terminal_kbd_droite" />
+                <TextView android:tag="up" style="KbdTouche" android:text="@string/terminal_kbd_haut" />
+                <TextView android:tag="down" style="KbdTouche" android:text="@string/terminal_kbd_bas" />
+                <TextView android:tag="home" style="KbdTouche" android:text="@string/terminal_kbd_home" />
+                <TextView android:tag="end" style="KbdTouche" android:text="@string/terminal_kbd_end" />
+                <TextView android:tag="pgup" style="KbdTouche" android:text="@string/terminal_kbd_pgup" />
+                <TextView android:tag="pgdn" style="KbdTouche" android:text="@string/terminal_kbd_pgdn" />
+                <TextView android:tag="pipe" style="KbdTouche" android:text="@string/terminal_kbd_pipe" />
+                <TextView android:tag="tilde" style="KbdTouche" android:text="@string/terminal_kbd_tilde" />
+                <TextView android:tag="slash" style="KbdTouche" android:text="@string/terminal_kbd_slash" />
+                <TextView android:tag="minus" style="KbdTouche" android:text="@string/terminal_kbd_moins" />
+                <TextView android:tag="lt" style="KbdTouche" android:text="@string/terminal_kbd_inf" />
+                <TextView android:tag="gt" style="KbdTouche" android:text="@string/terminal_kkbd_sup" />
+                <TextView android:tag="dollar" style="KbdTouche" android:text="@string/terminal_kbd_dollar" />
+            </LinearLayout>
+        </HorizontalScrollView>
+    </LinearLayout>
 </LinearLayout>

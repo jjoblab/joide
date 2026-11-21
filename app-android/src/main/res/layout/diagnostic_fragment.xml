@@ -1,0 +1,327 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Écran DIAGNOSTIC — reconstruction exacte du studio HTML : barre sticky
+     (back, « Diagnostic » t-xl, ic_copy + ic_share 20), carte « Versions
+     constatées » (eyebrow + 4 lignes label/sur_var + mono), carte
+     « Installation des modes » (rangées pill INSTALLÉ/NON INSTALLÉ + t-sm +
+     taille + div-inset), carte « Journal borné du dernier build » (bloc mono
+     sc_lowest contour rayon 12 + note), carte « Journal des écroulements
+     (borné à 20) » (mono 11 sur_var), 2 chips 46dp rayon 14 ic_copy/ic_share.
+     Identifiants anglais (check-langue), textes en @string/. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/fond">
+
+    <!-- ===== Barre sticky : back 22, titre t-xl, copy + share 20 ===== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
+        android:background="@color/fond">
+
+        <ImageButton
+            android:id="@+id/diagnostic_back_button"
+            style="IconBtn"
+            android:layout_width="@dimen/iconbtn_cote"
+            android:layout_height="@dimen/iconbtn_cote"
+            android:contentDescription="@string/commun_retour"
+            android:src="@drawable/ic_back" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:text="@string/diagnostic_title"
+            android:textColor="@color/sur"
+            style="Txt.Xl" />
+
+        <ImageButton
+            android:id="@+id/diagnostic_copy_button"
+            style="IconBtn"
+            android:layout_width="@dimen/iconbtn_cote"
+            android:layout_height="@dimen/iconbtn_cote"
+            android:contentDescription="@string/diagnostic_copy_desc"
+            android:src="@drawable/ic_copy" />
+
+        <ImageButton
+            android:id="@+id/diagnostic_share_button"
+            style="IconBtn"
+            android:layout_width="@dimen/iconbtn_cote"
+            android:layout_height="@dimen/iconbtn_cote"
+            android:contentDescription="@string/diagnostic_share_desc"
+            android:src="@drawable/ic_share" />
+    </LinearLayout>
+
+    <!-- ===== Corps défilant ===== -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:scrollbars="none"
+        android:clipToPadding="false">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="20dp">
+
+            <!-- Carte « Versions constatées » -->
+            <LinearLayout
+                style="Carte"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp"
+                    android:text="@string/diagnostic_versions_section"
+                    style="Txt.Eyebrow" />
+
+                <!-- Lignes label/sur_var + mono (remplies par DiagnosticFragment) -->
+                <LinearLayout
+                    android:id="@+id/diagnostic_versions_list"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </LinearLayout>
+
+            <!-- Carte « Installation des modes » -->
+            <LinearLayout
+                style="Carte"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp"
+                    android:text="@string/diagnostic_modes_section"
+                    style="Txt.Eyebrow" />
+
+                <!-- Rangée Forge (INSTALLÉ / Forge / 184,3 Mo) -->
+                <LinearLayout
+                    android:id="@+id/diagnostic_mode_forge_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingTop="6dp"
+                    android:paddingBottom="6dp">
+
+                    <TextView
+                        android:id="@+id/diagnostic_mode_forge_state"
+                        style="Pill"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/fond_pill_ok"
+                        android:text="@string/diagnostic_mode_installed"
+                        android:textColor="@color/ok"
+                        android:textSize="@dimen/txt_pill"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/diagnostic_mode_forge_name"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:text="@string/mode_forge_nom"
+                        android:textColor="@color/sur"
+                        style="Txt.Sm" />
+
+                    <TextView
+                        android:id="@+id/diagnostic_mode_forge_size"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:layout_gravity="end"
+                        style="Txt.BodyS" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@drawable/fond_div_inset"
+                    android:alpha="0.55" />
+
+                <!-- Rangée Gradle (NON INSTALLÉ / Gradle / —) -->
+                <LinearLayout
+                    android:id="@+id/diagnostic_mode_gradle_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingTop="6dp"
+                    android:paddingBottom="6dp">
+
+                    <TextView
+                        android:id="@+id/diagnostic_mode_gradle_state"
+                        style="Pill"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/fond_pill_sc_highest"
+                        android:text="@string/diagnostic_mode_not_installed"
+                        android:textColor="@color/sur_var"
+                        android:textSize="@dimen/txt_pill"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/diagnostic_mode_gradle_name"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:text="@string/mode_gradle_nom"
+                        android:textColor="@color/sur"
+                        style="Txt.Sm" />
+
+                    <TextView
+                        android:id="@+id/diagnostic_mode_gradle_size"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:layout_gravity="end"
+                        style="Txt.BodyS" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Carte « Journal borné du dernier build » -->
+            <LinearLayout
+                style="Carte"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp"
+                    android:text="@string/diagnostic_build_log_section"
+                    style="Txt.Eyebrow" />
+
+                <!-- Bloc mono sc_lowest contour rayon 12 -->
+                <TextView
+                    android:id="@+id/diagnostic_build_log"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/fond_field"
+                    android:backgroundTint="@color/sc_lowest"
+                    android:padding="12dp"
+                    android:fontFamily="monospace"
+                    android:textSize="11.5sp"
+                    android:textColor="@color/sur_var"
+                    android:lineSpacingMultiplier="1.8" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/diagnostic_build_log_note"
+                    style="Txt.BodyS" />
+            </LinearLayout>
+
+            <!-- Carte « Journal des écroulements (borné à 20) » -->
+            <LinearLayout
+                style="Carte"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp"
+                    android:text="@string/diagnostic_crash_log_section"
+                    style="Txt.Eyebrow" />
+
+                <TextView
+                    android:id="@+id/diagnostic_crash_log"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="monospace"
+                    android:textSize="11sp"
+                    android:textColor="@color/sur_var"
+                    android:lineSpacingMultiplier="1.9" />
+            </LinearLayout>
+
+            <!-- 2 chips 46dp rayon 14 : Copier le rapport / Partager… -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="16dp">
+
+                <LinearLayout
+                    android:id="@+id/diagnostic_copy_chip"
+                    style="Chip"
+                    android:layout_width="0dp"
+                    android:layout_height="46dp"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_copy" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="7dp"
+                        android:text="@string/diagnostic_action_copy"
+                        android:textColor="@color/sur"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/diagnostic_share_chip"
+                    style="Chip"
+                    android:layout_width="0dp"
+                    android:layout_height="46dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="10dp"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_share" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="7dp"
+                        android:text="@string/diagnostic_action_share"
+                        android:textColor="@color/sur"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

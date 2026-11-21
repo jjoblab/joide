@@ -1,154 +1,265 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Accueil : liste des projets, création, import (fiche ecrans/accueil.md). -->
-<androidx.coordinatorlayout.widget.CoordinatorLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Accueil (studio HTML, onglet « Accueil », 1:1) : titre + bell + avatar,
+     chips filtres 38dp avec compteurs, cartes sc_low à pastille, CTA 64dp
+     asymétrique + tonal64, état vide pointillé, navbar 78dp. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical">
 
-    <com.google.android.material.appbar.AppBarLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            app:title="@string/accueil_titre" />
-    </com.google.android.material.appbar.AppBarLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior">
-
-    <androidx.core.widget.NestedScrollView
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_weight="1"
+        android:background="@color/fond"
+        android:fillViewport="true">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="14dp"
+            android:paddingBottom="20dp">
 
-            <Button
-                android:id="@+id/new_project_button"
+            <!-- Barre de tête : titre + bell + avatar -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/accueil_nouveau" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
-            <Button
-                android:id="@+id/import_project_button"
-                style="?attr/materialButtonOutlinedStyle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/accueil_importer" />
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/accueil_titre"
+                    android:textColor="@color/sur"
+                    style="Txt.Xl" />
 
-            <!-- Filtres par mode (studio HTML : Tous / Forge / Gradle) -->
+                <ImageButton
+                    android:id="@+id/bell_button"
+                    style="IconBtn"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:contentDescription="@string/accueil_bell"
+                    android:src="@drawable/ic_bell"
+                    android:scaleType="centerInside"
+                    app:tint="@color/sur_var" />
+
+                <ImageButton
+                    android:id="@+id/avatar_button"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/fond_avatar"
+                    android:contentDescription="@string/parametres_titre"
+                    android:src="@drawable/ic_person"
+                    android:scaleType="centerInside"
+                    app:tint="@color/sur_sc2" />
+            </LinearLayout>
+
+            <!-- Filtres (studio : Tous 4 · Forge 2 · Gradle 2, chips 38dp avec compte) -->
             <LinearLayout
                 android:id="@+id/filter_row"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:layout_marginTop="12dp"
-                android:visibility="gone">
-
-                <TextView
-                    android:id="@+id/filter_all"
-                    android:textAppearance="?attr/textAppearanceLabelLarge"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
-
-                <TextView
-                    android:id="@+id/filter_forge"
-                    android:textAppearance="?attr/textAppearanceLabelLarge"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp" />
-
-                <TextView
-                    android:id="@+id/filter_gradle"
-                    android:textAppearance="?attr/textAppearanceLabelLarge"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp" />
-            </LinearLayout>
-
-            <!-- Clonage git (popup ancrée de l\'accueil, studio HTML) -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/clone_card"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:visibility="gone">
+                android:layout_marginTop="14dp"
+                android:layout_marginBottom="4dp">
 
                 <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="14dp">
+                    android:id="@+id/filter_all"
+                    style="Chip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="38dp"
+                    android:gravity="center_vertical">
 
                     <TextView
+                        android:id="@+id/filter_all_text"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="8dp"
-                        android:text="@string/git_clonage_titre"
-                        android:textAppearance="?attr/textAppearanceLabelMedium" />
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/clone_url_field"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:hint="@string/git_clonage_url_hint"
-                            android:inputType="textUri"
-                            android:importantForAutofill="no" />
-                    </com.google.android.material.textfield.TextInputLayout>
+                        android:textColor="@color/sur"
+                        android:textSize="@dimen/chip_txt"
+                        android:textStyle="bold" />
 
                     <TextView
+                        android:id="@+id/filter_all_count"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:text="@string/git_clonage_detection"
-                        android:textAppearance="?attr/textAppearanceBodySmall" />
-
-                    <Button
-                        android:id="@+id/clone_button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:text="@string/git_clonage_button" />
+                        android:layout_height="20dp"
+                        android:layout_marginStart="7dp"
+                        android:gravity="center"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp"
+                        android:background="@drawable/fond_ct_pastille"
+                        android:textColor="@color/sur_conteneur_primaire"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
 
-            <!-- État vide : encadré pointillé + phrase + action concrète (design-system §9) -->
-            <TextView
+                <LinearLayout
+                    android:id="@+id/filter_forge"
+                    style="Chip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="38dp"
+                    android:layout_marginStart="8dp"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/mode_forge_nom"
+                        android:textColor="@color/sur"
+                        android:textSize="@dimen/chip_txt"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/filter_forge_count"
+                        android:layout_width="wrap_content"
+                        android:layout_height="20dp"
+                        android:layout_marginStart="7dp"
+                        android:gravity="center"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp"
+                        android:background="@drawable/fond_ct_pastille"
+                        android:textColor="@color/sur_conteneur_primaire"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/filter_gradle"
+                    style="Chip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="38dp"
+                    android:layout_marginStart="8dp"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/mode_gradle_nom"
+                        android:textColor="@color/sur"
+                        android:textSize="@dimen/chip_txt"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/filter_gradle_count"
+                        android:layout_width="wrap_content"
+                        android:layout_height="20dp"
+                        android:layout_marginStart="7dp"
+                        android:gravity="center"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp"
+                        android:background="@drawable/fond_ct_pastille"
+                        android:textColor="@color/sur_conteneur_primaire"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Cartes de projets (rangées sc_low, pastille tc pour Forge / sc2 pour Gradle) -->
+            <LinearLayout
+                android:id="@+id/projects_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+            <!-- État vide pointillé (studio : fond_vide 28dp) -->
+            <LinearLayout
                 android:id="@+id/empty_state_view"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
+                android:layout_marginTop="18dp"
+                android:orientation="vertical"
                 android:gravity="center"
-                android:padding="24dp"
-                android:text="@string/accueil_vide_texte"
-                android:textAppearance="?attr/textAppearanceBodyMedium" />
+                android:background="@drawable/fond_vide"
+                android:paddingTop="36dp"
+                android:paddingBottom="36dp"
+                android:paddingStart="24dp"
+                android:paddingEnd="24dp"
+                android:visibility="gone">
 
-            <!-- Liste des projets (cartes) : racine du stockage privé, L4 -->
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/projects_recycler"
+                <ImageView
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:src="@drawable/ic_folder"
+                    android:scaleType="centerInside"
+                    android:contentDescription="@string/accueil_vide_titre"
+                    app:tint="@color/contour_var" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center"
+                    android:text="@string/accueil_vide_studio"
+                    style="Txt.BodyS" />
+            </LinearLayout>
+
+            <!-- CTA 64dp asymétrique + tonal64 « Plus » (studio) -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:nestedScrollingEnabled="false"
-                android:visibility="gone" />
+                android:orientation="horizontal"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="6dp">
 
-            <!-- Avis passager (échec honnête, action non câblée) : jamais muet -->
+                <LinearLayout
+                    android:id="@+id/new_project_button"
+                    style="Cta"
+                    android:layout_width="0dp"
+                    android:layout_height="64dp"
+                    android:layout_weight="1">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_plus"
+                        android:scaleType="centerInside"
+                        android:contentDescription="@string/accueil_nouveau_studio"
+                        app:tint="@color/sur_primaire" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:text="@string/accueil_nouveau_studio"
+                        android:textColor="@color/sur_primaire"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/more_button"
+                    style="Tonal64"
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:layout_marginStart="10dp"
+                    android:orientation="vertical">
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/ic_dots"
+                        android:scaleType="centerInside"
+                        android:contentDescription="@string/accueil_plus"
+                        app:tint="@color/sur_sc2" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/accueil_plus"
+                        android:textColor="@color/sur_sc2"
+                        android:textSize="10.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Avis passager (échec honnête) -->
             <TextView
                 android:id="@+id/transient_notice"
                 android:layout_width="match_parent"
@@ -156,27 +267,143 @@
                 android:layout_marginTop="8dp"
                 android:padding="12dp"
                 android:visibility="gone"
-                android:textAppearance="?attr/textAppearanceBodyMedium"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:background="?attr/colorSurfaceVariant" />
+                style="Txt.BodyS" />
         </LinearLayout>
-    </androidx.core.widget.NestedScrollView>
+    </ScrollView>
 
-    <!-- Navbar du bas (studio : Projets · IA · Apprendre · Défis badge 2) -->
-    <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/bottom_nav"
+    <!-- Navbar 78dp (studio : Projets · IA · Apprendre · Défis badge 2) -->
+    <LinearLayout
+        android:id="@+id/navbar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:menu="@menu/bottom_nav_menu"
-        app:labelVisibilityMode="labeled" />
-    </LinearLayout>
+        android:layout_height="78dp"
+        android:orientation="horizontal"
+        android:background="@color/sc"
+        android:paddingBottom="8dp">
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fab_new_project"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="16dp"
-        android:contentDescription="@string/accueil_nouveau"
-        android:src="@android:drawable/ic_input_add" />
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+        <LinearLayout
+            android:id="@+id/nav_projects"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingTop="8dp">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:src="@drawable/ic_folder"
+                android:scaleType="centerInside"
+                android:contentDescription="@string/accueil_nav_projets"
+                app:tint="@color/primaire" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/accueil_nav_projets"
+                android:textColor="@color/primaire"
+                android:textSize="10.5sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/nav_ia"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingTop="8dp">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:src="@drawable/ic_spark"
+                android:scaleType="centerInside"
+                android:contentDescription="@string/accueil_nav_ia"
+                app:tint="@color/sur_var" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/accueil_nav_ia"
+                android:textColor="@color/sur_var"
+                android:textSize="10.5sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/nav_apprendre"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingTop="8dp">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:src="@drawable/ic_book"
+                android:scaleType="centerInside"
+                android:contentDescription="@string/accueil_nav_apprendre"
+                app:tint="@color/sur_var" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/accueil_nav_apprendre"
+                android:textColor="@color/sur_var"
+                android:textSize="10.5sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/nav_defis"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingTop="8dp">
+
+            <FrameLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_star"
+                    android:scaleType="centerInside"
+                    android:contentDescription="@string/accueil_nav_defis"
+                    app:tint="@color/sur_var" />
+
+                <TextView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_gravity="end|top"
+                    android:layout_marginTop="-4dp"
+                    android:layout_marginEnd="-6dp"
+                    android:gravity="center"
+                    android:background="@drawable/fond_badge"
+                    android:text="@string/accueil_defis_badge"
+                    android:textColor="@color/conteneur_erreur"
+                    android:textSize="9.5sp"
+                    android:textStyle="bold" />
+            </FrameLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/accueil_nav_defis"
+                android:textColor="@color/sur_var"
+                android:textSize="10.5sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

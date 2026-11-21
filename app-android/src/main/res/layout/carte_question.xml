@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Carte question (studio : conteneur tertiaire, rayon 14, chips sc_highest). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/fond_carte_question"
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="14dp">
+
+    <TextView
+        android:id="@+id/question_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/chat_question_title"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:textColor="@color/sur_conteneur_tertiaire"
+        android:letterSpacing="-0.007" />
+
+    <TextView
+        android:id="@+id/question_body"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="@string/chat_question_body"
+        android:textSize="12.5sp"
+        android:textColor="@color/sur_conteneur_tertiaire"
+        android:alpha="0.85"
+        android:lineSpacingMultiplier="1.5" />
+
+    <LinearLayout
+        android:id="@+id/question_choices"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="12dp" />
+</LinearLayout>

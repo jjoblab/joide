@@ -1,15 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Jetons sombre — lus pixel par pixel sur le studio (phones[data-theme=dark]). -->
 <resources>
-    <!-- Jetons sombre -->
-    <color name="primaire">#A9C8FF</color>
-    <color name="sur_primaire">#002F4C</color>
-    <color name="conteneur_primaire">#00456F</color>
-    <color name="sur_conteneur_primaire">#D4E3FF</color>
-    <color name="secondaire">#BDC7E0</color>
-    <color name="surface">#1A1C1A</color>
-    <color name="sur_surface">#E2E2E9</color>
-    <color name="sur_surface_attenue">#C4C6CC</color>
-    <color name="contour">#8E9199</color>
-    <color name="erreur">#FFB4AB</color>
-    <color name="tertiaire">#A6D0E8</color>
+    <color name="fond">#12140C</color>
+    <color name="sc_lowest">#0C0F07</color>
+    <color name="sc_low">#1A1C14</color>
+    <color name="sc">#1F2118</color>
+    <color name="sc_high">#292B22</color>
+    <color name="sc_highest">#34362C</color>
+
+    <color name="sur">#E3E3D6</color>
+    <color name="sur_var">#BDC2A9</color>
+    <color name="contour">#90937E</color>
+    <color name="contour_var">#42453A</color>
+
+    <color name="primaire">#CDF14A</color>
+    <color name="sur_primaire">#1B2400</color>
+    <color name="conteneur_primaire">#344200</color>
+    <color name="sur_conteneur_primaire">#E4FF74</color>
+
+    <color name="sc2">#424937</color>
+    <color name="sur_sc2">#D8E0BE</color>
+
+    <color name="tertiaire">#DEB8F5</color>
+    <color name="sur_tertiaire">#31124A</color>
+    <color name="conteneur_tertiaire">#4B2B64</color>
+    <color name="sur_conteneur_tertiaire">#F2D9FF</color>
+
+    <color name="erreur">#FFB4A2</color>
+    <color name="conteneur_erreur">#723523</color>
+    <color name="sur_conteneur_erreur">#FFDBD1</color>
+
+    <color name="ok">#34D058</color>
+    <color name="alerte">#FFB340</color>
+    <color name="info">#5AC8E0</color>
+
+    <color name="ok_soft">#34D05829</color>
+    <color name="err_soft">#FFB4A221</color>
+    <color name="warn_soft">#FFB34024</color>
+    <color name="info_soft">#5AC8E021</color>
+
+    <color name="scrim">#00000073</color>
+    <color name="clavier">#232519</color>
+    <color name="clavier_touche">#2F3124</color>
 </resources>

@@ -4,29 +4,31 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import jo.joide.app.R;
 import jo.joide.app.databinding.HomeFragmentBinding;
-import jo.joide.app.databinding.ProjectCardItemBinding;
 import jo.joide.corestore.ProjectStore;
 import jo.joide.corestore.ProjectTemplates;
 import jo.joide.workbench.WorkMode;
 
 /**
- * Accueil (fiche ecrans/accueil.md) : liste des projets du stockage privé (cartes
- * à une ligne de méta + badge des modes compatibles), création depuis modèles,
- * import (SAF, câblé en L8 avec les permissions documentées), ouverture de
- * l'atelier sur le projet choisi. L'état vide est porté par le gabarit : il
- * disparaît dès qu'une carte existe.
+ * Accueil (studio HTML, onglet « Accueil », rendu 1:1) : titre + bell + avatar,
+ * chips de filtre avec compteurs, cartes de projets à pastille (prune Forge /
+ * conteneur secondaire Gradle) + méta de dernière ouverture, CTA asymétrique
+ * 64 dp + bouton tonal « Plus », état vide pointillé, navbar du bas. Le
+ * stockage reste le vrai ({@link ProjectStore}, ADR-010) ; le clonage git vit
+ * sur l'écran Git (studio : popup ancrée à l'accueil).
  */
 public class HomeFragment extends Fragment {
 
@@ -47,70 +49,53 @@ public class HomeFragment extends Fragment {
         binding = HomeFragmentBinding.inflate(inflater, container, false);
         store = new ProjectStore(projectsRoot(requireContext()));
 
-        binding.projectsRecycler.setLayoutManager(new LinearLayoutManager(getContext()));
-        refresh();
-
-        // L8 : entrée Paramètres dans le menu de la toolbar (IA, modes, diagnostic).
-        binding.toolbar.inflateMenu(R.menu.home_menu);
-        binding.toolbar.setOnMenuItemClickListener(item -> {
-            if (item.getItemId() == R.id.action_settings) {
+        // Avatar du studio : entrée Paramètres (hub en sections).
+        binding.avatarButton.setOnClickListener(v ->
                 getParentFragmentManager().beginTransaction()
                         .replace(((ViewGroup) requireView().getParent()).getId(),
                                 new jo.joide.app.settings.SettingsFragment())
-                        .addToBackStack(null)
-                        .commit();
-                return true;
-            }
-            return false;
-        });
+                        .addToBackStack(null).commit());
+        // Cloche du studio : honnête (aucune notification câblée dans ce lot).
+        binding.bellButton.setOnClickListener(v ->
+                showTransientNotice(getString(R.string.accueil_nav_bientot)));
 
-        binding.newProjectButton.setOnClickListener(v -> showCreateDialog());
-        binding.fabNewProject.setOnClickListener(v -> showCreateDialog());
-        binding.importProjectButton.setOnClickListener(v -> {
-            // Import SAF (fiche accueil) : câblé avec les permissions en L8 ; le
-            // bouton reste honnête (action annoncée non câblée, jamais un échec muet).
-            showTransientNotice(getString(R.string.import_non_cable_encore));
-        });
+        binding.newProjectButton.setOnClickListener(v ->
+                getParentFragmentManager().beginTransaction()
+                        .replace(((ViewGroup) requireView().getParent()).getId(),
+                                new CreateProjectFragment())
+                        .addToBackStack(null)
+                        .commit());
+        binding.moreButton.setOnClickListener(v ->
+                // « Plus » du studio : import + clonage annoncés là où ils vivent.
+                showTransientNotice(getString(R.string.import_non_cable_encore)));
         setupFilters();
-        setupCloneCard();
-        setupBottomNav();
+        setupNavbar();
+        refresh();
         return binding.getRoot();
     }
 
-    /** Navbar du studio : Projets actif ; IA ouvre l'assistant ; Apprendre/Défis honnêtes. */
-    private void setupBottomNav() {
-        binding.bottomNav.setSelectedItemId(R.id.nav_projects);
-        binding.bottomNav.setOnItemSelectedListener(item -> {
-            int id = item.getItemId();
-            if (id == R.id.nav_ia) {
-                getParentFragmentManager().beginTransaction()
-                        .replace(((ViewGroup) requireView().getParent()).getId(),
-                                new jo.joide.app.ai.AiPanelFragment())
-                        .addToBackStack(null)
-                        .commit();
-                return true;
-            }
-            if (id == R.id.nav_apprendre || id == R.id.nav_defis) {
-                showTransientNotice(getString(R.string.accueil_nav_bientot));
-                return false; // la sélection ne s'installe pas (pas d'écran derrière).
-            }
-            return true;
-        });
-    }
-
-    // ---- Filtres par mode (studio HTML : Tous / Forge / Gradle) ----------------
+    // ---- Filtres par mode (studio : chips 38dp avec compteurs, ON = sc2) ----
 
     private void setupFilters() {
-        binding.filterRow.setVisibility(
-                store.list().isEmpty() ? View.GONE : View.VISIBLE);
-        binding.filterAll.setText(getString(R.string.accueil_filtre_tous,
-                store.list().size()));
-        binding.filterForge.setText(getString(R.string.mode_forge_nom));
-        binding.filterGradle.setText(getString(R.string.mode_gradle_nom));
+        List<ProjectStore.ProjectCard> all = store.list();
+        binding.filterRow.setVisibility(all.isEmpty() ? View.GONE : View.VISIBLE);
+        binding.filterAllText.setText(getString(R.string.accueil_filtre_tous_sans));
+        binding.filterAllCount.setText(String.valueOf(all.size()));
+        int forge = 0;
+        int gradle = 0;
+        for (ProjectStore.ProjectCard card : all) {
+            if (card.compatibleModes().contains(WorkMode.FORGE)) {
+                forge++;
+            }
+            if (card.compatibleModes().contains(WorkMode.GRADLE)) {
+                gradle++;
+            }
+        }
+        binding.filterForgeCount.setText(String.valueOf(forge));
+        binding.filterGradleCount.setText(String.valueOf(gradle));
         binding.filterAll.setOnClickListener(v -> applyFilter(null));
         binding.filterForge.setOnClickListener(v -> applyFilter(WorkMode.FORGE));
         binding.filterGradle.setOnClickListener(v -> applyFilter(WorkMode.GRADLE));
-        applyFilter(null);
     }
 
     private void applyFilter(WorkMode mode) {
@@ -119,42 +104,14 @@ public class HomeFragment extends Fragment {
         cards = list.stream()
                 .filter(c -> mode == null || c.compatibleModes().contains(mode))
                 .toArray(ProjectStore.ProjectCard[]::new);
-        binding.filterAll.setSelected(mode == null);
-        binding.filterForge.setSelected(mode == WorkMode.FORGE);
-        binding.filterGradle.setSelected(mode == WorkMode.GRADLE);
-        binding.projectsRecycler.setAdapter(new CardsAdapter());
-        boolean empty = cards.length == 0;
-        binding.emptyStateView.setVisibility(empty ? View.VISIBLE : View.GONE);
-        binding.projectsRecycler.setVisibility(empty ? View.GONE : View.VISIBLE);
-    }
-
-    // ---- Clonage git (popup ancrée de l'accueil → carte dépliable) ------------
-
-    private void setupCloneCard() {
-        // Le clonage se déplie depuis la carte (l'import garde sa place) : la
-        // brique JGit vit dans core-git (testée JVM).
-        binding.cloneCard.setVisibility(View.VISIBLE);
-        binding.cloneButton.setOnClickListener(v -> {
-            String url = binding.cloneUrlField.getText().toString().trim();
-            if (url.isEmpty()) {
-                return;
-            }
-            new Thread(() -> {
-                try {
-                    java.nio.file.Path target = projectsRoot(requireContext())
-                            .resolve(url.replaceAll(".*/", "").replace(".git", ""));
-                    jo.joide.coregit.GitService.cloneInto(url, target);
-                    requireActivity().runOnUiThread(() -> {
-                        showTransientNotice(getString(R.string.git_clonage_ok,
-                                target.getFileName().toString()));
-                        refresh();
-                    });
-                } catch (IOException e) {
-                    requireActivity().runOnUiThread(
-                            () -> showTransientNotice(e.getMessage()));
-                }
-            }, "clone-accueil").start();
-        });
+        // Chip sélectionnée : fond sc2 (studio .chip.on).
+        binding.filterAll.setBackground(
+                mode == null ? getResources().getDrawable(R.drawable.fond_chip_on) : null);
+        binding.filterForge.setBackground(
+                mode == WorkMode.FORGE ? getResources().getDrawable(R.drawable.fond_chip_on) : null);
+        binding.filterGradle.setBackground(
+                mode == WorkMode.GRADLE ? getResources().getDrawable(R.drawable.fond_chip_on) : null);
+        renderCards();
     }
 
     /** Recharge la liste (le filtre courant s'applique de nouveau). */
@@ -162,81 +119,129 @@ public class HomeFragment extends Fragment {
         applyFilter(filter);
     }
 
-    /** Dialog de création (studio HTML, onglet Création) : nom, paquet, modèles réels. */
-    private void showCreateDialog() {
-        java.util.List<String> names = ProjectTemplates.standard().names();
-        CharSequence[] items = names.toArray(new CharSequence[0]);
-        android.app.AlertDialog.Builder builder =
-                new android.app.AlertDialog.Builder(requireContext());
-        builder.setTitle(getString(R.string.creation_titre));
-        LinearLayout body = new LinearLayout(requireContext());
-        body.setOrientation(LinearLayout.VERTICAL);
-        int pad = (int) (16 * getResources().getDisplayMetrics().density);
-        body.setPadding(pad, pad / 2, pad, 0);
-        // Studio : chips de catégorie au-dessus des champs (Tous/Forge/Gradle/Bibliothèque).
-        LinearLayout chips = new LinearLayout(requireContext());
-        chips.setOrientation(LinearLayout.HORIZONTAL);
-        int[] categories = {R.string.creation_categorie_tous,
-                R.string.creation_categorie_forge,
-                R.string.creation_categorie_gradle,
-                R.string.creation_categorie_bibliotheque};
-        for (int i = 0; i < categories.length; i++) {
-            TextView chip = new TextView(requireContext());
-            chip.setText(getString(categories[i]));
-            chip.setTextAppearance(requireContext(),
-                    com.google.android.material.R.style.TextAppearance_Material3_LabelLarge);
-            int chipPad = (int) (10 * getResources().getDisplayMetrics().density);
-            chip.setPadding(chipPad, chipPad / 3, chipPad, chipPad / 3);
-            if (i == 0) {
-                chip.setBackgroundColor(0xFFE8DEF8); // conteneur tonal (sélection).
+    // ---- Cartes de projets (studio : sc_low, pastille tc/sc2, méta) ---------
+
+    private void renderCards() {
+        binding.projectsList.removeAllViews();
+        for (ProjectStore.ProjectCard card : cards) {
+            binding.projectsList.addView(projectCard(card));
+        }
+        boolean empty = cards.length == 0;
+        binding.emptyStateView.setVisibility(empty ? View.VISIBLE : View.GONE);
+    }
+
+    /** Une carte projet : pastille au ton du mode (prune Forge / sc2 Gradle). */
+    private View projectCard(ProjectStore.ProjectCard card) {
+        LinearLayout cardView = new LinearLayout(requireContext());
+        cardView.setOrientation(LinearLayout.VERTICAL);
+        cardView.setBackground(getResources().getDrawable(R.drawable.fond_carte_bas));
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        cardParams.topMargin = dip(10);
+        cardView.setLayoutParams(cardParams);
+
+        LinearLayout row = new LinearLayout(requireContext());
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        row.setPadding(dip(12), dip(14), dip(12), dip(12));
+        row.setOnClickListener(v ->
+                openWorkbench(card.path().toAbsolutePath().toString()));
+
+        boolean forge = card.compatibleModes().contains(WorkMode.FORGE)
+                && !card.compatibleModes().contains(WorkMode.GRADLE);
+        ImageView pastille = new ImageView(requireContext());
+        pastille.setBackground(getResources().getDrawable(forge
+                ? R.drawable.fond_pastille_tertiaire : R.drawable.fond_pastille_sc2));
+        pastille.setImageResource(forge ? R.drawable.ic_code : R.drawable.ic_wb);
+        pastille.setColorFilter(getResources().getColor(
+                forge ? R.color.sur_conteneur_tertiaire : R.color.sur_sc2));
+        row.addView(pastille, new LinearLayout.LayoutParams(dip(40), dip(40)));
+
+        LinearLayout texts = new LinearLayout(requireContext());
+        texts.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams textsParams = new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        textsParams.leftMargin = dip(14);
+        texts.setLayoutParams(textsParams);
+        TextView name = new TextView(requireContext());
+        name.setText(card.name());
+        name.setTextColor(getResources().getColor(R.color.sur));
+        name.setTextSize(15f);
+        name.setTypeface(name.getTypeface(), android.graphics.Typeface.BOLD);
+        name.setSingleLine(true);
+        name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        texts.addView(name);
+        TextView meta = new TextView(requireContext());
+        meta.setText(getString(R.string.projet_meta_studio,
+                modesLabel(card.compatibleModes()),
+                relative(Instant.ofEpochMilli(card.lastModified()))));
+        meta.setTextColor(getResources().getColor(R.color.sur_var));
+        meta.setTextSize(12.5f);
+        meta.setSingleLine(true);
+        meta.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        LinearLayout.LayoutParams metaParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        metaParams.topMargin = dip(2);
+        meta.setLayoutParams(metaParams);
+        texts.addView(meta);
+        row.addView(texts);
+
+        // Menu par projet (studio : ⋯ en fin de rangée).
+        ImageView menu = new ImageView(requireContext());
+        menu.setImageResource(R.drawable.ic_dots);
+        menu.setColorFilter(getResources().getColor(R.color.sur_var));
+        LinearLayout.LayoutParams menuParams = new LinearLayout.LayoutParams(dip(40), dip(40));
+        menuParams.leftMargin = dip(8);
+        menu.setLayoutParams(menuParams);
+        menu.setOnClickListener(v ->
+                showTransientNotice(getString(R.string.projet_menu_bientot)));
+        row.addView(menu);
+
+        cardView.addView(row);
+        return cardView;
+    }
+
+    /** « Forge · 2 modules » — modes compatibles réels du détecteur. */
+    private String modesLabel(List<WorkMode> modes) {
+        StringBuilder label = new StringBuilder();
+        for (WorkMode mode : modes) {
+            if (label.length() > 0) {
+                label.append(" · ");
             }
-            chips.addView(chip, new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT));
-            ((LinearLayout.LayoutParams) chip.getLayoutParams())
-                    .setMargins(0, 0, chipPad, 0);
+            label.append(mode == WorkMode.FORGE
+                    ? getString(R.string.mode_forge_nom) : getString(R.string.mode_gradle_nom));
         }
-        body.addView(chips);
-        final android.widget.EditText nameField = new android.widget.EditText(requireContext());
-        nameField.setHint(getString(R.string.creation_modele_hint));
-        body.addView(nameField);
-        final android.widget.EditText packageField = new android.widget.EditText(requireContext());
-        packageField.setHint(getString(R.string.creation_paquet_hint));
-        packageField.setTypeface(android.graphics.Typeface.MONOSPACE);
-        body.addView(packageField);
-        builder.setView(body);
-        builder.setItems(items, (d, which) ->
-                createFrom(names.get(which), nameField.getText().toString()));
-        builder.show();
+        return label.length() > 0 ? label.toString()
+                : getString(R.string.projet_modes_inconnu);
     }
 
-    /** Crée le projet depuis le modèle et nom choisis, ouvre l'atelier. */
-    private void createFrom(String template, String name) {
-        if (name == null || name.isBlank()) {
-            name = String.format(Locale.getDefault(), "projet-%d",
-                    System.currentTimeMillis() % 100000);
+    /** « ouvert il y a 2 h » — âge relatif de la dernière modification réelle. */
+    private static String relative(Instant when) {
+        long minutes = Duration.between(when, Instant.now()).toMinutes();
+        if (minutes < 60) {
+            return String.format(Locale.getDefault(), "%d min", Math.max(1, minutes));
         }
-        try {
-            Path project = ProjectTemplates.standard()
-                    .instantiate(store, template, name);
-            openWorkbench(project.toAbsolutePath().toString());
-        } catch (IOException | IllegalArgumentException e) {
-            showTransientNotice(getString(R.string.creation_echec, e.getMessage()));
+        if (minutes < 24 * 60) {
+            return String.format(Locale.getDefault(), "%d h", minutes / 60);
         }
+        return String.format(Locale.getDefault(), "%d j", minutes / (24 * 60));
     }
 
-    /** Crée le projet depuis le modèle et ouvre l'atelier dessus. */
-    private void createFromTemplate(String template) {
-        String name = String.format(Locale.getDefault(), "projet-%d",
-                System.currentTimeMillis() % 100000);
-        try {
-            Path project = ProjectTemplates.standard()
-                    .instantiate(store, template, name);
-            openWorkbench(project.toAbsolutePath().toString());
-        } catch (IOException | IllegalArgumentException e) {
-            showTransientNotice(getString(R.string.creation_echec, e.getMessage()));
-        }
+    // ---- Navbar (studio : Projets actif, IA → assistant, Apprendre/Défis) ----
+
+    private void setupNavbar() {
+        binding.navIa.setOnClickListener(v ->
+                getParentFragmentManager().beginTransaction()
+                        .replace(((ViewGroup) requireView().getParent()).getId(),
+                                new jo.joide.app.ai.AiPanelFragment())
+                        .addToBackStack(null).commit());
+        binding.navApprendre.setOnClickListener(v ->
+                showTransientNotice(getString(R.string.accueil_nav_bientot)));
+        binding.navDefis.setOnClickListener(v ->
+                showTransientNotice(getString(R.string.accueil_nav_bientot)));
     }
+
+    // ---- Création (studio : écran « Création », plein écran à 2 étapes) ------
 
     /** Ouvre l'atelier sur le projet (le mode reste le choix de l'utilisateur). */
     private void openWorkbench(String projectPath) {
@@ -254,53 +259,7 @@ public class HomeFragment extends Fragment {
                 () -> binding.transientNotice.setVisibility(View.GONE), 4000);
     }
 
-    /** Adaptateur des cartes de projets (une ligne de méta + badge de compatibilité). */
-    private final class CardsAdapter
-            extends RecyclerView.Adapter<CardsAdapter.CardHolder> {
-
-        @NonNull
-        @Override
-        public CardHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            return new CardHolder(ProjectCardItemBinding.inflate(
-                    LayoutInflater.from(parent.getContext()), parent, false));
-        }
-
-        @Override
-        public void onBindViewHolder(@NonNull CardHolder holder, int position) {
-            ProjectStore.ProjectCard card = cards[position];
-            holder.binding.projectName.setText(card.name());
-            holder.binding.projectModesBadge.setText(modesLabel(card.compatibleModes()));
-            holder.itemView.setOnClickListener(v ->
-                    openWorkbench(card.path().toAbsolutePath().toString()));
-        }
-
-        @Override
-        public int getItemCount() {
-            return cards.length;
-        }
-
-        final class CardHolder extends RecyclerView.ViewHolder {
-            final ProjectCardItemBinding binding;
-
-            CardHolder(ProjectCardItemBinding binding) {
-                super(binding.getRoot());
-                this.binding = binding;
-            }
-        }
-    }
-
-    private String modesLabel(List<WorkMode> modes) {
-        if (modes.isEmpty()) {
-            return getString(R.string.projet_modes_inconnu);
-        }
-        StringBuilder label = new StringBuilder();
-        for (WorkMode mode : modes) {
-            if (label.length() > 0) {
-                label.append(" · ");
-            }
-            label.append(mode == WorkMode.FORGE
-                    ? getString(R.string.mode_forge_nom) : getString(R.string.mode_gradle_nom));
-        }
-        return label.toString();
+    private int dip(int value) {
+        return (int) (value * getResources().getDisplayMetrics().density);
     }
 }

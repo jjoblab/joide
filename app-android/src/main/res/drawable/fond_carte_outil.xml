@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Carte d'outil du studio : sc-high, rayon 8, padding 10/12. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@color/sc_high" />
+    <corners android:radius="8dp" />
+</shape>

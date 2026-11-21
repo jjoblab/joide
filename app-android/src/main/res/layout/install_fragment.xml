@@ -1,77 +1,103 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Écran « Installation du mode » (studio HTML) : choix du mode, canal signé,
-     composants avec tailles, avertissement données mobiles, progression
-     annulable, phases vérifiées Gradle, popup de désinstallation.
+<!-- Écran « Installation du mode » — reconstruction exacte du studio HTML
+     (onglet Installation) : barre (back 22 + titre t-xl + pill mode),
+     choix du mode en 2 cartes flex (pastille 30, bord primaire 2dp si
+     sélectionné + fond pc), carte canal (pastille 34 ic_down, pill ✓ SIG,
+     champ mono 11sp), carte composants (rangées label 13.5sp + body-s +
+     pill mono taille sc_high/sur_var) + rangée espace libre, carte
+     avertissement warn_soft (ic_bell + SwitchCompat), CTA asymétrique
+     primaire « Installer ce mode », 2 chips 44dp (réparation /
+     désinstallation err), carte progression (spinner 14dp, barre 6dp,
+     chip Annuler 36dp), carte phases vérifiées Gradle, popup
+     désinstallation (bottom dialog style carte).
      Identifiants anglais (check-langue), textes en @string/. -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="?attr/colorSurface">
+    android:background="@color/fond">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="52dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp">
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
-        <ImageButton
-            android:id="@+id/install_back_button"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/install_titre"
-            android:src="@drawable/ic_arrow_back" />
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="8dp"
-            android:text="@string/install_titre"
-            android:textAppearance="?attr/textAppearanceTitleMedium" />
-
-        <TextView
-            android:id="@+id/install_mode_badge"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textAppearance="?attr/textAppearanceLabelLarge" />
-    </LinearLayout>
-
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
-
+        <!-- ===== Barre : back 22, titre t-xl, pill mode ===== -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingStart="16dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="12dp"
             android:paddingEnd="16dp"
-            android:paddingBottom="20dp">
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp">
 
-            <!-- Choix du mode (cartes Forge / Gradle) -->
+            <ImageButton
+                android:id="@+id/install_back_button"
+                style="IconBtn"
+                android:layout_width="@dimen/iconbtn_cote"
+                android:layout_height="@dimen/iconbtn_cote"
+                android:contentDescription="@string/commun_retour"
+                android:src="@drawable/ic_back" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:text="@string/install_titre"
+                android:textColor="@color/sur"
+                style="Txt.Xl" />
+
+            <!-- Pill mode (fond conteneur_primaire / sur_conteneur_primaire) -->
+            <TextView
+                android:id="@+id/install_mode_badge"
+                style="Pill"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/fond_pill_pc"
+                android:text="@string/mode_forge_nom"
+                android:textColor="@color/sur_conteneur_primaire"
+                android:textSize="@dimen/txt_pill"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- ===== Corps défilant ===== -->
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:scrollbars="none">
+
             <LinearLayout
-                android:id="@+id/install_mode_picker"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="8dp" />
+                android:orientation="vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="20dp">
 
-            <!-- Canal vérifié (manifeste signé) -->
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="14dp">
-
+                <!-- Choix du mode : 2 cartes flex (rendues par InstallFragment) -->
                 <LinearLayout
+                    android:id="@+id/install_mode_picker"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="8dp" />
+
+                <!-- Carte canal vérifié -->
+                <LinearLayout
+                    style="Carte"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
                     android:orientation="vertical"
-                    android:padding="14dp">
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:paddingTop="14dp"
+                    android:paddingBottom="14dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -82,91 +108,124 @@
                         <ImageView
                             android:layout_width="34dp"
                             android:layout_height="34dp"
+                            android:background="@drawable/fond_pastille"
+                            android:padding="9dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_arrow_back" />
+                            android:src="@drawable/ic_down"
+                            app:tint="@color/sur_conteneur_primaire" />
 
                         <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:layout_marginStart="10dp">
+                            android:layout_marginStart="10dp"
+                            android:orientation="vertical">
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="@string/install_canal_titre"
-                                android:textAppearance="?attr/textAppearanceTitleSmall" />
+                                android:textColor="@color/sur"
+                                style="Txt.Sm" />
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="2dp"
+                                android:layout_marginTop="1dp"
                                 android:text="@string/install_canal_sous"
-                                android:textAppearance="?attr/textAppearanceBodySmall" />
+                                style="Txt.BodyS" />
                         </LinearLayout>
 
+                        <!-- Pill ✓ SIG -->
                         <TextView
                             android:id="@+id/install_sig_badge"
+                            style="Pill"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:background="@drawable/fond_pill_ok"
                             android:text="@string/install_canal_sig"
-                            android:textAppearance="?attr/textAppearanceLabelMedium" />
+                            android:textColor="@color/ok"
+                            android:textSize="@dimen/txt_pill"
+                            android:textStyle="bold" />
                     </LinearLayout>
 
+                    <!-- Champ mono 11sp : URL du manifeste signé -->
                     <TextView
                         android:id="@+id/install_channel_url"
+                        style="Champ"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="10dp"
+                        android:minHeight="0dp"
+                        android:paddingTop="11dp"
+                        android:paddingBottom="11dp"
                         android:fontFamily="monospace"
+                        android:text="@string/install_canal_url"
                         android:textSize="11sp"
-                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="@color/sur"
                         android:maxLines="1"
                         android:ellipsize="middle" />
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
 
-            <!-- Composants (tailles à pastilles) -->
-            <TextView
-                android:id="@+id/install_components_header"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:layout_marginBottom="8dp"
-                android:text="@string/install_section_composants"
-                android:textAppearance="?attr/textAppearanceLabelMedium" />
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-
-                <LinearLayout
-                    android:id="@+id/install_components_list"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical" />
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Avertissement données mobiles + Wi-Fi -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/install_mobile_warning"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp">
-
+                <!-- Eyebrow « Composants » + total à droite -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:padding="13dp">
+                    android:layout_marginTop="16dp"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/install_section_composants"
+                        style="Txt.Eyebrow" />
+
+                    <TextView
+                        android:id="@+id/install_total_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/sur_var"
+                        style="Txt.Eyebrow" />
+                </LinearLayout>
+
+                <!-- Carte composants (rangées rendues par InstallFragment) -->
+                <LinearLayout
+                    android:id="@+id/install_components_card"
+                    style="Carte"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:id="@+id/install_components_list"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+                </LinearLayout>
+
+                <!-- Avertissement données mobiles (warn_soft + SwitchCompat) -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/fond_carte_alerte"
+                    android:orientation="horizontal"
+                    android:gravity="top"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:paddingTop="13dp"
+                    android:paddingBottom="13dp">
 
                     <ImageView
                         android:layout_width="18dp"
                         android:layout_height="18dp"
+                        android:layout_marginTop="2dp"
                         android:contentDescription="@null"
-                        android:src="@drawable/ic_arrow_back" />
+                        android:src="@drawable/ic_bell"
+                        android:tint="@color/alerte" />
 
                     <TextView
                         android:id="@+id/install_mobile_text"
@@ -174,63 +233,102 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:layout_marginStart="10dp"
-                        android:textAppearance="?attr/textAppearanceBodySmall" />
+                        android:textColor="@color/sur"
+                        style="Txt.BodyS" />
 
                     <androidx.appcompat.widget.SwitchCompat
                         android:id="@+id/install_wifi_switch"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
                         android:checked="true"
                         android:contentDescription="@string/install_wifi_detecte" />
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
 
-            <!-- Actions : installer / réparer / désinstaller -->
-            <Button
-                android:id="@+id/install_action_button"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:text="@string/install_bouton" />
+                <!-- CTA « Installer ce mode » -->
+                <LinearLayout
+                    android:id="@+id/install_action_button"
+                    style="Cta"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/ctah_hauteur"
+                    android:layout_marginTop="16dp"
+                    android:gravity="center"
+                    android:orientation="horizontal">
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="10dp">
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_down"
+                        android:tint="@color/sur_primaire" />
 
-                <Button
-                    android:id="@+id/install_repair_button"
-                    style="?attr/materialButtonOutlinedStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginEnd="5dp"
-                    android:text="@string/install_reparer" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:text="@string/install_bouton"
+                        android:textColor="@color/sur_primaire"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="-0.007" />
+                </LinearLayout>
 
-                <Button
-                    android:id="@+id/install_uninstall_button"
-                    style="?attr/materialButtonOutlinedStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="5dp"
-                    android:text="@string/install_desinstaller" />
-            </LinearLayout>
-
-            <!-- Progression annulable -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/install_progress_card"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:visibility="gone">
-
+                <!-- 2 chips 44dp : réparation / désinstallation -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="10dp">
+
+                    <LinearLayout
+                        android:id="@+id/install_repair_button"
+                        style="Chip"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/install_reparer"
+                            android:textColor="@color/sur"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/install_uninstall_button"
+                        style="Chip"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="10dp"
+                        android:background="@drawable/fond_carte_erreur"
+                        android:gravity="center"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/install_desinstaller"
+                            android:textColor="@color/sur_conteneur_erreur"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Carte progression (masquée avant installation) -->
+                <LinearLayout
+                    android:id="@+id/install_progress_card"
+                    style="Carte"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="16dp"
+                    android:visibility="gone">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -240,9 +338,11 @@
 
                         <ProgressBar
                             android:id="@+id/install_spinner"
+                            style="?android:attr/progressBarStyleSmall"
                             android:layout_width="14dp"
                             android:layout_height="14dp"
-                            style="?android:attr/progressBarStyleSmall" />
+                            android:indeterminateTint="@color/primaire"
+                            android:indeterminateTintMode="src_over" />
 
                         <TextView
                             android:id="@+id/install_step_text"
@@ -250,62 +350,76 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:layout_marginStart="10dp"
-                            android:textAppearance="?attr/textAppearanceTitleSmall" />
+                            android:textColor="@color/sur"
+                            style="Txt.Sm" />
 
                         <TextView
                             android:id="@+id/install_percent_text"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:fontFamily="monospace"
-                            android:textSize="11sp"
-                            android:textAppearance="?attr/textAppearanceBodySmall" />
+                            android:textSize="11.5sp"
+                            android:textColor="@color/sur_var" />
                     </LinearLayout>
 
+                    <!-- Barre 6dp : fond sc_high + remplissage primaire -->
                     <ProgressBar
                         android:id="@+id/install_progress_bar"
                         style="?android:attr/progressBarStyleHorizontal"
                         android:layout_width="match_parent"
                         android:layout_height="6dp"
                         android:layout_marginTop="12dp"
-                        android:max="100" />
+                        android:max="100"
+                        android:progressTint="@color/primaire"
+                        android:progressBackgroundTint="@color/sc_high" />
 
                     <TextView
                         android:id="@+id/install_meta_text"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:textAppearance="?attr/textAppearanceBodySmall" />
+                        style="Txt.BodyS" />
 
-                    <Button
+                    <!-- Chip Annuler 36dp -->
+                    <LinearLayout
                         android:id="@+id/install_cancel_button"
-                        style="?attr/materialButtonOutlinedStyle"
+                        style="Chip"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
+                        android:layout_height="36dp"
                         android:layout_marginTop="12dp"
-                        android:text="@string/install_annuler" />
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/install_annuler"
+                            android:textColor="@color/sur"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
 
-            <!-- Phases vérifiées (installé = vérifié) -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/install_phases_card"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:visibility="gone">
-
+                <!-- Phases vérifiées Gradle (« installé = vérifié ») -->
                 <LinearLayout
+                    android:id="@+id/install_phases_card"
+                    style="Carte"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
                     android:orientation="vertical"
-                    android:padding="14dp">
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:paddingTop="14dp"
+                    android:paddingBottom="14dp"
+                    android:visibility="gone">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="10dp"
                         android:text="@string/install_section_phases"
-                        android:textAppearance="?attr/textAppearanceLabelMedium" />
+                        style="Txt.Eyebrow" />
 
                     <LinearLayout
                         android:id="@+id/install_phases_list"
@@ -313,7 +427,88 @@
                         android:layout_height="wrap_content"
                         android:orientation="vertical" />
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+        </ScrollView>
+    </LinearLayout>
+
+    <!-- ===== Popup de confirmation de désinstallation (bottom dialog) ===== -->
+    <FrameLayout
+        android:id="@+id/install_uninstall_popup"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/fond_scrim"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:layout_margin="16dp"
+            android:background="@drawable/fond_carte"
+            android:orientation="vertical"
+            android:padding="20dp"
+            android:elevation="8dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/install_uninstall_titre"
+                android:textColor="@color/sur"
+                style="Txt.Sm" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/install_uninstall_corps"
+                style="Txt.BodyS" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="16dp">
+
+                <!-- Chip Annuler -->
+                <LinearLayout
+                    android:id="@+id/install_uninstall_cancel_button"
+                    style="Chip"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/install_uninstall_cancel"
+                        android:textColor="@color/sur"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Chip Désinstaller (erreur pleine, texte blanc) -->
+                <LinearLayout
+                    android:id="@+id/install_uninstall_confirm_button"
+                    style="Chip"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/fond_pill_err_plein"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/install_uninstall_action"
+                        android:textColor="@color/sur_primaire"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
         </LinearLayout>
-    </ScrollView>
-</LinearLayout>
+    </FrameLayout>
+</FrameLayout>

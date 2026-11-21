@@ -1,0 +1,460 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Page Réglage IA (studio HTML : settingsPageScreen) : barre sticky
+     (back + « IA · Fournisseurs »), chips fournisseurs, carte clé (champ mono),
+     carte modèle (chevD), chips effort, carte 2 switchs, carte Avancé (pills pc),
+     carte alerte warn_soft ic_bell. -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/ia_page_scroll"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/fond"
+    android:scrollbars="none"
+    android:overScrollMode="never">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingBottom="20dp">
+
+        <!-- ===== Barre sticky ===== -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="10dp"
+            android:background="@color/fond">
+
+            <ImageView
+                android:id="@+id/back_button"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_back"
+                android:background="@drawable/fond_iconbtn"
+                android:scaleType="center"
+                android:contentDescription="@string/settings_cd_back"
+                app:tint="@color/sur_var" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:text="@string/settings_ia_page_title"
+                style="@style/Txt.Xl" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp">
+
+            <!-- ===== Fournisseur actif ===== -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:layout_marginBottom="8dp"
+                android:text="@string/settings_ia_eyebrow_provider"
+                style="@style/Txt.Eyebrow" />
+
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none"
+                android:overScrollMode="never">
+
+                <LinearLayout
+                    android:id="@+id/provider_chips"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <include
+                        android:id="@+id/chip_anthropic"
+                        layout="@layout/settings_ia_chip" />
+
+                    <include
+                        android:id="@+id/chip_gemini"
+                        layout="@layout/settings_ia_chip" />
+
+                    <include
+                        android:id="@+id/chip_openai"
+                        layout="@layout/settings_ia_chip" />
+
+                    <include
+                        android:id="@+id/chip_gateway"
+                        layout="@layout/settings_ia_chip" />
+                </LinearLayout>
+            </HorizontalScrollView>
+
+            <!-- ===== Carte clé ===== -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/fond_carte"
+                android:padding="16dp"
+                android:layout_marginTop="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_ia_key_title"
+                    style="@style/Txt.Sm" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp"
+                    android:text="@string/settings_ia_key_body"
+                    android:textSize="12.5sp"
+                    android:textColor="@color/sur_var"
+                    android:lineSpacingMultiplier="1.5" />
+
+                <EditText
+                    android:id="@+id/key_field"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="48dp"
+                    android:background="@drawable/fond_field"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="13dp"
+                    android:hint="@string/settings_ia_key_hint"
+                    android:textColorHint="@color/sur_var"
+                    android:textColor="@color/sur"
+                    android:textSize="13sp"
+                    android:fontFamily="monospace"
+                    android:inputType="textPassword"
+                    android:importantForAutofill="no" />
+
+                <Button
+                    android:id="@+id/key_save_button"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/fond_cta"
+                    android:stateListAnimator="@null"
+                    android:text="@string/settings_ia_key_save"
+                    android:textColor="@color/sur_conteneur_primaire"
+                    android:textStyle="bold"
+                    android:gravity="center" />
+            </LinearLayout>
+
+            <!-- ===== Modèle ===== -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:layout_marginBottom="8dp"
+                android:text="@string/settings_ia_eyebrow_model"
+                style="@style/Txt.Eyebrow" />
+
+            <LinearLayout
+                android:id="@+id/model_row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/fond_carte"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="13dp">
+
+                <TextView
+                    android:id="@+id/model_name"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/settings_ia_model_default"
+                    style="@style/Txt.Sm" />
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_chevd"
+                    android:importantForAccessibility="no"
+                    android:contentDescription="@string/settings_ia_model_next"
+                    app:tint="@color/sur_var" />
+            </LinearLayout>
+
+            <!-- ===== Effort de raisonnement ===== -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:layout_marginBottom="8dp"
+                android:text="@string/settings_ia_eyebrow_effort"
+                style="@style/Txt.Eyebrow" />
+
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none"
+                android:overScrollMode="never">
+
+                <LinearLayout
+                    android:id="@+id/effort_chips"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <include
+                        android:id="@+id/chip_effort_default"
+                        layout="@layout/settings_ia_chip" />
+
+                    <include
+                        android:id="@+id/chip_effort_none"
+                        layout="@layout/settings_ia_chip" />
+
+                    <include
+                        android:id="@+id/chip_effort_low"
+                        layout="@layout/settings_ia_chip" />
+
+                    <include
+                        android:id="@+id/chip_effort_medium"
+                        layout="@layout/settings_ia_chip" />
+
+                    <include
+                        android:id="@+id/chip_effort_high"
+                        layout="@layout/settings_ia_chip" />
+                </LinearLayout>
+            </HorizontalScrollView>
+
+            <!-- ===== Switchs (Recherche web / Serveur MCP) ===== -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/fond_carte"
+                android:layout_marginTop="18dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="13dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_ia_web_title"
+                            style="@style/Txt.Sm" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/settings_ia_web_desc"
+                            android:textSize="12.5sp"
+                            android:textColor="@color/sur_var" />
+                    </LinearLayout>
+
+                    <Switch
+                        android:id="@+id/web_switch"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:track="@drawable/fond_switch"
+                        android:thumb="@drawable/fond_switch_pouce"
+                        android:switchMinWidth="50dp" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginEnd="16dp"
+                    android:background="@drawable/fond_div_inset"
+                    android:alpha="0.55" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="13dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_ia_mcp_title"
+                            style="@style/Txt.Sm" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/settings_ia_mcp_desc"
+                            android:textSize="12.5sp"
+                            android:textColor="@color/sur_var" />
+                    </LinearLayout>
+
+                    <Switch
+                        android:id="@+id/mcp_switch"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:track="@drawable/fond_switch"
+                        android:thumb="@drawable/fond_switch_pouce"
+                        android:switchMinWidth="50dp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- ===== Avancé (pills pc) ===== -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:layout_marginBottom="8dp"
+                android:text="@string/settings_ia_eyebrow_advanced"
+                style="@style/Txt.Eyebrow" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/fond_carte">
+
+                <LinearLayout
+                    android:id="@+id/tokens_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="?attr/selectableItemBackground"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="13dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_ia_tokens_title"
+                            style="@style/Txt.Sm" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/settings_ia_tokens_desc"
+                            android:textSize="12.5sp"
+                            android:textColor="@color/sur_var" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tokens_pill"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/fond_pill_pc"
+                        android:textColor="@color/sur_conteneur_primaire"
+                        style="@style/Pill"
+                        android:fontFamily="monospace" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginStart="70dp"
+                    android:layout_marginEnd="16dp"
+                    android:background="@drawable/fond_div_inset"
+                    android:alpha="0.55" />
+
+                <LinearLayout
+                    android:id="@+id/iterations_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="?attr/selectableItemBackground"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="13dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_ia_iterations_title"
+                            style="@style/Txt.Sm" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/settings_ia_iterations_desc"
+                            android:textSize="12.5sp"
+                            android:textColor="@color/sur_var" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/iterations_pill"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/fond_pill_pc"
+                        android:textColor="@color/sur_conteneur_primaire"
+                        style="@style/Pill"
+                        android:fontFamily="monospace" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- ===== Carte alerte (warn_soft + ic_bell) ===== -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="top"
+                android:background="@drawable/fond_carte_alerte"
+                android:padding="14dp"
+                android:layout_marginTop="18dp">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginEnd="12dp"
+                    android:src="@drawable/ic_bell"
+                    android:importantForAccessibility="no"
+                    app:tint="@color/alerte" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/settings_ia_notice"
+                    android:textSize="12.5sp"
+                    android:textColor="@color/sur"
+                    android:lineSpacingMultiplier="1.5" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="8dp"
+                android:background="@android:color/transparent" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

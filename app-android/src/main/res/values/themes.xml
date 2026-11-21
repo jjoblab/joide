@@ -1,16 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Thème JoIDE — jetons M3 mappés sur la palette studio (lime/prune expressive). -->
 <resources>
     <style name="Theme.JoIDE" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/primaire</item>
         <item name="colorOnPrimary">@color/sur_primaire</item>
         <item name="colorPrimaryContainer">@color/conteneur_primaire</item>
         <item name="colorOnPrimaryContainer">@color/sur_conteneur_primaire</item>
-        <item name="colorSecondary">@color/secondaire</item>
-        <item name="colorSurface">@color/surface</item>
-        <item name="colorOnSurface">@color/sur_surface</item>
-        <item name="colorOnSurfaceVariant">@color/sur_surface_attenue</item>
-        <item name="colorOutline">@color/contour</item>
-        <item name="colorError">@color/erreur</item>
+        <item name="colorSecondary">@color/sc2</item>
+        <item name="colorOnSecondary">@color/sur_sc2</item>
+        <item name="colorSecondaryContainer">@color/sc2</item>
+        <item name="colorOnSecondaryContainer">@color/sur_sc2</item>
         <item name="colorTertiary">@color/tertiaire</item>
+        <item name="colorOnTertiary">@color/sur_tertiaire</item>
+        <item name="colorTertiaryContainer">@color/conteneur_tertiaire</item>
+        <item name="colorOnTertiaryContainer">@color/sur_conteneur_tertiaire</item>
+        <item name="colorSurface">@color/sc</item>
+        <item name="colorOnSurface">@color/sur</item>
+        <item name="colorOnSurfaceVariant">@color/sur_var</item>
+        <item name="colorOutline">@color/contour</item>
+        <item name="colorOutlineVariant">@color/contour_var</item>
+        <item name="colorError">@color/erreur</item>
+        <item name="colorErrorContainer">@color/conteneur_erreur</item>
+        <item name="colorOnErrorContainer">@color/sur_conteneur_erreur</item>
+        <item name="android:colorBackground">@color/fond</item>
+        <!-- surfaces M3 -->
+        <item name="colorSurfaceContainer">@color/sc</item>
+        <item name="colorSurfaceContainerLow">@color/sc_low</item>
+        <item name="colorSurfaceContainerLowest">@color/sc_lowest</item>
+        <item name="colorSurfaceContainerHigh">@color/sc_high</item>
+        <item name="colorSurfaceContainerHighest">@color/sc_highest</item>
     </style>
 </resources>

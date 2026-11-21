@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Styles du studio — chaque style porte les valeurs exactes lues dans son CSS. -->
+<resources>
+
+    <!-- Surfaces à rayons 26dp (cartes, dock) -->
+    <style name="Carte" parent="">
+        <item name="android:background">@drawable/fond_carte</item>
+    </style>
+
+    <!-- Chips 38dp (fond sc-high, ON = sc2) -->
+    <style name="Chip" parent="">
+        <item name="android:background">@drawable/fond_chip</item>
+        <item name="android:minHeight">@dimen/chip_hauteur</item>
+        <item name="android:paddingStart">@dimen/chip_padding_h</item>
+        <item name="android:paddingEnd">@dimen/chip_padding_h</item>
+        <item name="android:gravity">center_vertical</item>
+    </style>
+
+    <!-- CTA asymétrique 26/12dp, primaire -->
+    <style name="Cta" parent="">
+        <item name="android:background">@drawable/fond_cta</item>
+        <item name="android:minHeight">@dimen/ctah_hauteur</item>
+        <item name="android:paddingStart">22dp</item>
+        <item name="android:paddingEnd">22dp</item>
+        <item name="android:gravity">center_vertical</item>
+    </style>
+
+    <!-- Bouton tonal carré 64dp (sc2) -->
+    <style name="Tonal64" parent="">
+        <item name="android:background">@drawable/fond_tonal64</item>
+        <item name="android:gravity">center</item>
+    </style>
+
+    <!-- Pastille ronde 40dp (conteneur primaire) -->
+    <style name="Pastille" parent="">
+        <item name="android:background">@drawable/fond_pastille</item>
+        <item name="android:gravity">center</item>
+    </style>
+
+    <!-- Bouton d'icône rond 40dp -->
+    <style name="IconBtn" parent="">
+        <item name="android:background">@drawable/fond_iconbtn</item>
+    </style>
+
+    <!-- Avatar 44dp (sc2) -->
+    <style name="Avatar" parent="">
+        <item name="android:background">@drawable/fond_avatar</item>
+        <item name="android:gravity">center</item>
+    </style>
+
+    <!-- Champ (sc-highest, contour var, rayon 12dp) -->
+    <style name="Champ" parent="">
+        <item name="android:background">@drawable/fond_field</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:paddingStart">@dimen/field_padding_h</item>
+        <item name="android:paddingEnd">@dimen/field_padding_h</item>
+        <item name="android:paddingTop">@dimen/field_padding_v</item>
+        <item name="android:paddingBottom">@dimen/field_padding_v</item>
+        <item name="android:gravity">center_vertical</item>
+    </style>
+
+    <!-- Pills 26dp (couleurs posées par drawable dédié à l'usage) -->
+    <style name="Pill" parent="">
+        <item name="android:minHeight">@dimen/pill_hauteur</item>
+        <item name="android:paddingStart">@dimen/pill_padding_h</item>
+        <item name="android:paddingEnd">@dimen/pill_padding_h</item>
+        <item name="android:gravity">center_vertical</item>
+    </style>
+
+    <!-- ====== Typo (échelle expressive lue) ====== -->
+    <style name="Txt.Xl" parent="">
+        <item name="android:textSize">@dimen/txt_xl</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">-0.014</item>
+    </style>
+    <style name="Txt.Med" parent="">
+        <item name="android:textSize">@dimen/txt_med</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="Txt.Sm" parent="">
+        <item name="android:textSize">@dimen/txt_sm</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="Txt.BodyS" parent="">
+        <item name="android:textSize">@dimen/txt_body_s</item>
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
+    </style>
+    <style name="Txt.Label" parent="">
+        <item name="android:textSize">@dimen/txt_label</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="Txt.Eyebrow" parent="">
+        <item name="android:textSize">@dimen/txt_eyebrow</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.09</item>
+        <item name="android:textColor">@color/contour</item>
+    </style>
+    <style name="Txt.Pill" parent="">
+        <item name="android:textSize">@dimen/txt_pill</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="Txt.Mono" parent="">
+        <item name="android:fontFamily">monospace</item>
+    </style>
+
+    <!-- Touche du clavier étendu du terminal (studio : 34dp, mono 12sp) -->
+    <style name="KbdTouche" parent="">
+        <item name="android:background">@drawable/fond_kbd_touche</item>
+        <item name="android:minWidth">36dp</item>
+        <item name="android:minHeight">34dp</item>
+        <item name="android:paddingStart">9dp</item>
+        <item name="android:paddingEnd">9dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:fontFamily">monospace</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/sur</item>
+        <item name="android:layout_marginEnd">4dp</item>
+    </style>
+</resources>

@@ -1,15 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Jetons clair — lus pixel par pixel sur le studio de previews (phone) :
+     palette lime/prune « expressive », surfaces 5 tons, softs alpha, clavier beige. -->
 <resources>
-    <!-- Jetons clair (design-system §2, palette bleu nuit générée par l'outil M3) -->
-    <color name="primaire">#1B3A5C</color>
-    <color name="sur_primaire">#FDFBFF</color>
-    <color name="conteneur_primaire">#D4E3FF</color>
-    <color name="sur_conteneur_primaire">#002E4F</color>
-    <color name="secondaire">#565E71</color>
-    <color name="surface">#FDFBFF</color>
-    <color name="sur_surface">#1A1C1A</color>
-    <color name="sur_surface_attenue">#44474A</color>
-    <color name="contour">#74777A</color>
-    <color name="erreur">#BA1A1A</color>
-    <color name="tertiaire">#3F6373</color>
+    <!-- Fonds de surfaces (5 tons du studio) -->
+    <color name="fond">#FBFAED</color>
+    <color name="sc_lowest">#FFFFFF</color>
+    <color name="sc_low">#F5F4E7</color>
+    <color name="sc">#EFEEE2</color>
+    <color name="sc_high">#EAE9DC</color>
+    <color name="sc_highest">#E4E3D7</color>
+
+    <!-- Contenus -->
+    <color name="sur">#1B1C15</color>
+    <color name="sur_var">#45483A</color>
+    <color name="contour">#767966</color>
+    <color name="contour_var">#C6C9B2</color>
+
+    <!-- Primaire lime -->
+    <color name="primaire">#465700</color>
+    <color name="sur_primaire">#FFFFFF</color>
+    <color name="conteneur_primaire">#C7EE45</color>
+    <color name="sur_conteneur_primaire">#273300</color>
+
+    <!-- Conteneur secondaire (chips ON) -->
+    <color name="sc2">#DEE5C3</color>
+    <color name="sur_sc2">#2A3119</color>
+
+    <!-- Tertiaire prune -->
+    <color name="tertiaire">#6C3E85</color>
+    <color name="sur_tertiaire">#FFFFFF</color>
+    <color name="conteneur_tertiaire">#F2D9FF</color>
+    <color name="sur_conteneur_tertiaire">#3E2457</color>
+
+    <!-- Erreur -->
+    <color name="erreur">#8F4C38</color>
+    <color name="conteneur_erreur">#FFDBD1</color>
+    <color name="sur_conteneur_erreur">#5B1A0B</color>
+
+    <!-- Succès / alerte / info -->
+    <color name="ok">#29A847</color>
+    <color name="alerte">#D98300</color>
+    <color name="info">#2399B8</color>
+
+    <!-- Softs (arrière-plans pastilles, exacts du studio) -->
+    <color name="ok_soft">#2AA84729</color>
+    <color name="err_soft">#8F4C3824</color>
+    <color name="warn_soft">#D9830026</color>
+    <color name="info_soft">#2399B824</color>
+
+    <!-- Divers -->
+    <color name="scrim">#1B1C1552</color>
+    <color name="clavier">#D8D7C9</color>
+    <color name="clavier_touche">#FDFCF4</color>
+
+    <!-- Alias pour le thème M3 -->
+    <color name="surface">@color/fond</color>
+    <color name="sur_surface">@color/sur</color>
+    <color name="sur_surface_attenue">@color/sur_var</color>
 </resources>

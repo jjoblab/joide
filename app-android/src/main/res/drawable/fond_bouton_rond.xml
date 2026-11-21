@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bouton rond du studio : 48dp, primaire, sur_primaire. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@color/primaire" />
+    <corners android:radius="24dp" />
+</shape>

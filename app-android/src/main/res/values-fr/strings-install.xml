@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textes des trois écrans reconstruits sur le studio HTML (installation,
+     onboarding, diagnostic) — miroir français pour values-fr. Les chaînes
+     install_* / mode_* déjà présentes dans values-fr/strings.xml y restent. -->
+<resources>
+
+    <!-- ====== Écran INSTALLATION (studio, onglet Installation) ====== -->
+    <string name="install_mode_card_forge">Forge</string>
+    <string name="install_mode_card_gradle">Gradle</string>
+    <string name="install_canal_url">https://github.com/jjoblab/forge/releases/latest/download/manifest.json</string>
+    <string name="install_disk_required">%1$s après installation</string>
+    <string name="install_uninstall_cancel">Annuler</string>
+    <string name="install_progress_meta">%1$s / %2$s · 3,1 Mo/s · %3$d s restantes</string>
+    <string name="install_secret_redacted">… apiKey=[rédigé] · token=[rédigé]</string>
+
+    <!-- ====== Écran ONBOARDING (studio, premier lancement) ====== -->
+    <string name="onboarding_page1_kicker">Bienvenue</string>
+    <string name="onboarding_page1_title">JoIDE, l’atelier complet</string>
+    <string name="onboarding_page1_desc">Créez, éditez et construisez des projets Android entiers — directement sur votre téléphone.</string>
+    <string name="onboarding_page2_kicker">Deux moteurs</string>
+    <string name="onboarding_page2_title">Forge, ou Gradle</string>
+    <string name="onboarding_page2_desc">Forge : intégration verticale, chaud-rechargement. Gradle : compatibilité avec vos builds existants. Choisissez au premier lancement, changez plus tard.</string>
+    <string name="onboarding_page3_kicker">Éditeur complet</string>
+    <string name="onboarding_page3_title">Écrire du vrai code</string>
+    <string name="onboarding_page3_desc">Coloration, LSP, barre de symboles au-dessus du clavier, terminaux multi-sessions.</string>
+    <string name="onboarding_page4_kicker">Assistant IA</string>
+    <string name="onboarding_page4_title">Un agent dans l’atelier</string>
+    <string name="onboarding_page4_desc">Il lit, écrit et construit — avec votre approbation explicite à chaque mutation.</string>
+    <string name="onboarding_cta_next">Continuer</string>
+    <string name="onboarding_cta_create">Créer mon premier projet</string>
+    <string name="onboarding_link_previous">Page précédente</string>
+    <string name="onboarding_link_skip">Passer pour l’instant</string>
+
+    <!-- ====== Écran DIAGNOSTIC (studio, SettingsActivity) ====== -->
+    <string name="diagnostic_title">Diagnostic</string>
+    <string name="diagnostic_copy_desc">Copier le rapport</string>
+    <string name="diagnostic_share_desc">Partager le rapport</string>
+    <string name="diagnostic_versions_section">Versions constatées</string>
+    <string name="diagnostic_version_app">App</string>
+    <string name="diagnostic_version_forge">Forge</string>
+    <string name="diagnostic_version_gradle">Gradle</string>
+    <string name="diagnostic_version_bricks">Briques</string>
+    <string name="diagnostic_version_bricks_value">céleris · code-lsp · LayoutLib</string>
+    <string name="diagnostic_version_app_value">0.1.0 (102)</string>
+    <string name="diagnostic_version_forge_value">0.2.6</string>
+    <string name="diagnostic_version_gradle_value">8.11.1</string>
+    <string name="diagnostic_modes_section">Installation des modes</string>
+    <string name="diagnostic_mode_installed">INSTALLÉ</string>
+    <string name="diagnostic_mode_not_installed">NON INSTALLÉ</string>
+    <string name="diagnostic_mode_size_none">—</string>
+    <string name="diagnostic_build_log_section">Journal borné du dernier build</string>
+    <string name="diagnostic_build_log_note">La queue est gardée (les erreurs sont à la fin) · les secrets sont rédigés automatiquement.</string>
+    <string name="diagnostic_build_log_empty">(vide)</string>
+    <string name="diagnostic_build_log_demo1">▸ tâche :app:compileJava</string>
+    <string name="diagnostic_build_log_demo2">✗ error: incompatible types: String cannot be converted to int</string>
+    <string name="diagnostic_build_log_demo3">▸ tâche :app:processResources</string>
+    <string name="diagnostic_build_log_demo4">✓ BUILD ÉCHOUÉ en 9,4 s (2 erreurs)</string>
+    <string name="diagnostic_crash_log_section">Journal des écroulements (borné à 20)</string>
+    <string name="diagnostic_crash_log_empty">(aucun)</string>
+    <string name="diagnostic_action_copy">Copier le rapport</string>
+    <string name="diagnostic_action_share">Partager…</string>
+    <string name="diagnostic_report_title">Rapport de diagnostic JoIDE</string>
+    <string name="diagnostic_report_copied">Rapport copié (secrets rédigés)</string>
+</resources>

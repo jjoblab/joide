@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Anneau du spinner : 14dp, bord 1.5dp primaire, arc 270° (quadrant haut transparent). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="14dp"
+    android:height="14dp"
+    android:viewportWidth="14"
+    android:viewportHeight="14">
+    <path
+        android:pathData="M7,7 m-5.5,0 a5.5,5.5 0 1,1 3.9,5.3"
+        android:strokeColor="@color/primaire"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round" />
+</vector>

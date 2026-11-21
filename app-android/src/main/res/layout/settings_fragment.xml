@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hub Paramètres (studio HTML : settingsScreen) : barre sticky
+     (back + Paramètres + recherche), carte profil conteneur_primaire,
+     4 sections (Éditeur, IA, Construction, Système) en cartes à rangées
+     pastille + titre + desc + chevR, séparateurs inset. -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/settings_scroll"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/fond"
+    android:scrollbars="none"
+    android:overScrollMode="never">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingBottom="20dp">
+
+        <!-- ===== Barre sticky ===== -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="10dp"
+            android:background="@color/fond">
+
+            <ImageView
+                android:id="@+id/back_button"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_back"
+                android:background="@drawable/fond_iconbtn"
+                android:scaleType="center"
+                android:contentDescription="@string/settings_cd_back"
+                app:tint="@color/sur_var" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:text="@string/settings_hub_title"
+                style="@style/Txt.Xl" />
+
+            <ImageView
+                android:id="@+id/search_button"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_search"
+                android:background="@drawable/fond_iconbtn"
+                android:scaleType="center"
+                android:contentDescription="@string/settings_hub_search"
+                app:tint="@color/sur_var" />
+        </LinearLayout>
+
+        <!-- ===== Carte profil (conteneur primaire) ===== -->
+        <LinearLayout
+            android:id="@+id/profile_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/fond_carte_pc"
+            android:padding="16dp"
+            android:layout_marginHorizontal="16dp">
+
+            <ImageView
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="@drawable/fond_avatar_primaire"
+                android:scaleType="center"
+                android:src="@drawable/ic_person"
+                android:importantForAccessibility="no"
+                app:tint="@color/sur_primaire" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="12dp">
+
+                <TextView
+                    android:id="@+id/profile_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_profile_title"
+                    style="@style/Txt.Sm"
+                    android:textColor="@color/sur_conteneur_primaire" />
+
+                <TextView
+                    android:id="@+id/profile_subtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/settings_profile_mode_active"
+                    android:textSize="12.5sp"
+                    android:textColor="@color/sur_conteneur_primaire"
+                    android:alpha="0.8" />
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:src="@drawable/ic_chevr"
+                android:importantForAccessibility="no"
+                app:tint="@color/sur_conteneur_primaire" />
+        </LinearLayout>
+
+        <!-- ===== Section Éditeur ===== -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="8dp"
+            android:text="@string/settings_section_editor"
+            style="@style/Txt.Eyebrow" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/fond_carte"
+            android:layout_marginHorizontal="16dp">
+
+            <include
+                android:id="@+id/row_appearance"
+                layout="@layout/settings_hub_row" />
+
+            <include layout="@layout/settings_hub_separator" />
+
+            <include
+                android:id="@+id/row_editor_keyboard"
+                layout="@layout/settings_hub_row" />
+
+            <include layout="@layout/settings_hub_separator" />
+
+            <include
+                android:id="@+id/row_shortcuts"
+                layout="@layout/settings_hub_row" />
+        </LinearLayout>
+
+        <!-- ===== Section IA ===== -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="8dp"
+            android:text="@string/settings_section_ia"
+            style="@style/Txt.Eyebrow" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/fond_carte"
+            android:layout_marginHorizontal="16dp">
+
+            <include
+                android:id="@+id/row_providers"
+                layout="@layout/settings_hub_row" />
+
+            <include layout="@layout/settings_hub_separator" />
+
+            <include
+                android:id="@+id/row_agent_permissions"
+                layout="@layout/settings_hub_row" />
+        </LinearLayout>
+
+        <!-- ===== Section Construction ===== -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="8dp"
+            android:text="@string/settings_section_build"
+            style="@style/Txt.Eyebrow" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/fond_carte"
+            android:layout_marginHorizontal="16dp">
+
+            <include
+                android:id="@+id/row_build_engines"
+                layout="@layout/settings_hub_row" />
+
+            <include layout="@layout/settings_hub_separator" />
+
+            <include
+                android:id="@+id/row_terminal"
+                layout="@layout/settings_hub_row" />
+        </LinearLayout>
+
+        <!-- ===== Section Système ===== -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="8dp"
+            android:text="@string/settings_section_system"
+            style="@style/Txt.Eyebrow" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/fond_carte"
+            android:layout_marginHorizontal="16dp">
+
+            <include
+                android:id="@+id/row_storage"
+                layout="@layout/settings_hub_row" />
+
+            <include layout="@layout/settings_hub_separator" />
+
+            <include
+                android:id="@+id/row_diagnostic"
+                layout="@layout/settings_hub_row" />
+
+            <include layout="@layout/settings_hub_separator" />
+
+            <include
+                android:id="@+id/row_about"
+                layout="@layout/settings_hub_row" />
+        </LinearLayout>
+
+        <!-- Espacement final du studio (8dp). -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="8dp" />
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Touche 34dp du clavier étendu du terminal (studio : kbd-key, rayon 8). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@color/clavier_touche" />
+    <corners android:radius="8dp" />
+</shape>

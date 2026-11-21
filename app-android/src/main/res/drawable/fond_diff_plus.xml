@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pastille diff ok-soft, rayon 4 (studio : blocs de lignes du diff). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@color/ok_soft" />
+    <corners android:radius="4dp" />
+</shape>

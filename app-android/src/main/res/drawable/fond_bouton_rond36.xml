@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bouton rond du studio : 36dp, sc-highest. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@color/sc_highest" />
+    <corners android:radius="18dp" />
+</shape>

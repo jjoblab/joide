@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bouton envoyer du terminal : rond 38dp primaire (studio). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@color/primaire" />
+    <corners android:radius="19dp" />
+</shape>

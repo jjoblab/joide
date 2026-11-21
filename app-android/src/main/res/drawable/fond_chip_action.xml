@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Chip d'action des cartes question/erreur du studio : sc-highest, rayon 999. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@color/sc_highest" />
+    <corners android:radius="18dp" />
+</shape>

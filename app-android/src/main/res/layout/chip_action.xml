@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Chip d'action (studio : sc_highest / sur, hauteur 36). -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/choice_chip"
+    android:layout_width="wrap_content"
+    android:layout_height="36dp"
+    android:gravity="center_vertical"
+    android:paddingHorizontal="16dp"
+    android:background="@drawable/fond_chip_action"
+    android:textColor="@color/sur"
+    android:textSize="13sp"
+    android:textStyle="bold" />

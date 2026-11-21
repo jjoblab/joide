@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Atelier téléphone : barre, tiroirs (fragment), zone éditeur, bottom sheet 4 sections
-     (fiche ecrans/atelier.md ; en-tête unique sans doublon, règles §3 du cahier des charges). -->
-<androidx.coordinatorlayout.widget.CoordinatorLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Éditeur (studio HTML, onglet « Éditeur », 1:1) : tiroir gauche push 320dp
+     (switcher Files·Chercher·Structure), top bar 52dp (menu, nom, pill mode,
+     save/undo/redo/play/dots), onglets fichiers 40dp, fil d'Ariane 34dp
+     (segment code/aperçu), zone code sc_lowest, dock 26dp à poignée
+     (barre 52dp + corps à pills + onglets), clavier symboles beige. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
@@ -12,185 +14,465 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
+        <!-- Top bar 52dp (studio) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="52dp"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:paddingHorizontal="8dp">
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:background="@color/sc"
+            android:baselineAligned="false">
+
+            <ImageButton
+                android:id="@+id/menu_button"
+                style="IconBtn"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:contentDescription="@string/atelier_arborescence"
+                android:src="@drawable/ic_menu"
+                android:scaleType="centerInside"
+                app:tint="@color/sur_var" />
 
             <TextView
+                android:id="@+id/project_title"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/atelier_titre"
-                android:textAppearance="?attr/textAppearanceTitleMedium" />
+                android:layout_marginStart="6dp"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:textColor="@color/sur"
+                style="Txt.Sm" />
 
             <TextView
                 android:id="@+id/mode_chip"
+                style="Pill"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="6dp"
-                android:textAppearance="?attr/textAppearanceLabelLarge" />
+                android:layout_height="26dp"
+                android:gravity="center"
+                android:background="@drawable/fond_pill_mode"
+                android:text="@string/mode_forge_nom"
+                android:textColor="@color/sur_conteneur_tertiaire"
+                android:textSize="@dimen/pill_txt"
+                android:textStyle="bold" />
 
             <ImageButton
                 android:id="@+id/save_button"
+                style="IconBtn"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:layout_marginStart="4dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/atelier_enregistrer"
-                android:src="@drawable/ic_save" />
+                android:src="@drawable/ic_save"
+                android:scaleType="centerInside"
+                app:tint="@color/sur_var" />
 
             <ImageButton
                 android:id="@+id/undo_button"
+                style="IconBtn"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/atelier_annuler"
-                android:src="@drawable/ic_undo" />
+                android:src="@drawable/ic_undo"
+                android:scaleType="centerInside"
+                app:tint="@color/sur_var" />
 
             <ImageButton
                 android:id="@+id/redo_button"
+                style="IconBtn"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/atelier_refaire"
-                android:src="@drawable/ic_redo" />
+                android:src="@drawable/ic_redo"
+                android:scaleType="centerInside"
+                app:tint="@color/sur_var" />
 
-            <Button
-                android:id="@+id/git_button"
-                style="?attr/materialButtonOutlinedStyle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:minWidth="0dp"
-                android:text="@string/git_title" />
-
-            <Button
-                android:id="@+id/ai_button"
-                style="?attr/materialButtonOutlinedStyle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:minWidth="0dp"
-                android:text="@string/ia_titre" />
-
-            <Button
-                android:id="@+id/terminal_button"
-                style="?attr/materialButtonOutlinedStyle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:minWidth="0dp"
-                android:text="@string/terminal_titre" />
-
-            <Button
+            <ImageButton
                 android:id="@+id/build_button"
-                style="?attr/materialButtonOutlinedStyle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:minWidth="0dp"
-                android:text="@string/atelier_construire" />
+                style="IconBtn"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:contentDescription="@string/atelier_construire"
+                android:src="@drawable/ic_play"
+                android:scaleType="centerInside"
+                app:tint="@color/sur_var" />
+
+            <ImageButton
+                android:id="@+id/dots_button"
+                style="IconBtn"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:contentDescription="@string/accueil_plus"
+                android:src="@drawable/ic_dots"
+                android:scaleType="centerInside"
+                app:tint="@color/sur_var" />
         </LinearLayout>
 
+        <!-- Notice de mode (studio : bandeau sous la barre en mode Gradle) -->
         <TextView
             android:id="@+id/mode_notice"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:padding="8dp"
-            android:textAppearance="?attr/textAppearanceBodySmall"
-            android:visibility="gone" />
+            android:background="@color/sc_low"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:visibility="gone"
+            style="Txt.BodyS" />
 
+        <!-- Onglets de fichiers 40dp (studio : 32dp sc2 + point alerte + x) -->
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:scrollbars="none"
+            android:background="@color/sc"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:id="@+id/files_tabs"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="12dp"
+                android:paddingEnd="8dp" />
+        </HorizontalScrollView>
+
+        <!-- Fil d'Ariane 34dp (studio : back/chevR + chemin mono + segment code/aperçu) -->
         <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="34dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:background="@color/sc"
+            android:baselineAligned="false">
+
+            <ImageButton
+                style="IconBtn"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:contentDescription="@string/atelier_symbole_precedent"
+                android:src="@drawable/ic_back"
+                android:scaleType="centerInside"
+                app:tint="@color/sur_var" />
+
+            <ImageButton
+                style="IconBtn"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:contentDescription="@string/atelier_symbole_suivant"
+                android:src="@drawable/ic_chevr"
+                android:scaleType="centerInside"
+                app:tint="@color/sur_var" />
+
+            <TextView
+                android:id="@+id/breadcrumb"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:fontFamily="monospace"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:textSize="11sp"
+                android:textColor="@color/sur_var" />
+
+            <!-- Segment code/aperçu (studio : sc_high + pastille active pc) -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="4dp"
+                android:background="@drawable/fond_segment_switcher">
+
+                <ImageButton
+                    android:id="@+id/segment_code"
+                    android:layout_width="28dp"
+                    android:layout_height="26dp"
+                    android:background="@drawable/fond_segment_actif"
+                    android:contentDescription="@string/atelier_vue_code"
+                    android:src="@drawable/ic_code"
+                    android:scaleType="centerInside"
+                    app:tint="@color/sur_conteneur_primaire" />
+
+                <ImageButton
+                    android:id="@+id/segment_apercu"
+                    android:layout_width="28dp"
+                    android:layout_height="26dp"
+                    android:background="@null"
+                    android:contentDescription="@string/atelier_vue_apercu"
+                    android:src="@drawable/ic_wb"
+                    android:scaleType="centerInside"
+                    app:tint="@color/sur_var" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Zone code (studio : sc_lowest, mono 12.5, lignes numérotées ; céleris L5) -->
+        <FrameLayout
+            android:id="@+id/editor_area"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:orientation="horizontal">
+            android:background="@color/sc_lowest" />
 
-            <!-- Tiroir fichiers (bord gauche, largeur bornée téléphone) -->
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/files_recycler"
-                android:layout_width="112dp"
-                android:layout_height="match_parent"
-                android:background="?attr/colorSurfaceVariant"
-                android:overScrollMode="ifContentScrolls" />
-
-            <!-- Zone éditeur (brique céleris, L5) -->
-            <FrameLayout
-                android:id="@+id/editor_area"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:background="?attr/colorSurface" />
-        </LinearLayout>
-    </LinearLayout>
-
-    <com.google.android.material.bottomsheet.BottomSheetDragHandleView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|center_horizontal" />
-
-    <!-- Bottom sheet : une seule en-tête à onglets, quatre sections, aucune répétition -->
-    <LinearLayout
-        android:id="@+id/sections_sheet"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior"
-        app:behavior_peekHeight="56dp">
-
-        <com.google.android.material.tabs.TabLayout
-            android:id="@+id/sections_tabs"
+        <!-- Dock (studio : sc, hauts 26dp, poignée + barre 52dp + corps repliable) -->
+        <LinearLayout
+            android:id="@+id/dock"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            app:tabMode="scrollable">
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/fond_dock">
 
-            <com.google.android.material.tabs.TabItem
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/section_console" />
-            <com.google.android.material.tabs.TabItem
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/section_problemes" />
-            <com.google.android.material.tabs.TabItem
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/section_journal" />
-            <com.google.android.material.tabs.TabItem
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/section_logcat" />
-            <com.google.android.material.tabs.TabItem
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/terminal_titre" />
-        </com.google.android.material.tabs.TabLayout>
+            <View
+                android:id="@+id/dock_handle"
+                android:layout_width="38dp"
+                android:layout_height="5dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="2dp"
+                android:background="@drawable/fond_handle" />
 
-        <!-- Contenus des quatre sections : une seule en-tête, aucun doublon -->
-        <ScrollView
-            android:layout_width="match_parent"
-            android:layout_height="160dp">
-
+            <!-- Barre du dock 52dp (studio : recherche, code, spark pc, dots badge 3, check ok) -->
             <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:paddingBottom="6dp"
+                android:baselineAligned="false">
+
+                <ImageButton
+                    android:id="@+id/dock_search"
+                    android:layout_width="44dp"
+                    android:layout_height="38dp"
+                    android:background="@null"
+                    android:contentDescription="@string/atelier_recherche"
+                    android:src="@drawable/ic_search"
+                    android:scaleType="centerInside"
+                    app:tint="@color/sur_var" />
+
+                <ImageButton
+                    android:id="@+id/dock_code"
+                    android:layout_width="44dp"
+                    android:layout_height="38dp"
+                    android:background="@null"
+                    android:contentDescription="@string/atelier_symboles"
+                    android:src="@drawable/ic_code"
+                    android:scaleType="centerInside"
+                    app:tint="@color/sur_var" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
+
+                <ImageButton
+                    android:id="@+id/ai_button"
+                    style="IconBtn"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="@drawable/fond_pastille"
+                    android:contentDescription="@string/ia_titre"
+                    android:src="@drawable/ic_spark"
+                    android:scaleType="centerInside"
+                    app:tint="@color/sur_conteneur_primaire" />
+
+                <FrameLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content">
+
+                    <ImageButton
+                        android:id="@+id/dots_button_dock"
+                        style="IconBtn"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:contentDescription="@string/accueil_plus"
+                        android:src="@drawable/ic_dots"
+                        android:scaleType="centerInside"
+                        app:tint="@color/sur_var" />
+
+                    <TextView
+                        android:id="@+id/dock_badge"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:layout_gravity="end|top"
+                        android:gravity="center"
+                        android:background="@drawable/fond_badge"
+                        android:text="@string/atelier_dock_badge"
+                        android:textColor="@color/conteneur_erreur"
+                        android:textSize="9.5sp"
+                        android:textStyle="bold" />
+                </FrameLayout>
+
+                <ImageButton
+                    android:id="@+id/terminal_button"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:background="@drawable/fond_pill_ok"
+                    android:contentDescription="@string/terminal_titre"
+                    android:src="@drawable/ic_check"
+                    android:scaleType="centerInside"
+                    app:tint="@color/ok" />
+            </LinearLayout>
+
+            <!-- Corps du dock repliable (studio : pills + onglets + problème mono) -->
+            <LinearLayout
+                android:id="@+id/dock_body"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:paddingHorizontal="12dp"
-                android:paddingBottom="12dp">
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:paddingBottom="14dp"
+                android:visibility="gone">
 
+                <!-- Rangée d'état du build (studio : 3 pills + copier) -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="10dp">
+
+                    <TextView
+                        android:id="@+id/build_state_ok"
+                        style="Pill"
+                        android:layout_width="wrap_content"
+                        android:layout_height="26dp"
+                        android:gravity="center"
+                        android:background="@drawable/fond_pill_ok"
+                        android:textColor="@color/ok"
+                        android:textSize="@dimen/pill_txt"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/build_state_err"
+                        style="Pill"
+                        android:layout_width="wrap_content"
+                        android:layout_height="26dp"
+                        android:layout_marginStart="8dp"
+                        android:gravity="center"
+                        android:background="@drawable/fond_pill_err"
+                        android:textColor="@color/erreur"
+                        android:textSize="@dimen/pill_txt"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/build_state_warn"
+                        style="Pill"
+                        android:layout_width="wrap_content"
+                        android:layout_height="26dp"
+                        android:layout_marginStart="8dp"
+                        android:gravity="center"
+                        android:background="@drawable/fond_pill_warn"
+                        android:textColor="@color/alerte"
+                        android:textSize="@dimen/pill_txt"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
+
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="1" />
+
+                    <ImageButton
+                        android:id="@+id/dock_copy"
+                        style="IconBtn"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:contentDescription="@string/diagnostic_copier"
+                        android:src="@drawable/ic_copy"
+                        android:scaleType="centerInside"
+                        app:tint="@color/sur_var" />
+                </LinearLayout>
+
+                <!-- Onglets du dock (studio : Problèmes · Console · Étapes · Journal) -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="10dp">
+
+                    <TextView
+                        android:id="@+id/dock_tab_problems"
+                        style="Chip"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:gravity="center"
+                        android:background="@drawable/fond_chip_on"
+                        android:text="@string/section_problemes"
+                        android:textColor="@color/sur_sc2"
+                        android:textSize="@dimen/chip_txt"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/dock_tab_console"
+                        style="Chip"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:layout_marginStart="8dp"
+                        android:gravity="center"
+                        android:text="@string/section_console"
+                        android:textColor="@color/sur"
+                        android:textSize="@dimen/chip_txt"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/dock_tab_steps"
+                        style="Chip"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:layout_marginStart="8dp"
+                        android:gravity="center"
+                        android:text="@string/section_etapes"
+                        android:textColor="@color/sur"
+                        android:textSize="@dimen/chip_txt"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/dock_tab_journal"
+                        style="Chip"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:layout_marginStart="8dp"
+                        android:gravity="center"
+                        android:text="@string/section_journal"
+                        android:textColor="@color/sur"
+                        android:textSize="@dimen/chip_txt"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Sortie mono (studio : sc_low + contour 12dp, 11.5sp) -->
                 <TextView
                     android:id="@+id/console_output"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:fontFamily="monospace"
-                    android:textAppearance="?attr/textAppearanceBodySmall"
-                    android:importantForAccessibility="no" />
+                    android:textSize="11.5sp"
+                    android:lineSpacingMultiplier="1.55"
+                    android:padding="12dp"
+                    android:background="@drawable/fond_sortie_dock"
+                    android:textColor="@color/sur" />
 
                 <TextView
                     android:id="@+id/problems_list"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:visibility="gone"
-                    android:textAppearance="?attr/textAppearanceBodySmall" />
+                    android:fontFamily="monospace"
+                    android:textSize="11.5sp"
+                    android:lineSpacingMultiplier="1.55"
+                    android:padding="12dp"
+                    android:background="@drawable/fond_sortie_dock"
+                    android:textColor="@color/sur" />
 
                 <TextView
                     android:id="@+id/ide_journal"
@@ -198,26 +480,155 @@
                     android:layout_height="wrap_content"
                     android:visibility="gone"
                     android:fontFamily="monospace"
-                    android:textAppearance="?attr/textAppearanceBodySmall" />
+                    android:textSize="11.5sp"
+                    android:lineSpacingMultiplier="1.55"
+                    android:padding="12dp"
+                    android:background="@drawable/fond_sortie_dock"
+                    android:textColor="@color/sur_var" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Clavier de symboles (studio : beige, rangée Tab + touches 36dp) -->
+        <LinearLayout
+            android:id="@+id/symbol_bar"
+            android:layout_width="match_parent"
+            android:layout_height="46dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@color/clavier"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- Tiroir gauche (studio : push 320dp, switcher + arbre + actions) -->
+    <FrameLayout
+        android:id="@+id/left_drawer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <View
+            android:id="@+id/left_scrim"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/fond_scrim" />
+
+        <LinearLayout
+            android:id="@+id/left_drawer_panel"
+            android:layout_width="320dp"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:background="@color/sc"
+            android:layout_gravity="start">
+
+            <!-- Switcher (studio : Files · Chercher · Structure, chips 32dp) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="10dp"
+                android:baselineAligned="false">
 
                 <TextView
-                    android:id="@+id/logcat_output"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:visibility="gone"
-                    android:fontFamily="monospace"
-                    android:textAppearance="?attr/textAppearanceBodySmall" />
+                    android:id="@+id/drawer_tab_files"
+                    style="Chip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:gravity="center"
+                    android:background="@drawable/fond_chip_on"
+                    android:text="@string/atelier_files"
+                    android:textColor="@color/sur_sc2"
+                    android:textSize="@dimen/chip_txt"
+                    android:textStyle="bold" />
 
-                <!-- Section Terminal (mode Gradle : ouvre l\'écran complet) -->
-                <Button
-                    android:id="@+id/terminal_section_button"
-                    style="?attr/materialButtonOutlinedStyle"
+                <TextView
+                    android:id="@+id/drawer_tab_search"
+                    style="Chip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="6dp"
+                    android:gravity="center"
+                    android:text="@string/atelier_chercher"
+                    android:textColor="@color/sur"
+                    android:textSize="@dimen/chip_txt"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/drawer_tab_structure"
+                    style="Chip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="6dp"
+                    android:gravity="center"
+                    android:text="@string/atelier_structure"
+                    android:textColor="@color/sur"
+                    android:textSize="@dimen/chip_txt"
+                    android:textStyle="bold" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
+
+                <ImageButton
+                    android:id="@+id/close_left"
+                    style="IconBtn"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:contentDescription="@string/commun_retour"
+                    android:src="@drawable/ic_x"
+                    android:scaleType="centerInside"
+                    app:tint="@color/sur_var" />
+            </LinearLayout>
+
+            <!-- Arborescence (rangées indentées, dossier primaire / fichier contour) -->
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+
+                <LinearLayout
+                    android:id="@+id/files_tree"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/terminal_titre"
-                    android:visibility="gone" />
+                    android:orientation="vertical"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:paddingTop="10dp" />
+            </ScrollView>
+
+            <!-- Actions basses (studio : Nouveau + corbeille, chips 32dp) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="10dp">
+
+                <TextView
+                    android:id="@+id/tree_new_file"
+                    style="Chip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:gravity="center"
+                    android:text="@string/atelier_nouveau_fichier"
+                    android:textColor="@color/sur"
+                    android:textSize="@dimen/chip_txt"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tree_delete"
+                    style="Chip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="8dp"
+                    android:gravity="center"
+                    android:text="@string/atelier_corbeille"
+                    android:textColor="@color/sur"
+                    android:textSize="@dimen/chip_txt"
+                    android:textStyle="bold" />
             </LinearLayout>
-        </ScrollView>
-    </LinearLayout>
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+        </LinearLayout>
+    </FrameLayout>
+</FrameLayout>

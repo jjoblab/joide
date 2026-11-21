@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Carte d'outil (studio : sc_high, rayon 8, padding 10/12) : état Terminé
+     (ic_check ok + label + « +4 −1 lignes ») ou En cours (spinner + label +
+     « 2 outils · 3 fichiers »). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:background="@drawable/fond_carte_outil"
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="10dp">
+
+    <ImageView
+        android:id="@+id/tool_icon"
+        android:layout_width="14dp"
+        android:layout_height="14dp"
+        android:layout_marginEnd="8dp"
+        android:src="@drawable/ic_check"
+        android:importantForAccessibility="no"
+        app:tint="@color/ok" />
+
+    <TextView
+        android:id="@+id/tool_label"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textSize="12.5sp"
+        android:textStyle="bold"
+        android:textColor="@color/sur"
+        android:singleLine="true"
+        android:ellipsize="middle" />
+
+    <TextView
+        android:id="@+id/tool_side"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:textSize="11sp"
+        android:textColor="@color/sur_var" />
+</LinearLayout>

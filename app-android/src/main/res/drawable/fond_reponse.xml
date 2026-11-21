@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bulle de réponse / carte d'outil du studio : sc-high, rayon 14 (réponse)
+     et 8 (carte d'outil — drawable séparé fond_carte_outil). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@color/sc_high" />
+    <corners android:radius="14dp" />
+</shape>

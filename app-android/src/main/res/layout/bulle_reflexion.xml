@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Carte de réponse (studio : sc_high, rayon 14, en-tête « En réflexion… »
+     avec barre 7×11 primaire + texte 13.5sp). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/fond_reponse"
+    android:paddingHorizontal="14dp"
+    android:paddingVertical="12dp">
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <View
+            android:layout_width="7dp"
+            android:layout_height="11dp"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/fond_barre_reflexion" />
+
+        <TextView
+            android:id="@+id/thinking_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/chat_thinking"
+            android:textSize="12.5sp"
+            android:textStyle="bold"
+            android:textColor="@color/sur_var" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/thinking_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textSize="13.5sp"
+        android:textColor="@color/sur"
+        android:lineSpacingMultiplier="1.6" />
+</LinearLayout>

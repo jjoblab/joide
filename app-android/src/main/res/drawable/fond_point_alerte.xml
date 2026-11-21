@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Point d alerte de l onglet (ton alerte du studio). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@color/alerte" />
+    <corners android:radius="4dp" />
+</shape>

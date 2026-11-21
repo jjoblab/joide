@@ -5,19 +5,22 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import jo.joide.app.R;
 import jo.joide.app.databinding.WorkbenchFragmentBinding;
-import jo.joide.app.databinding.FileListItemBinding;
 import jo.joide.corestore.ModePreferences;
 import jo.joide.app.ModeSetupFragment;
 import jo.joide.buildforge.ForgeBackend;
@@ -27,13 +30,16 @@ import jo.joide.workbench.BuildRequest;
 import jo.joide.workbench.WorkMode;
 
 /**
- * Atelier (fiche ecrans/atelier.md) : barre, zone éditeur (brique céleris),
- * tiroir fichiers, bottom sheet à en-tête unique et quatre sections — Console et
- * Problèmes consomment le `BuildBackend` du mode actif (conception §4).
+ * Atelier (studio HTML, onglet « Éditeur », rendu 1:1) : top bar 52dp (menu,
+ * nom, pill de mode, save/undo/redo/play/dots), onglets de fichiers 40dp,
+ * fil d'Ariane 34dp avec segment code/aperçu, zone code sc_lowest (brique
+ * céleris), dock à poignée (barre 52dp + corps repliable : pills d'état du
+ * build, onglets Problèmes·Console·Étapes·Journal, sortie mono), tiroir gauche
+ * push 320dp (switcher Files·Chercher·Structure + arborescence indentée).
  *
- * <p>J2 : un projet s'édite et se construit en mode Forge — le journal du build
- * alimente la Console ; les diagnostics (sévérité, position) alimentent la
- * section Problèmes avec saut au fichier.</p>
+ * <p>J2 : le build du mode actif alimente la Console et la section Problèmes
+ * (diagnostics avec position). Les états restent honnêtes : les commandes
+ * portées par les briques non encore câblées se disent, jamais muettes.</p>
  */
 public class WorkbenchFragment extends Fragment {
 
@@ -65,47 +71,330 @@ public class WorkbenchFragment extends Fragment {
         projectPath = projectPath();
 
         if (projectPath != null) {
-            setupFilesList();
-            setupSections();
+            setupTopBar();
+            setupFilesTree();
+            setupTabs();
+            setupDock();
             setupModeVisibility();
-            // J2 : construire — le build Forge alimente la Console (journal,
-            // progression) et la section Problèmes (diagnostics avec position).
+            // J2 : construire — le build du mode actif alimente le dock.
             binding.buildButton.setOnClickListener(v -> runBuild());
-            // Studio : save/undo/redo — la brique céleris porte ces états (L5,
-            // câblage éditeur complet) ; les boutons disent honnêtement l'état.
-            String editorState = getString(R.string.atelier_editeur_brique);
-            binding.saveButton.setOnClickListener(v ->
-                    appendToConsole(editorState));
-            binding.undoButton.setOnClickListener(v ->
-                    appendToConsole(editorState));
-            binding.redoButton.setOnClickListener(v ->
-                    appendToConsole(editorState));
-            // Écran git du projet (studio HTML, onglet Git) : statut, diff,
-            // historique, commit, clonage.
-            binding.gitButton.setOnClickListener(v ->
-                    getParentFragmentManager().beginTransaction()
-                            .replace(((ViewGroup) requireView().getParent()).getId(),
-                                    jo.joide.app.git.GitFragment.forProject(projectPath))
-                            .addToBackStack(null)
-                            .commit());
-            // J3 : terminal intégré (mode Gradle) — câblé par setupModeVisibility().
-            // L7 : tiroir IA de l'atelier (module ai, conception §8).
-            binding.aiButton.setOnClickListener(v -> {
-                jo.joide.app.ai.AiPanelFragment panel =
-                        new jo.joide.app.ai.AiPanelFragment();
-                Bundle args = new Bundle();
-                args.putString("project", projectPath);
-                panel.setArguments(args);
-                getParentFragmentManager().beginTransaction()
-                        .replace(((ViewGroup) requireView().getParent()).getId(), panel)
-                        .addToBackStack(null)
-                        .commit();
-            });
         }
         return binding.getRoot();
     }
 
-    // ---- Build (J2 : le projet se construit en mode Forge) ------------------
+    // ---- Top bar (studio : menu ouvre le tiroir gauche, ⋯ honnête) ----------
+
+    private void setupTopBar() {
+        binding.projectTitle.setText(Path.of(projectPath).getFileName().toString());
+        binding.menuButton.setOnClickListener(v ->
+                binding.leftDrawer.setVisibility(View.VISIBLE));
+        binding.closeLeft.setOnClickListener(v ->
+                binding.leftDrawer.setVisibility(View.GONE));
+        binding.leftScrim.setOnClickListener(v ->
+                binding.leftDrawer.setVisibility(View.GONE));
+        binding.dotsButton.setOnClickListener(v ->
+                toast(getString(R.string.atelier_menu_bientot)));
+        // Studio : save/undo/redo — la brique céleris porte ces états (L5) ;
+        // les boutons disent honnêtement l'état.
+        String editorState = getString(R.string.atelier_editeur_brique);
+        binding.saveButton.setOnClickListener(v -> toast(editorState));
+        binding.undoButton.setOnClickListener(v -> toast(editorState));
+        binding.redoButton.setOnClickListener(v -> toast(editorState));
+    }
+
+    // ---- Onglets de fichiers (studio : 32dp sc2, point alerte, ×) ----------
+
+    private final List<Path> openTabs = new ArrayList<>();
+
+    private void setupTabs() {
+        // Premier fichier ouvert d'emblée (studio : MainActivity.java actif).
+        try (var stream = Files.walk(Path.of(projectPath))) {
+            stream.filter(Files::isRegularFile)
+                    .filter(p -> p.getFileName().toString().endsWith(".java"))
+                    .filter(p -> !p.getFileName().toString().startsWith("."))
+                    .sorted()
+                    .limit(3)
+                    .forEach(openTabs::add);
+        } catch (IOException e) {
+            appendToJournal(getString(R.string.atelier_lecture_impossible,
+                    e.getMessage() != null ? e.getMessage() : ""));
+        }
+        if (openTabs.isEmpty()) {
+            try (var stream = Files.walk(Path.of(projectPath))) {
+                stream.filter(Files::isRegularFile).limit(3).forEach(openTabs::add);
+            } catch (IOException e) {
+                // arborescence vide : onglets vides, journal honnête déjà écrit.
+            }
+        }
+        binding.filesTabs.removeAllViews();
+        for (int i = 0; i < openTabs.size(); i++) {
+            binding.filesTabs.addView(fileTab(openTabs.get(i), i == 0));
+        }
+        if (!openTabs.isEmpty()) {
+            openFile(openTabs.get(0));
+        }
+        // Fil d'Ariane : chemin relatif du fichier actif (studio : app › src › …).
+        binding.breadcrumb.setText(relativize(
+                openTabs.isEmpty() ? Path.of(projectPath) : openTabs.get(0))
+                .replace('/', '›') + getString(R.string.atelier_fil_point));
+    }
+
+    /** Un onglet : icône fichier + nom + point d'alerte (1er) + fermeture. */
+    private View fileTab(Path file, boolean active) {
+        LinearLayout tab = new LinearLayout(requireContext());
+        tab.setOrientation(LinearLayout.HORIZONTAL);
+        tab.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        int pad = dip(12);
+        tab.setPadding(pad, 0, pad, 0);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dip(32));
+        params.rightMargin = dip(2);
+        tab.setLayoutParams(params);
+        tab.setBackground(active
+                ? getResources().getDrawable(R.drawable.fond_onglet_fichier) : null);
+
+        ImageView icon = new ImageView(requireContext());
+        icon.setImageResource(R.drawable.ic_file);
+        icon.setColorFilter(getResources().getColor(
+                active ? R.color.sur_sc2 : R.color.sur_var));
+        tab.addView(icon, new LinearLayout.LayoutParams(dip(15), dip(15)));
+
+        TextView name = new TextView(requireContext());
+        name.setText(file.getFileName().toString());
+        name.setTextSize(12.5f);
+        name.setTypeface(name.getTypeface(), android.graphics.Typeface.BOLD);
+        name.setTextColor(getResources().getColor(
+                active ? R.color.sur_sc2 : R.color.sur_var));
+        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        nameParams.leftMargin = dip(7);
+        name.setLayoutParams(nameParams);
+        tab.addView(name);
+
+        // Point d'alerte (studio : modifications non enregistrées du 1er onglet).
+        if (active) {
+            View dot = new View(requireContext());
+            LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(dip(7), dip(7));
+            dotParams.leftMargin = dip(7);
+            dot.setLayoutParams(dotParams);
+            dot.setBackground(getResources().getDrawable(R.drawable.fond_point_alerte));
+            tab.addView(dot);
+        }
+
+        ImageView close = new ImageView(requireContext());
+        close.setImageResource(R.drawable.ic_x);
+        close.setColorFilter(getResources().getColor(
+                active ? R.color.sur_sc2 : R.color.sur_var));
+        LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(dip(12), dip(12));
+        closeParams.leftMargin = dip(7);
+        close.setLayoutParams(closeParams);
+        close.setOnClickListener(v -> {
+            openTabs.remove(file);
+            setupTabs();
+        });
+        tab.addView(close);
+        tab.setOnClickListener(v -> openFile(file));
+        return tab;
+    }
+
+    // ---- Tiroir gauche (studio : arborescence indentée à icônes) -----------
+
+    private void setupFilesTree() {
+        binding.filesTree.removeAllViews();
+        List<Path> files = new ArrayList<>();
+        try (var stream = Files.walk(Path.of(projectPath))) {
+            stream.filter(p -> !p.getFileName().toString().startsWith("."))
+                    .filter(Files::isRegularFile)
+                    .limit(50)
+                    .forEach(files::add);
+        } catch (IOException e) {
+            appendToJournal(getString(R.string.atelier_lecture_impossible,
+                    e.getMessage() != null ? e.getMessage() : ""));
+        }
+        files.sort(java.util.Comparator.comparingInt(p -> p.getNameCount()));
+        for (Path file : files) {
+            binding.filesTree.addView(treeRow(file));
+        }
+        // Actions basses du tiroir (studio : Nouveau + corbeille) — honnêtes.
+        binding.treeNewFile.setOnClickListener(v ->
+                toast(getString(R.string.atelier_editeur_brique)));
+        binding.treeDelete.setOnClickListener(v ->
+                toast(getString(R.string.atelier_editeur_brique)));
+    }
+
+    /** Une rangée d'arborescence : indentation par profondeur, dossier/file. */
+    private View treeRow(Path file) {
+        LinearLayout row = new LinearLayout(requireContext());
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        int depth = Math.max(0, file.getNameCount()
+                - Path.of(projectPath).getNameCount() - 1);
+        row.setPadding(dip(6) + depth * dip(18), dip(6), dip(6), dip(6));
+
+        ImageView icon = new ImageView(requireContext());
+        icon.setImageResource(R.drawable.ic_file);
+        icon.setColorFilter(getResources().getColor(R.color.contour));
+        row.addView(icon, new LinearLayout.LayoutParams(dip(16), dip(16)));
+
+        TextView name = new TextView(requireContext());
+        name.setText(file.getFileName().toString());
+        name.setTextSize(13f);
+        name.setTextColor(getResources().getColor(R.color.sur_var));
+        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        nameParams.leftMargin = dip(8);
+        name.setLayoutParams(nameParams);
+        row.addView(name);
+        row.setOnClickListener(v -> openFile(file));
+        return row;
+    }
+
+    /** Ouvre un fichier dans l'éditeur (onglet actif). */
+    private void openFile(Path file) {
+        try {
+            String content = new String(Files.readAllBytes(file),
+                    StandardCharsets.UTF_8);
+            attachEditor(file.getFileName().toString(), content);
+        } catch (IOException e) {
+            appendToJournal(getString(R.string.atelier_lecture_impossible,
+                    file.getFileName().toString()));
+        }
+    }
+
+    // ---- Éditeur (brique céleris, conception §6) ----------------------------
+
+    private jo.celeris.android.host.CelerisEditor editor;
+
+    /**
+     * Monte l'éditeur céleris dans la zone d'édition : vue + couche de popups +
+     * kit de langages (32 langages embarqués, grammaires packagées —
+     * {@code builtinPacks}). La barre de symboles (OutlineView) est la brique
+     * android-widgets ; le clavier délégué (KeyboardPopup) suivra au lot terminal.
+     */
+    private void attachEditor(String fileName, String content) {
+        Context context = requireContext();
+        if (editor == null) {
+            jo.celeris.android.view.EditorView view =
+                    new jo.celeris.android.view.EditorView(context);
+            jo.celeris.android.widgets.PopupLayer popups =
+                    new jo.celeris.android.widgets.PopupLayer(context);
+            binding.editorArea.addView(view,
+                    new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT));
+            binding.editorArea.addView(popups,
+                    new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT));
+            jo.celeris.core.language.LanguageKit kit =
+                    jo.celeris.core.language.LanguageKit.builder(
+                            jo.celeris.core.language.LanguageKit.sharedDaemon())
+                            .grammarFactory(jo.celeris.core.syntax.grammars.PackGrammars.INSTANCE)
+                            .builtinPacks()
+                            .build();
+            editor = jo.celeris.android.host.CelerisEditor.attach(view, popups, kit);
+        }
+        editor.open(fileName, content);
+    }
+
+    // ---- Dock (studio : poignée replie/déplie, onglets, pills d'état) ------
+
+    private void setupDock() {
+        binding.dockHandle.setOnClickListener(v -> toggleDock());
+        binding.terminalButton.setOnClickListener(v -> toggleDock());
+        binding.dockSearch.setOnClickListener(v ->
+                toast(getString(R.string.atelier_recherche_bientot)));
+        binding.dockCode.setOnClickListener(v -> {
+            // Studio : le bouton code du dock ouvre la barre de symboles.
+            binding.symbolBar.setVisibility(binding.symbolBar.getVisibility()
+                    == View.VISIBLE ? View.GONE : View.VISIBLE);
+            if (binding.symbolBar.getChildCount() == 0) {
+                buildSymbolBar();
+            }
+        });
+        binding.dockCopy.setOnClickListener(v -> copyConsole());
+        // L7 : tiroir IA de l'atelier (module ai, conception §8) — pastille pc du dock.
+        binding.aiButton.setOnClickListener(v -> {
+            jo.joide.app.ai.AiPanelFragment panel =
+                    new jo.joide.app.ai.AiPanelFragment();
+            Bundle args = new Bundle();
+            args.putString("project", projectPath);
+            panel.setArguments(args);
+            getParentFragmentManager().beginTransaction()
+                    .replace(((ViewGroup) requireView().getParent()).getId(), panel)
+                    .addToBackStack(null)
+                    .commit();
+        });
+        binding.dotsButtonDock.setOnClickListener(v ->
+                toast(getString(R.string.atelier_menu_bientot)));
+        binding.dockTabProblems.setOnClickListener(v -> showDockSection(0));
+        binding.dockTabConsole.setOnClickListener(v -> showDockSection(1));
+        binding.dockTabSteps.setOnClickListener(v -> showDockSection(2));
+        binding.dockTabJournal.setOnClickListener(v -> showDockSection(3));
+        showDockSection(1); // Console par défaut (studio : Problèmes, réels par build).
+    }
+
+    /** Replie/déplie le corps du dock (studio : detent 52dp → contenu). */
+    private void toggleDock() {
+        binding.dockBody.setVisibility(binding.dockBody.getVisibility()
+                == View.VISIBLE ? View.GONE : View.VISIBLE);
+    }
+
+    /** Section visible du dock (studio : chips 32dp, ON = sc2). */
+    private void showDockSection(int position) {
+        binding.problemsList.setVisibility(position == 0 ? View.VISIBLE : View.GONE);
+        binding.consoleOutput.setVisibility(position == 1 ? View.VISIBLE : View.GONE);
+        binding.ideJournal.setVisibility(position == 3 ? View.VISIBLE : View.GONE);
+        binding.dockTabProblems.setBackground(getResources().getDrawable(
+                position == 0 ? R.drawable.fond_chip_on : R.drawable.fond_chip));
+        binding.dockTabConsole.setBackground(getResources().getDrawable(
+                position == 1 ? R.drawable.fond_chip_on : R.drawable.fond_chip));
+        binding.dockTabSteps.setBackground(getResources().getDrawable(
+                position == 2 ? R.drawable.fond_chip_on : R.drawable.fond_chip));
+        binding.dockTabJournal.setBackground(getResources().getDrawable(
+                position == 3 ? R.drawable.fond_chip_on : R.drawable.fond_chip));
+        // Étapes : aucune donnée réelle dans ce lot — section honnête (journal).
+        if (position == 2) {
+            binding.ideJournal.setVisibility(View.VISIBLE);
+        }
+    }
+
+    /** Copie la sortie console dans le presse-papiers (action réelle). */
+    private void copyConsole() {
+        android.content.ClipboardManager clipboard = (android.content.ClipboardManager)
+                requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
+        clipboard.setPrimaryClip(android.content.ClipData.newPlainText(
+                getString(R.string.section_console), binding.consoleOutput.getText()));
+        toast(getString(R.string.diagnostic_copie_ok));
+    }
+
+    // ---- Barre de symboles (studio : beige, Tab primaire + touches) ---------
+
+    /** Rangée de touches du studio : Tab primaire puis { ( . : = -> ⋯ ↓. */
+    private void buildSymbolBar() {
+        String[] symbols = {"{", "}", "(", ".", ":", "=", "->"};
+        for (int i = 0; i <= symbols.length; i++) {
+            TextView key = new TextView(requireContext());
+            key.setGravity(android.view.Gravity.CENTER);
+            key.setTypeface(android.graphics.Typeface.MONOSPACE);
+            key.setTextSize(13f);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    i == 0 ? dip(44) : dip(38), dip(36));
+            params.rightMargin = dip(4);
+            key.setLayoutParams(params);
+            if (i == 0) {
+                key.setText(getString(R.string.atelier_touche_tab));
+                key.setBackground(getResources().getDrawable(R.drawable.fond_kbd_tab));
+                key.setTextColor(getResources().getColor(R.color.sur_primaire));
+                key.setTypeface(key.getTypeface(), android.graphics.Typeface.BOLD);
+            } else {
+                key.setText(symbols[i - 1]);
+                key.setBackground(getResources().getDrawable(R.drawable.fond_kbd_key));
+                key.setTextColor(getResources().getColor(R.color.sur));
+            }
+            binding.symbolBar.addView(key);
+        }
+    }
+
+    // ---- Build (J2 : le mode actif décide) -----------------------------------
 
     private ForgeBackend forgeBackend;
     private GradleBackend gradleBackend;
@@ -152,7 +441,7 @@ public class WorkbenchFragment extends Fragment {
                     new jo.forge.client.JavaVmLauncher());
         }
         String buildId = "joide-" + System.currentTimeMillis();
-        appendToConsole("— build " + buildId + " —");
+        appendToConsole(getString(R.string.atelier_build_debut));
         forgeBackend.build(new BuildRequest(buildId, projectPath, false),
                 this::onBuildEvent)
                 .whenComplete((session, failure) -> {
@@ -165,7 +454,7 @@ public class WorkbenchFragment extends Fragment {
                 });
     }
 
-    /** Événement de build → sections (Console pour le flux, Problèmes pour les diagnostics). */
+    /** Événement de build → dock (Console pour le flux, Problèmes pour les diagnostics). */
     private void onBuildEvent(BuildEvent event) {
         requireActivity().runOnUiThread(() -> {
             if (event instanceof BuildEvent.Log log) {
@@ -176,13 +465,19 @@ public class WorkbenchFragment extends Fragment {
             } else if (event instanceof BuildEvent.TaskState task) {
                 appendToConsole(task.task() + " : " + task.status());
             } else if (event instanceof BuildEvent.Progress progress) {
-                appendToConsole("progression : " + progress.tasksDone()
-                        + "/" + progress.tasksTotal());
+                appendToConsole(getString(R.string.atelier_progression,
+                        progress.tasksDone(), progress.tasksTotal()));
             } else if (event instanceof BuildEvent.Finished finished) {
                 appendToConsole(finished.success()
                         ? getString(R.string.atelier_build_reussi)
                         : getString(R.string.atelier_build_echoue,
                                 finished.failedTask() != null ? finished.failedTask() : "?"));
+                binding.buildStateOk.setVisibility(
+                        finished.success() ? View.VISIBLE : View.GONE);
+                if (finished.success()) {
+                    binding.buildStateOk.setText(getString(R.string.atelier_build_ok_pill));
+                }
+                binding.dockBody.setVisibility(View.VISIBLE);
             }
         });
     }
@@ -193,140 +488,48 @@ public class WorkbenchFragment extends Fragment {
                 + " · " + diagnostic.message();
     }
 
-    // ---- Mode actif : notice, chip, visibilité (studio HTML, onglet Éditeur mode) --
+    // ---- Mode actif : notice, chip, visibilité (studio, onglet Éditeur mode) --
 
     /** Notice + chip + terminal selon le mode : Forge grise le terminal, Gradle ouvre l'onglet. */
     private void setupModeVisibility() {
         renderModeChrome(activeMode());
-        // Studio : le chip de mode bascule (démo des deux états de l'éditeur) —
-        // la bascule réelle vit dans les paramètres (ADR-002), le chip l'ouvre.
+        // Studio : le chip de mode bascule — la bascule réelle vit dans les
+        // paramètres (ADR-002) ; le chip déroute vers l'installation des modes.
         binding.modeChip.setOnClickListener(v ->
                 getParentFragmentManager().beginTransaction()
                         .replace(((ViewGroup) requireView().getParent()).getId(),
-                                new jo.joide.app.settings.SettingsFragment())
+                                jo.joide.app.install.InstallFragment.forMode(activeMode()))
                         .addToBackStack(null)
                         .commit());
     }
 
-    /** Rendu chrome selon le mode : notice, chip, terminal, onglet (studio, modeEditor). */
+    /** Rendu chrome selon le mode : notice, chip, terminal (studio, modeEditor). */
     private void renderModeChrome(WorkMode mode) {
-        binding.modeChip.setText(mode.name());
+        binding.modeChip.setText(mode == WorkMode.GRADLE
+                ? getString(R.string.mode_gradle_nom) : getString(R.string.mode_forge_nom));
         binding.modeNotice.setVisibility(View.VISIBLE);
         binding.modeNotice.setText(mode == WorkMode.GRADLE
                 ? getString(R.string.atelier_notice_gradle)
                 : getString(R.string.atelier_notice_forge));
         // Capacités honnêtes : le terminal n'existe qu'en mode Gradle.
-        binding.terminalButton.setVisibility(
-                mode == WorkMode.GRADLE ? View.VISIBLE : View.GONE);
-        com.google.android.material.tabs.TabLayout.Tab terminalTab =
-                binding.sectionsTabs.getTabAt(4);
-        if (terminalTab != null) {
-            terminalTab.view.setVisibility(
-                    mode == WorkMode.GRADLE ? View.VISIBLE : View.GONE);
-        }
-        binding.terminalSectionButton.setOnClickListener(v ->
+        binding.terminalButton.setOnClickListener(v -> {
+            if (mode == WorkMode.GRADLE) {
+                jo.joide.app.terminal.TerminalFragment terminal =
+                        new jo.joide.app.terminal.TerminalFragment();
+                Bundle args = new Bundle();
+                args.putString("project", projectPath);
+                terminal.setArguments(args);
                 getParentFragmentManager().beginTransaction()
-                        .replace(((ViewGroup) requireView().getParent()).getId(),
-                                new jo.joide.app.terminal.TerminalFragment())
+                        .replace(((ViewGroup) requireView().getParent()).getId(), terminal)
                         .addToBackStack(null)
-                        .commit());
+                        .commit();
+            } else {
+                toast(getString(R.string.atelier_terminal_grise));
+            }
+        });
     }
 
-
-    // ---- Fichiers (tiroir → onglet actif) -----------------------------------
-
-    private final List<Path> projectFiles = new ArrayList<>();
-
-    /** Liste plate des fichiers du projet (tiroir fichiers). */
-    private void setupFilesList() {
-        Path root = Path.of(projectPath);
-        try (var stream = Files.walk(root)) {
-            stream.filter(Files::isRegularFile)
-                    .filter(p -> !p.getFileName().toString().startsWith("."))
-                    .limit(50)
-                    .forEach(projectFiles::add);
-        } catch (IOException e) {
-            // Projet illisible : journal IDE, l'atelier reste ouvert (jamais muet).
-            appendToJournal("Lecture du projet impossible : " + e.getMessage());
-        }
-        binding.filesRecycler.setLayoutManager(new LinearLayoutManager(getContext()));
-        binding.filesRecycler.setAdapter(new FilesAdapter());
-        if (!projectFiles.isEmpty()) {
-            openFile(projectFiles.get(0));
-        }
-    }
-
-    /** Ouvre un fichier dans l'éditeur (onglet actif). */
-    private void openFile(Path file) {
-        try {
-            String content = new String(Files.readAllBytes(file),
-                    StandardCharsets.UTF_8);
-            attachEditor(file.getFileName().toString(), content);
-        } catch (IOException e) {
-            appendToJournal("Ouverture de " + file.getFileName()
-                    + " impossible : " + e.getMessage());
-        }
-    }
-
-    // ---- Éditeur (brique céleris, conception §6) ----------------------------
-
-    private jo.celeris.android.host.CelerisEditor editor;
-
-    /**
-     * Monte l'éditeur céleris dans la zone d'édition : vue + couche de popups +
-     * kit de langages (32 langages embarqués, grammaires packagées —
-     * {@code builtinPacks}). La barre de symboles (OutlineView) est la brique
-     * android-widgets ; le clavier délégué (KeyboardPopup) suivra au lot terminal.
-     */
-    private void attachEditor(String fileName, String content) {
-        Context context = requireContext();
-        if (editor == null) {
-            jo.celeris.android.view.EditorView view =
-                    new jo.celeris.android.view.EditorView(context);
-            jo.celeris.android.widgets.PopupLayer popups =
-                    new jo.celeris.android.widgets.PopupLayer(context);
-            binding.editorArea.addView(view,
-                    new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT));
-            binding.editorArea.addView(popups,
-                    new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT));
-            jo.celeris.core.language.LanguageKit kit =
-                    jo.celeris.core.language.LanguageKit.builder(
-                            jo.celeris.core.language.LanguageKit.sharedDaemon())
-                            .grammarFactory(jo.celeris.core.syntax.grammars.PackGrammars.INSTANCE)
-                            .builtinPacks()
-                            .build();
-            editor = jo.celeris.android.host.CelerisEditor.attach(view, popups, kit);
-        }
-        editor.open(fileName, content);
-    }
-
-    // ---- Sections (Console / Problèmes / Journal / Logcat) -----------------
-
-    private void setupSections() {
-        binding.sectionsTabs.addOnTabSelectedListener(
-                new com.google.android.material.tabs.TabLayout.OnTabSelectedListener() {
-                    @Override public void onTabSelected(
-                            com.google.android.material.tabs.TabLayout.Tab tab) {
-                        showSection(tab.getPosition());
-                    }
-                    @Override public void onTabUnselected(
-                            com.google.android.material.tabs.TabLayout.Tab tab) { }
-                    @Override public void onTabReselected(
-                            com.google.android.material.tabs.TabLayout.Tab tab) { }
-                });
-        // Console par défaut.
-        showSection(0);
-    }
-
-    private void showSection(int position) {
-        binding.consoleOutput.setVisibility(position == 0 ? View.VISIBLE : View.GONE);
-        binding.problemsList.setVisibility(position == 1 ? View.VISIBLE : View.GONE);
-        binding.ideJournal.setVisibility(position == 2 ? View.VISIBLE : View.GONE);
-        binding.logcatOutput.setVisibility(position == 3 ? View.VISIBLE : View.GONE);
-        binding.terminalSectionButton.setVisibility(position == 4 ? View.VISIBLE : View.GONE);
-    }
+    // ---- Journal --------------------------------------------------------------
 
     /** Ajoute une ligne au journal IDE (section Journal, jamais muet). */
     private void appendToJournal(String line) {
@@ -338,45 +541,20 @@ public class WorkbenchFragment extends Fragment {
         binding.consoleOutput.append(line + "\n");
     }
 
-    // ---- Adaptateur fichiers ------------------------------------------------
-
-    private final class FilesAdapter
-            extends RecyclerView.Adapter<FilesAdapter.FileHolder> {
-
-        @NonNull
-        @Override
-        public FileHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            return new FileHolder(FileListItemBinding.inflate(
-                    LayoutInflater.from(parent.getContext()), parent, false));
-        }
-
-        @Override
-        public void onBindViewHolder(@NonNull FileHolder holder, int position) {
-            Path file = projectFiles.get(position);
-            holder.binding.fileName.setText(relativize(file));
-            holder.itemView.setOnClickListener(v -> openFile(file));
-        }
-
-        @Override
-        public int getItemCount() {
-            return projectFiles.size();
-        }
-
-        final class FileHolder extends RecyclerView.ViewHolder {
-            final FileListItemBinding binding;
-
-            FileHolder(FileListItemBinding binding) {
-                super(binding.getRoot());
-                this.binding = binding;
-            }
-        }
-    }
-
     private String relativize(Path file) {
         try {
             return Path.of(projectPath).relativize(file).toString();
         } catch (IllegalArgumentException e) {
             return file.getFileName().toString();
         }
+    }
+
+    private void toast(String message) {
+        Toast.makeText(requireContext(),
+                message != null ? message : "", Toast.LENGTH_SHORT).show();
+    }
+
+    private int dip(int value) {
+        return (int) (value * getResources().getDisplayMetrics().density);
     }
 }

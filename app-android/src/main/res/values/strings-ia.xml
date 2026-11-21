@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Écran Chat IA + hub Paramètres + page Réglage IA (studio HTML,
+     joide-previews-ecrans.html). Identifiants anglais, texte français.
+     Les chaînes ia_*/settings_* historiques vivent dans strings.xml. -->
+<resources>
+
+    <!-- ===== Chat IA (studio : chatScreen + drawer IA de editorScreen) ===== -->
+
+    <string name="chat_assistant_title">Assistant</string>
+    <string name="chat_model_default">claude-4 ▾</string>
+    <string name="chat_model_pill">%1$s ▾</string>
+    <string name="chat_perm_auto">Auto ✓</string>
+    <string name="chat_perm_ask">Demander ✓</string>
+    <string name="chat_perm_plan">Plan ✓</string>
+    <string name="chat_more_actions">Actions</string>
+    <string name="chat_input_hint">Demander un changement…</string>
+    <string name="chat_send">Envoyer</string>
+    <string name="chat_attach">Joindre</string>
+
+    <!-- Bulles du transcript -->
+    <string name="chat_thinking">En réflexion…</string>
+    <string name="chat_tool_done_summary">✓ %1$s · %2$s</string>
+    <string name="chat_tool_running">%1$s…</string>
+    <string name="chat_tool_files">%1$d outils · %2$d fichiers</string>
+    <string name="chat_tool_lines">+4 −1 lignes</string>
+    <string name="chat_question_title">Fichier cible ?</string>
+    <string name="chat_question_body">Deux fichiers portent MainActivity : app et wear. Lequel modifier ?</string>
+    <string name="chat_question_option_app">app/MainActivity</string>
+    <string name="chat_question_option_wear">wear/MainActivity</string>
+    <string name="chat_error_title">Clé API rejetée</string>
+    <string name="chat_error_body_401">Le fournisseur répond 401 · vérifiez la clé dans Paramètres → IA (jamais affichée dans les journaux).</string>
+    <string name="chat_error_retry">Réessayer</string>
+    <string name="chat_error_open_settings">Ouvrir Paramètres</string>
+    <string name="chat_no_key">Aucune clé IA au coffre : réglez un fournisseur dans les paramètres. La passerelle locale fonctionne sans clé.</string>
+
+    <!-- ===== Hub Paramètres (studio : settingsScreen) ===== -->
+
+    <string name="settings_hub_title">Paramètres</string>
+    <string name="settings_hub_search">Rechercher dans les paramètres</string>
+    <string name="settings_profile_title">Développeur JoIDE</string>
+    <string name="settings_profile_mode_active">Mode actif : %1$s · %2$d projets récents</string>
+    <string name="settings_profile_open">Ouvrir le profil</string>
+
+    <string name="settings_section_editor">Éditeur</string>
+    <string name="settings_row_appearance">Apparence</string>
+    <string name="settings_row_appearance_desc">Thème, accent, langue</string>
+    <string name="settings_row_editor_keyboard">Éditeur &amp; clavier</string>
+    <string name="settings_row_editor_keyboard_desc">Taille, police, barre de symboles</string>
+    <string name="settings_row_shortcuts">Raccourcis clavier</string>
+    <string name="settings_row_shortcuts_desc">Rejoignez les frappes des actions</string>
+
+    <string name="settings_section_ia">IA</string>
+    <string name="settings_row_providers">Fournisseurs</string>
+    <string name="settings_row_providers_desc">Anthropic, Gemini, OpenAI, passerelle</string>
+    <string name="settings_row_agent_permissions">Permissions de l\'agent</string>
+    <string name="settings_row_agent_permissions_desc">Demander, plan seulement, auto</string>
+
+    <string name="settings_section_build">Construction</string>
+    <string name="settings_row_build_engines">Moteurs de build</string>
+    <string name="settings_row_build_engines_desc">Forge &amp; Gradle embarqué : installation, bascule</string>
+    <string name="settings_row_terminal">Terminal</string>
+    <string name="settings_row_terminal_desc">Sessions, clavier étendu, copier-coller</string>
+
+    <string name="settings_section_system">Système</string>
+    <string name="settings_row_storage">Stockage</string>
+    <string name="settings_row_storage_desc">Projets, caches, journaux, nettoyage</string>
+    <string name="settings_row_diagnostic">Diagnostic</string>
+    <string name="settings_row_diagnostic_desc">Rapport copiable, secrets rédigés</string>
+    <string name="settings_row_about">À propos</string>
+    <string name="settings_row_about_desc">Licences, version, code source</string>
+
+    <!-- Accès (contentDescription) des rangées -->
+    <string name="settings_cd_row_appearance">Apparence</string>
+    <string name="settings_cd_row_editor_keyboard">Éditeur et clavier</string>
+    <string name="settings_cd_row_shortcuts">Raccourcis clavier</string>
+    <string name="settings_cd_row_providers">Fournisseurs IA</string>
+    <string name="settings_cd_row_agent_permissions">Permissions de l\'agent</string>
+    <string name="settings_cd_row_build_engines">Moteurs de build</string>
+    <string name="settings_cd_row_terminal">Terminal</string>
+    <string name="settings_cd_row_storage">Stockage</string>
+    <string name="settings_cd_row_diagnostic">Diagnostic</string>
+    <string name="settings_cd_row_about">À propos</string>
+    <string name="settings_cd_profile">Profil</string>
+    <string name="settings_cd_back">Retour</string>
+
+    <!-- Diagnostic (actions réelles conservées) -->
+    <string name="settings_diag_copy">Copier le rapport</string>
+    <string name="settings_diag_share">Partager…</string>
+    <string name="settings_diag_copied">Rapport copié (secrets rédigés)</string>
+    <string name="settings_diag_title">Rapport de diagnostic JoIDE</string>
+
+    <!-- Modes (rangée Moteurs de build : bascule réelle) -->
+    <string name="settings_engine_switched">Mode actif changé</string>
+    <string name="settings_engine_repaired">Fait</string>
+    <string name="settings_engine_uninstalled">Mode désinstallé</string>
+
+    <!-- ===== Page Réglage IA (studio : settingsPageScreen) ===== -->
+
+    <string name="settings_ia_page_title">IA · Fournisseurs</string>
+    <string name="settings_ia_eyebrow_provider">Fournisseur actif</string>
+    <string name="settings_ia_provider_anthropic">Anthropic</string>
+    <string name="settings_ia_provider_gemini">Gemini</string>
+    <string name="settings_ia_provider_openai">OpenAI</string>
+    <string name="settings_ia_provider_gateway">Passerelle</string>
+
+    <string name="settings_ia_key_title">Clé Anthropic</string>
+    <string name="settings_ia_key_body">Mise au coffre chiffré (Keystore matériel). Jamais dans les journaux ni le rapport de diagnostic.</string>
+    <string name="settings_ia_key_hint">sk-ant-••••••••••••••••••••</string>
+    <string name="settings_ia_key_save">Mettre la clé au coffre</string>
+    <string name="settings_ia_key_stored">Clé mise au coffre chiffré</string>
+    <string name="settings_ia_key_removed">Clé retirée du coffre</string>
+    <string name="settings_ia_key_cd">Champ de clé API</string>
+
+    <string name="settings_ia_eyebrow_model">Modèle</string>
+    <string name="settings_ia_model_default">claude-4-sonnet</string>
+    <string name="settings_ia_model_next">Modèle suivant</string>
+
+    <string name="settings_ia_eyebrow_effort">Effort de raisonnement</string>
+    <string name="settings_ia_effort_default">Défaut</string>
+    <string name="settings_ia_effort_none">Aucun</string>
+    <string name="settings_ia_effort_low">Faible</string>
+    <string name="settings_ia_effort_medium">Moyen</string>
+    <string name="settings_ia_effort_high">Élevé</string>
+
+    <string name="settings_ia_web_title">Recherche web</string>
+    <string name="settings_ia_web_desc">L\'agent peut chercher sur le web</string>
+    <string name="settings_ia_mcp_title">Serveur MCP</string>
+    <string name="settings_ia_mcp_desc">Exposer les outils sur le port 8765</string>
+
+    <string name="settings_ia_eyebrow_advanced">Avancé</string>
+    <string name="settings_ia_tokens_title">Tokens max par réponse</string>
+    <string name="settings_ia_tokens_desc">Plafond de génération</string>
+    <string name="settings_ia_iterations_title">Itérations d\'outils max</string>
+    <string name="settings_ia_iterations_desc">Tours d\'appels par message</string>
+
+    <string name="settings_ia_notice">La conversation complète (messages, pièces jointes, sorties d\'outils — donc contenus de fichiers lus et résultats de build) part chez le fournisseur choisi.</string>
+
+    <!-- Permissions de l'agent (carte du hub IA, studio) -->
+    <string name="settings_ia_permission_title">Permissions de l\'agent</string>
+    <string name="settings_ia_permission_ask">Demander</string>
+    <string name="settings_ia_permission_plan">Plan seulement</string>
+    <string name="settings_ia_permission_auto">Auto</string>
+</resources>
