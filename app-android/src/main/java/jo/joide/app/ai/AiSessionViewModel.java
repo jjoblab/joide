@@ -349,6 +349,43 @@ public class AiSessionViewModel extends ViewModel {
         }
     }
 
+    /**
+     * Applique une proposition de code (bouton « Appliquer » d'un bloc) :
+     * passe PAR LA PORTE de permission (diff réel dans l'invite), écrit via
+     * l'espace de travail durci, enregistre le point de contrôle. Jamais en
+     * contournant la porte — c'est la promesse du Lot 0, tenue au Lot 5.
+     */
+    public void applyProposal(String path, String content,
+            java.util.function.Consumer<String> onSuccess,
+            java.util.function.Consumer<String> onFailure) {
+        if (projectPath == null) {
+            onFailure.accept("L'application vit dans l'agent du projet (tiroir droit de l'atelier).");
+            return;
+        }
+        executor.execute(() -> {
+            try {
+                AgentLoop current = loop(applicationContext);
+                jo.joide.ai.PermissionGate.PermissionRequest request =
+                        new jo.joide.ai.PermissionGate.PermissionRequest(
+                                "appliquer_proposition", path,
+                                "Écriture proposée par le modèle\nCible : " + path
+                                        + " (" + content.length() + " caractères)");
+                if (!jo.joide.app.settings.SettingsFragment.sharedGate()
+                        .authorize(request)) {
+                    onFailure.accept("Refusé (mode de permission) : rien n'a été écrit.");
+                    return;
+                }
+                current.checkpoint().beforeChange(path);
+                current.loopWorkspace().writeFile(path, content);
+                current.checkpoint().afterChange(path, false);
+                onSuccess.accept(path);
+            } catch (Exception e) {
+                onFailure.accept(e.getMessage() != null ? e.getMessage()
+                        : String.valueOf(e));
+            }
+        });
+    }
+
     /** Annule les effets du dernier tour (checkpoint) et le dit au modèle. */
     public String undoLastTurn() {
         AgentLoop current = loop;

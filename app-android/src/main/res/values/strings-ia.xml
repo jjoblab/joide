@@ -161,6 +161,14 @@
     <string name="chat_menu_create_project">Créer un projet depuis cette conversation</string>
     <string name="chat_tool_actions">%1$d actions d\'outils</string>
     <string name="chat_answer_label">Réponse</string>
+    <!-- Rendu riche des réponses (Lot 5) -->
+    <string name="chat_code_copy">Copier</string>
+    <string name="chat_code_apply">Appliquer…</string>
+    <string name="chat_code_applied">Fichier écrit (via la permission) : %1$s</string>
+    <string name="chat_code_apply_agent_only">L\'application vit dans l\'agent du projet (tiroir droit de l\'atelier).</string>
+    <string name="chat_copied">Copié</string>
+    <string name="chat_reasoning_label">Réflexion</string>
+
     <string name="chat_model_none">Choisir un modèle</string>
     <string name="chat_no_model">Aucun modèle choisi pour ce fournisseur : choisissez-en un dans Réglages IA → Modèles (identifiant du catalogue du fournisseur).</string>
     <string name="chat_error_generic">Le tour a échoué (réseau ou fournisseur) : réessayez, ou vérifiez les réglages du fournisseur.</string>

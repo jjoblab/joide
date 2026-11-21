@@ -754,20 +754,217 @@ public final class AiPanelFragment extends Fragment {
         }
     }
 
-    /** La carte de réflexion devient la carte de réponse : elle RESTE au transcript. */
+    /**
+     * Fin du tour : la carte de réflexion laisse place au rendu **interprété**
+     * de la réponse complète (Lot 5) — paragraphes, blocs de code, diffs,
+     * propositions. Le texte n'est plus jamais supprimé en fin de tour.
+     */
     private void keepThinkingAsAnswer() {
         if (thinkingBinding != null) {
-            thinkingBinding.thinkingLabel.setText(R.string.chat_answer_label);
-            thinkingBinding = null;
+            String streamed = thinkingBinding.thinkingText.getText().toString();
+            endThinking();
+            appendAnswerCard(streamed);
         }
     }
 
-    /** Carte de réponse d'une conversation reprise (texte persisté). */
+    /**
+     * Carte de réponse (Lot 5) : la réponse est **interprétée** — raisonnement
+     * à part (repliable), paragraphes, blocs de code avec cible (Copier +
+     * Appliquer via la permission), tableaux, propositions en chips. Un seul
+     * chemin de rendu, partagé Assistant et Agent.
+     */
     private void appendAnswerCard(String text) {
-        BulleReflexionBinding card = BulleReflexionBinding.inflate(getLayoutInflater());
-        card.thinkingLabel.setText(R.string.chat_answer_label);
-        card.thinkingText.setText(text);
-        appendView(card.getRoot());
+        jo.joide.ai.ResponseInterpreter.Interpreted interpreted =
+                jo.joide.ai.ResponseInterpreter.interpret(text);
+        LinearLayout answer = new LinearLayout(requireContext());
+        answer.setOrientation(LinearLayout.VERTICAL);
+        if (interpreted.reasoning() != null && !interpreted.reasoning().isEmpty()) {
+            BulleReflexionBinding reasoning = BulleReflexionBinding.inflate(
+                    getLayoutInflater(), answer, false);
+            reasoning.thinkingLabel.setText(R.string.chat_reasoning_label);
+            reasoning.thinkingText.setText(interpreted.reasoning());
+            answer.addView(reasoning.getRoot());
+        }
+        for (jo.joide.ai.markdown.MarkdownParser.Block block : interpreted.blocks()) {
+            appendBlock(answer, block);
+        }
+        appendView(answer);
+        if (!interpreted.suggestions().isEmpty()) {
+            binding.chipsRow.removeAllViews();
+            for (String suggestion : interpreted.suggestions()) {
+                TextView chip = new TextView(requireContext());
+                chip.setText(suggestion);
+                chip.setTextColor(getResources().getColor(R.color.sur));
+                chip.setTextSize(13f);
+                chip.setTypeface(chip.getTypeface(), android.graphics.Typeface.BOLD);
+                chip.setPadding(dip(16), 0, dip(16), 0);
+                chip.setMinHeight(dip(36));
+                chip.setBackground(getResources().getDrawable(R.drawable.fond_chip_action));
+                chip.setOnClickListener(v -> binding.inputField.setText(suggestion));
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT, dip(36));
+                params.setMarginEnd(dip(8));
+                binding.chipsRow.addView(chip, params);
+            }
+            binding.chipsRow.setVisibility(View.VISIBLE);
+        }
+    }
+
+    /** Rend un bloc interprété dans le conteneur de réponse. */
+    private void appendBlock(LinearLayout answer,
+            jo.joide.ai.markdown.MarkdownParser.Block block) {
+        if (block instanceof jo.joide.ai.markdown.MarkdownParser.Block.Paragraph paragraph) {
+            TextView text = new TextView(requireContext());
+            text.setText(paragraph.text());
+            text.setTextSize(13.5f);
+            text.setTextColor(getResources().getColor(R.color.sur));
+            text.setLineSpacing(0, 1.55f);
+            answer.addView(text, matchWrap());
+        } else if (block instanceof jo.joide.ai.markdown.MarkdownParser.Block.Heading heading) {
+            TextView text = new TextView(requireContext());
+            text.setText(heading.text());
+            text.setTextSize(heading.level() <= 2 ? 16f : 14.5f);
+            text.setTypeface(text.getTypeface(), android.graphics.Typeface.BOLD);
+            text.setTextColor(getResources().getColor(R.color.sur));
+            answer.addView(text, matchWrap());
+        } else if (block instanceof jo.joide.ai.markdown.MarkdownParser.Block.ListItem item) {
+            TextView text = new TextView(requireContext());
+            String marker = item.checkbox()
+                    ? (item.checked() ? "[x] " : "[ ] ")
+                    : item.ordered() ? "\u2022 " : "\u2013 ";
+            text.setText(marker + item.text());
+            text.setTextSize(13.5f);
+            text.setTextColor(getResources().getColor(R.color.sur));
+            text.setPadding(dip(12 + item.level() * 16), 0, 0, 0);
+            answer.addView(text, matchWrap());
+        } else if (block instanceof jo.joide.ai.markdown.MarkdownParser.Block.CodeBlock code) {
+            appendCodeCard(answer, code);
+        } else if (block instanceof jo.joide.ai.markdown.MarkdownParser.Block.Table table) {
+            android.widget.TableLayout tableLayout = new android.widget.TableLayout(
+                    requireContext());
+            tableLayout.addView(tableRow(table.headers(), true));
+            for (List<String> row : table.rows()) {
+                tableLayout.addView(tableRow(row, false));
+            }
+            answer.addView(tableLayout, matchWrap());
+        } else if (block instanceof jo.joide.ai.markdown.MarkdownParser.Block.Quote quote) {
+            TextView text = new TextView(requireContext());
+            text.setText(quote.text());
+            text.setTextSize(13f);
+            text.setTextColor(getResources().getColor(R.color.sur_var));
+            text.setPadding(dip(12), 0, 0, 0);
+            answer.addView(text, matchWrap());
+        }
+    }
+
+    /** Une rangée de tableau (en-tête en gras). */
+    private android.widget.TableRow tableRow(List<String> cells, boolean header) {
+        android.widget.TableRow row = new android.widget.TableRow(requireContext());
+        for (String cell : cells) {
+            TextView text = new TextView(requireContext());
+            text.setText(cell);
+            text.setTextSize(12.5f);
+            text.setTextColor(getResources().getColor(
+                    header ? R.color.sur : R.color.sur_var));
+            if (header) {
+                text.setTypeface(text.getTypeface(), android.graphics.Typeface.BOLD);
+            }
+            text.setPadding(dip(10), dip(6), dip(10), dip(6));
+            android.widget.TableRow.LayoutParams params =
+                    new android.widget.TableRow.LayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT);
+            row.addView(text, params);
+        }
+        return row;
+    }
+
+    /** Carte de bloc de code : en-tête langage + cible, Copier, Appliquer (agent). */
+    private void appendCodeCard(LinearLayout answer,
+            jo.joide.ai.markdown.MarkdownParser.Block.CodeBlock code) {
+        LinearLayout card = new LinearLayout(requireContext());
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setBackground(getResources().getDrawable(R.drawable.fond_code));
+        card.setPadding(dip(12), dip(10), dip(12), dip(10));
+        LinearLayout header = new LinearLayout(requireContext());
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        TextView label = new TextView(requireContext());
+        String title = code.title() != null ? code.title()
+                : code.language().isEmpty() ? "code" : code.language();
+        label.setText(title);
+        label.setTextSize(11.5f);
+        label.setTypeface(label.getTypeface(), android.graphics.Typeface.BOLD);
+        label.setTextColor(getResources().getColor(R.color.sur_var));
+        header.addView(label, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView copy = actionChip(getString(R.string.chat_code_copy));
+        copy.setOnClickListener(v -> {
+            android.content.ClipboardManager clipboard =
+                    (android.content.ClipboardManager) requireContext()
+                            .getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("code",
+                    code.code()));
+            Snackbar.make(binding.getRoot(), R.string.chat_copied,
+                    Snackbar.LENGTH_SHORT).show();
+        });
+        header.addView(copy);
+        if (isAssistant()) {
+            TextView hint = actionChip(getString(R.string.chat_code_apply));
+            hint.setOnClickListener(v ->
+                    Snackbar.make(binding.getRoot(), R.string.chat_code_apply_agent_only,
+                            Snackbar.LENGTH_SHORT).show());
+            header.addView(hint);
+        } else if (code.title() != null && !code.title().isEmpty()) {
+            TextView apply = actionChip(getString(R.string.chat_code_apply));
+            apply.setOnClickListener(v -> applyProposal(code.title(), code.code()));
+            header.addView(apply);
+        }
+        card.addView(header);
+        TextView codeText = new TextView(requireContext());
+        codeText.setText(code.code());
+        codeText.setTextSize(11.5f);
+        codeText.setTypeface(android.graphics.Typeface.MONOSPACE);
+        codeText.setTextColor(getResources().getColor(R.color.sur));
+        codeText.setTextIsSelectable(true);
+        LinearLayout.LayoutParams codeParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        codeParams.topMargin = dip(8);
+        card.addView(codeText, codeParams);
+        answer.addView(card, matchWrap());
+    }
+
+    /** Petite chip d'action de carte (Copier / Appliquer). */
+    private TextView actionChip(String label) {
+        TextView chip = new TextView(requireContext());
+        chip.setText(label);
+        chip.setTextSize(11f);
+        chip.setTypeface(chip.getTypeface(), android.graphics.Typeface.BOLD);
+        chip.setTextColor(getResources().getColor(R.color.sur));
+        chip.setPadding(dip(10), dip(4), dip(10), dip(4));
+        chip.setBackground(getResources().getDrawable(R.drawable.fond_chip));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.setMargins(dip(6), 0, 0, 0);
+        chip.setLayoutParams(params);
+        return chip;
+    }
+
+    /** Applique une proposition : la PORTE décide (jamais de contournement). */
+    private void applyProposal(String path, String content) {
+        session.applyProposal(path, content,
+                result -> Snackbar.make(binding.getRoot(),
+                        getString(R.string.chat_code_applied, path),
+                        Snackbar.LENGTH_SHORT).show(),
+                failure -> Snackbar.make(binding.getRoot(), failure,
+                        Snackbar.LENGTH_LONG).show());
+    }
+
+    private LinearLayout.LayoutParams matchWrap() {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.bottomMargin = dip(6);
+        return params;
     }
 
     /** Bulle utilisateur (studio : sc2 à droite, rayons 20/20/6/20). */

@@ -172,6 +172,11 @@ public final class AgentLoop {
         return checkpoint;
     }
 
+    /** Espace de travail de la boucle (hôte : propositions applicables). */
+    public AgentWorkspace loopWorkspace() {
+        return workspace;
+    }
+
     /** Instructions du projet (AGENTS.md borné) ; posées par l'hôte. */
     public void setProjectInstructions(String instructions) {
         this.projectInstructions = instructions;
