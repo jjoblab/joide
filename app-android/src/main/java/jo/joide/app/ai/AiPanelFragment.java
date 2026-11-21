@@ -87,6 +87,14 @@ public final class AiPanelFragment extends Fragment {
         return fragment;
     }
 
+    /** Agent du projet sur une conversation existante (reprise). */
+    public static AiPanelFragment forProjectWithConversation(String projectPath,
+            String conversationId) {
+        AiPanelFragment fragment = forProject(projectPath);
+        fragment.getArguments().putString(ARG_CONVERSATION, conversationId);
+        return fragment;
+    }
+
     /**
      * Assistant général (accueil) : nouvelle conversation sans projet —
      * aucun outil, rien à approuver.
@@ -123,13 +131,8 @@ public final class AiPanelFragment extends Fragment {
 
     private AiPanelFragmentBinding binding;
     private String lastQuestion;
-    private AgentLoop loop;
-    private ConversationStore store;
-    private Conversation conversation;
+    private AiSessionViewModel session;
     private int toolCount;
-
-    /** Un seul tour à la fois (la boucle n'est pas concurrente) ; suivi côté fil de fond. */
-    private volatile boolean turnRunning;
 
     /** Puces de contexte de l'agent : inclusion de chaque contexte au prochain message. */
     private boolean includeOpenFile;
@@ -151,22 +154,43 @@ public final class AiPanelFragment extends Fragment {
         // de permission, puces de contexte) et l'assistant général de l'accueil
         // (écran plein : bouton retour, suggestions, conversations persistées).
         String root = projectRoot();
+        // Session (Lot 4) : portée activité pour l'assistant, atelier pour
+        // l'agent — survit à la rotation, à la fermeture du tiroir, aux onglets.
+        androidx.lifecycle.ViewModelStoreOwner owner = root != null
+                ? requireParentFragment() : requireActivity();
+        session = new androidx.lifecycle.ViewModelProvider(owner,
+                new androidx.lifecycle.ViewModelProvider.NewInstanceFactory())
+                .get(AiSessionViewModel.key(root != null
+                        ? AiSessionViewModel.Role.AGENT : AiSessionViewModel.Role.ASSISTANT,
+                        root), AiSessionViewModel.class);
+        session.init(root != null ? AiSessionViewModel.Role.AGENT
+                : AiSessionViewModel.Role.ASSISTANT, root, requireContext());
+        session.events().observe(getViewLifecycleOwner(), batch -> {
+            if (batch != null) {
+                for (AgentLoop.LoopEvent event : batch) {
+                    render(event);
+                }
+            }
+        });
         if (root != null) {
             binding.chatTitle.setText(getString(R.string.chat_agent_title,
                     new File(root).getName()));
             binding.chatBackButton.setVisibility(View.GONE);
             renderContextChips();
+        } else if (conversationId() != null) {
+            // Agent : reprise d'une conversation du projet (Lot 4).
+            session.loadConversation(conversationId());
         } else {
             binding.permPill.setVisibility(View.GONE);
             binding.chatBackButton.setVisibility(View.VISIBLE);
             binding.chatTitle.setText(getString(R.string.chat_assistant_title));
-            store = new ConversationStore.JsonFiles(
-                    requireContext().getFilesDir().toPath().resolve("assistant"),
-                    warning -> Log.w(TAG, "Conversation ignorée : " + warning));
-            loop = buildLoop();
             String conversationToLoad = conversationId();
             if (conversationToLoad != null) {
-                loadConversation(conversationToLoad);
+                session.loadConversation(conversationToLoad);
+            } else if (session.conversation() != null
+                    && !session.conversation().messages().isEmpty()) {
+                // Session reprise (rotation, retour d'onglet) : transcript rendu.
+                rebuildTranscript(session.conversation());
             }
             renderSuggestions();
         }
@@ -237,39 +261,6 @@ public final class AiPanelFragment extends Fragment {
         return new EncryptedKeyVault(requireContext()).apiKey(provider);
     }
 
-    /**
-     * Boucle du rôle courant : l'assistant n'expose **aucun outil**
-     * ({@code toolsEnabled = false}) ; l'agent garde le roster complet derrière
-     * la porte. Plafond d'itérations lu des réglages.
-     */
-    private AgentLoop buildLoop() {
-        HttpLlmTransport transport = new HttpLlmTransport();
-        ProviderSpec spec = providerSpec();
-        String provider = spec.id();
-        android.content.SharedPreferences prefs = requireContext()
-                .getSharedPreferences(SettingsIaPageFragment.IA_PREFS,
-                        android.content.Context.MODE_PRIVATE);
-        String baseUrl = spec.baseUrlEditable()
-                ? prefs.getString("base_url_custom", null) : null;
-        String apiEffort = Efforts.toApi(prefs.getString("effort", null));
-        // Le raisonnement part sous la forme du fournisseur : objet dedicace
-        // OpenRouter, champ plat OpenAI, rien tant que non confirmé ailleurs.
-        String reasoningEffort = spec.reasoningFormat()
-                == ProviderSpec.ReasoningFormat.EFFORT_FIELD ? apiEffort : null;
-        java.util.Map<String, Object> extras =
-                new java.util.LinkedHashMap<>(spec.reasoningBody(apiEffort));
-        String root = projectRoot();
-        AgentWorkspace workspace = root != null
-                ? new AgentWorkspace.OnProject(Paths.get(root))
-                : new AgentWorkspace.InMemory();
-        return new AgentLoop(transport, spec.endpoint(baseUrl, vaultKey(provider), null),
-                persistedModel(provider), workspace,
-                jo.joide.app.settings.SettingsFragment.sharedGate(), null,
-                prefs.getInt("iterations_max", 16), root == null,
-                prefs.getInt("tokens_max", 4096), reasoningEffort, extras,
-                null, null);
-    }
-
     /** Ouvre la page Réglage IA (fournisseurs, clé, modèle) — plein écran. */
     private void openSettingsIa() {
         if (isAssistant()) {
@@ -293,12 +284,17 @@ public final class AiPanelFragment extends Fragment {
         android.widget.PopupMenu menu =
                 new android.widget.PopupMenu(requireContext(), anchor);
         menu.inflate(R.menu.ai_more_menu);
-        boolean canCreateProject = isAssistant() && conversation != null
-                && conversation.firstUserMessage() != null;
+        boolean canCreateProject = isAssistant() && session.conversation() != null
+                && session.conversation().firstUserMessage() != null;
         menu.getMenu().findItem(R.id.action_create_project).setVisible(canCreateProject);
+        menu.getMenu().findItem(R.id.action_conversations).setVisible(!isAssistant());
         menu.setOnMenuItemClickListener(item -> {
             if (item.getItemId() == R.id.action_create_project) {
                 createProjectFromConversation();
+                return true;
+            }
+            if (item.getItemId() == R.id.action_conversations) {
+                openProjectConversations();
                 return true;
             }
             if (item.getItemId() == R.id.action_ia_settings) {
@@ -310,11 +306,20 @@ public final class AiPanelFragment extends Fragment {
         menu.show();
     }
 
+    /** Conversations du projet (liste de l'agent, plein écran — Lot 4). */
+    private void openProjectConversations() {
+        requireActivity().getSupportFragmentManager().beginTransaction()
+                .replace(R.id.container,
+                        ConversationListFragment.forProject(projectRoot()))
+                .addToBackStack(null)
+                .commit();
+    }
+
     /** « Créer un projet depuis cette conversation » : nom dérivé du premier message. */
     private void createProjectFromConversation() {
-        String firstMessage = conversation != null
-                && conversation.firstUserMessage() != null
-                ? conversation.firstUserMessage().content() : null;
+        String firstMessage = session.conversation() != null
+                && session.conversation().firstUserMessage() != null
+                ? session.conversation().firstUserMessage().content() : null;
         String suggested = firstMessage != null
                 ? ConversationTitles.suggestProjectName(firstMessage) : "";
         jo.joide.app.CreateProjectFragment target = suggested.isEmpty()
@@ -379,7 +384,7 @@ public final class AiPanelFragment extends Fragment {
      *              en double — la question est déjà au transcript.
      */
     private void ask(String message, boolean isNew) {
-        if (message == null || message.trim().isEmpty() || turnRunning) {
+        if (message == null || message.trim().isEmpty() || session.isTurnRunning()) {
             return;
         }
         if (persistedModel(providerId()) == null) {
@@ -387,16 +392,19 @@ public final class AiPanelFragment extends Fragment {
             renderError(getString(R.string.chat_no_model), null);
             return;
         }
-        turnRunning = true;
+        // Commandes de conversation (Lot 4) : un comportement réel chacune.
+        String command = commandOf(message);
+        if (command != null) {
+            binding.inputField.setText("");
+            runCommand(command, message);
+            return;
+        }
         lastQuestion = message;
         toolCount = 0;
         if (isNew) {
             binding.inputField.setText("");
             appendUserBubble(message);
-            if (isAssistant()) {
-                rememberUserMessage(message);
-                binding.chipsRow.setVisibility(View.GONE);
-            }
+            binding.chipsRow.setVisibility(View.GONE);
         }
 
         // Carte de réflexion (studio : sc_high rayon 14, « En réflexion… »).
@@ -412,70 +420,78 @@ public final class AiPanelFragment extends Fragment {
         String messageForModel = contextBlock == null
                 ? message : contextBlock + "\n" + message;
 
-        if (loop == null) {
-            loop = buildLoop();
-        }
         // Contexte volatil réel (Lot 3) : branche, fichier actif, problèmes —
-        // valeurs de l'atelier, jamais inventées ; AGENTS.md lu (borné, caché).
-        if (isAssistant()) {
-            loop.setProjectContext(getString(R.string.chat_assistant_contexte));
-        } else {
-            AgentContext context = agentContext();
-            StringBuilder realContext = new StringBuilder("Projet : ")
-                    .append(new File(projectRoot()).getName());
-            if (context != null) {
-                if (context.agentBranchName() != null) {
-                    realContext.append("\nBranche : ").append(context.agentBranchName());
-                }
-                if (context.agentActiveFileName() != null) {
-                    realContext.append("\nFichier actif : ")
-                            .append(context.agentActiveFileName());
-                }
-                List<String> problems = context.agentProblemLines();
-                if (problems != null && !problems.isEmpty()) {
-                    realContext.append("\nProblèmes du dernier build : ")
-                            .append(problems.size());
-                }
-            }
-            loop.setProjectContext(realContext.toString());
-        }
+        // valeurs de l'atelier, jamais inventées ; posé à la session (Lot 4)
+        // qui survit à la rotation et à la fermeture du tiroir.
+        session.prepareContext(isAssistant()
+                ? getString(R.string.chat_assistant_contexte)
+                : realProjectContext());
         binding.sendButton.setEnabled(false);
+        session.sendTurn(messageForModel, message, isNew, requireContext());
+    }
 
-        // La boucle tourne hors fil UI ; chaque événement est rendu dès son
-        // arrivée (flux visible), la réponse est accumulée côté fil de fond
-        // (déterministe) puis persistée pour l'assistant. Le drapeau de tour
-        // vit ici : même si la vue est détruite en cours de tour (rotation,
-        // tiroir recréé), le suivant redevient possible à la fin réelle.
-        new Thread(() -> {
-            // AGENTS.md : lecture bornée et cachée, hors fil UI (Lot 3).
-            if (!isAssistant()) {
-                loop.setProjectInstructions(jo.joide.ai.ProjectInstructions.cached(
-                        Paths.get(projectRoot())));
+    /** Contexte projet réel (branche, fichier actif, problèmes). */
+    private String realProjectContext() {
+        AgentContext context = agentContext();
+        StringBuilder realContext = new StringBuilder("Projet : ")
+                .append(new File(projectRoot()).getName());
+        if (context != null) {
+            if (context.agentBranchName() != null) {
+                realContext.append("\nBranche : ").append(context.agentBranchName());
             }
-            StringBuilder answer = new StringBuilder();
-            try {
-                loop.turn(messageForModel, event -> {
-                    if (event instanceof AgentLoop.LoopEvent.Delta delta) {
-                        answer.append(delta.text());
-                    }
-                    main.post(() -> {
-                        if (binding != null) {
-                            render(event);
-                        }
-                    });
-                });
-            } finally {
-                turnRunning = false;
-                main.post(() -> {
-                    if (binding != null) {
-                        binding.sendButton.setEnabled(true);
-                    }
-                });
+            if (context.agentActiveFileName() != null) {
+                realContext.append("\nFichier actif : ")
+                        .append(context.agentActiveFileName());
             }
-            if (isAssistant() && answer.length() > 0) {
-                persistAssistantAnswer(answer.toString());
+            List<String> problems = context.agentProblemLines();
+            if (problems != null && !problems.isEmpty()) {
+                realContext.append("\nProblèmes du dernier build : ")
+                        .append(problems.size());
             }
-        }, "agent-ia").start();
+        }
+        return realContext.toString();
+    }
+
+    /** Commande de conversation (/nouveau…) ; null si le texte n'en est pas une. */
+    @Nullable
+    private static String commandOf(String message) {
+        String trimmed = message.trim();
+        if (!trimmed.startsWith("/")) {
+            return null;
+        }
+        int space = trimmed.indexOf(' ');
+        return space < 0 ? trimmed : trimmed.substring(0, space);
+    }
+
+    /** Exécute une commande de conversation — un effet réel chacune (Lot 4). */
+    private void runCommand(String command, String rawMessage) {
+        switch (command) {
+            case "/nouveau" -> {
+                session.newConversation();
+                binding.transcriptList.removeAllViews();
+                thinkingBinding = null;
+                renderSuggestions();
+            }
+            case "/annuler" -> {
+                String note = session.undoLastTurn();
+                if (note == null) {
+                    Snackbar.make(binding.getRoot(), R.string.chat_undo_nothing,
+                            Snackbar.LENGTH_SHORT).show();
+                } else {
+                    appendAnswerCard(note);
+                    Snackbar.make(binding.getRoot(), R.string.chat_undo_done,
+                            Snackbar.LENGTH_SHORT).show();
+                }
+            }
+            case "/modele" -> openSettingsIa();
+            case "/compacter" -> Snackbar.make(binding.getRoot(),
+                    R.string.chat_compact_info, Snackbar.LENGTH_SHORT).show();
+            case "/init" -> Snackbar.make(binding.getRoot(),
+                    R.string.chat_init_info, Snackbar.LENGTH_SHORT).show();
+            default -> Snackbar.make(binding.getRoot(),
+                    getString(R.string.chat_unknown_command, command),
+                    Snackbar.LENGTH_SHORT).show();
+        }
     }
 
     /** Rendu d'un événement de boucle : états du studio Chat IA. */
@@ -499,6 +515,7 @@ public final class AiPanelFragment extends Fragment {
                 appendToolCard(getString(R.string.chat_tool_actions, toolCount),
                         false, false);
             }
+            binding.sendButton.setEnabled(true);
         } else if (event instanceof AgentLoop.LoopEvent.TurnFailed failure) {
             keepThinkingAsAnswer();
             // Cause typée (Lot 1) : chaque erreur a son message — plus de
@@ -509,65 +526,11 @@ public final class AiPanelFragment extends Fragment {
                     : failure.message() != null ? failure.message()
                     : getString(R.string.chat_error_generic);
             renderError(reason, error);
+            binding.sendButton.setEnabled(true);
         }
     }
 
     // ---- Conversations de l'assistant (persistance, rechargement) ------------
-
-    /** Mémorise le message utilisateur : conversation neuve ou existante, puis sauvegarde. */
-    private void rememberUserMessage(String message) {
-        long now = System.currentTimeMillis();
-        if (conversation == null) {
-            conversation = Conversation.fresh(ConversationStore.newId(), now)
-                    .withMessage(new Conversation.Message("user", message), now)
-                    .withTitle(ConversationTitles.deriveTitle(message), now);
-        } else {
-            conversation = conversation.withMessage(
-                    new Conversation.Message("user", message), now);
-        }
-        final Conversation toSave = conversation;
-        new Thread(() -> saveQuietly(toSave), "assistant-sauvegarde").start();
-    }
-
-    /** Mémorise la réponse du modèle (appelé du fil de fond, à la fin du tour). */
-    private void persistAssistantAnswer(String answer) {
-        conversation = conversation.withMessage(
-                new Conversation.Message("assistant", answer), System.currentTimeMillis());
-        saveQuietly(conversation);
-    }
-
-    private void saveQuietly(Conversation toSave) {
-        try {
-            store.save(toSave);
-        } catch (IOException e) {
-            Log.w(TAG, "Sauvegarde de conversation impossible : "
-                    + (e.getMessage() != null ? e.getMessage() : e));
-        }
-    }
-
-    /** Recharge une conversation : transcript rendu, historique rejoué au modèle. */
-    private void loadConversation(String id) {
-        new Thread(() -> {
-            Conversation loaded = null;
-            try {
-                loaded = store.load(id);
-            } catch (IOException e) {
-                Log.w(TAG, "Lecture de conversation impossible : "
-                        + (e.getMessage() != null ? e.getMessage() : e));
-            }
-            final Conversation result = loaded;
-            main.post(() -> {
-                if (binding == null || result == null) {
-                    return;
-                }
-                conversation = result;
-                rebuildTranscript(result);
-                replayHistory(result);
-                renderSuggestions();
-                renderNoKeyIfAbsent();
-            });
-        }, "assistant-lecture").start();
-    }
 
     /** Reconstruit le transcript visuel depuis la conversation persistée. */
     private void rebuildTranscript(Conversation loaded) {
@@ -581,14 +544,6 @@ public final class AiPanelFragment extends Fragment {
             }
         }
         scrollDown();
-    }
-
-    /** Rejoue l'historique au modèle : la conversation reprise garde son contexte. */
-    private void replayHistory(Conversation loaded) {
-        for (Conversation.Message message : loaded.messages()) {
-            loop.history().add(new ConversationHistory.Entry(
-                    message.role(), message.content(), null, null));
-        }
     }
 
     /** État honnête : sans clé (fournisseur distant actif), le panneau le dit. */
@@ -609,7 +564,8 @@ public final class AiPanelFragment extends Fragment {
         if (!isAssistant()) {
             return;
         }
-        boolean empty = conversation == null || conversation.messages().isEmpty();
+        boolean empty = session.conversation() == null
+                || session.conversation().messages().isEmpty();
         binding.chipsRow.setVisibility(empty ? View.VISIBLE : View.GONE);
         if (!empty || binding.chipsRow.getChildCount() > 0) {
             return;

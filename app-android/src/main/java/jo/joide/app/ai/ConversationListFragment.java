@@ -35,9 +35,33 @@ import jo.joide.app.databinding.ConversationListFragmentBinding;
 public final class ConversationListFragment extends Fragment {
 
     private static final String TAG = "ConversationList";
+    private static final String ARG_PROJECT = "project";
 
     private ConversationListFragmentBinding binding;
     private final Handler main = new Handler(Looper.getMainLooper());
+
+    /** Liste des conversations de l'assistant (globales). */
+    public static ConversationListFragment assistantList() {
+        return new ConversationListFragment();
+    }
+
+    /** Liste des conversations de l'agent d'un projet (Lot 4). */
+    public static ConversationListFragment forProject(String projectPath) {
+        ConversationListFragment fragment = new ConversationListFragment();
+        Bundle args = new Bundle();
+        args.putString(ARG_PROJECT, projectPath);
+        fragment.setArguments(args);
+        return fragment;
+    }
+
+    /** Dossier des conversations selon le rôle (assistant global, agent par projet). */
+    private java.nio.file.Path storeDir() {
+        String project = getArguments() != null
+                ? getArguments().getString(ARG_PROJECT, null) : null;
+        return requireContext().getFilesDir().toPath().resolve(
+                project == null ? "assistant"
+                        : "agent/" + ConversationStore.fingerprint(project));
+    }
 
     @Nullable
     @Override
@@ -62,8 +86,7 @@ public final class ConversationListFragment extends Fragment {
     /** Recharge la liste hors fil UI, rend sur le fil UI au retour. */
     private void refresh() {
         final ConversationStore store = new ConversationStore.JsonFiles(
-                requireContext().getFilesDir().toPath().resolve("assistant"),
-                warning -> Log.w(TAG, "Conversation ignorée : " + warning));
+                storeDir(), warning -> Log.w(TAG, "Conversation ignorée : " + warning));
         new Thread(() -> {
             List<ConversationStore.Summary> summaries;
             try {
@@ -144,13 +167,17 @@ public final class ConversationListFragment extends Fragment {
         };
     }
 
-    /** Ouvre une conversation (null : nouvelle) dans le même hôte. */
+    /** Ouvre une conversation (null : nouvelle) dans le même hôte, selon le rôle. */
     private void openConversation(@Nullable String conversationId) {
+        String project = getArguments() != null
+                ? getArguments().getString(ARG_PROJECT, null) : null;
+        AiPanelFragment panel = project != null
+                ? (conversationId == null ? AiPanelFragment.forProject(project)
+                        : AiPanelFragment.forProjectWithConversation(project, conversationId))
+                : (conversationId == null ? AiPanelFragment.assistant()
+                        : AiPanelFragment.assistant(conversationId));
         getParentFragmentManager().beginTransaction()
-                .replace(((ViewGroup) requireView().getParent()).getId(),
-                        conversationId == null
-                                ? AiPanelFragment.assistant()
-                                : AiPanelFragment.assistant(conversationId))
+                .replace(((ViewGroup) requireView().getParent()).getId(), panel)
                 .addToBackStack(null)
                 .commit();
     }

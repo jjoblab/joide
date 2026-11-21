@@ -150,6 +150,14 @@
     <!-- Barre de l'assistant (écran plein, bouton retour) et menu ⋯ -->
     <string name="chat_back">Retour</string>
     <string name="chat_menu_settings">Réglages IA</string>
+    <!-- Commandes de conversation (Lot 4) — un effet réel chacune -->
+    <string name="chat_undo_nothing">Aucun tour à annuler (rien n\'a encore été modifié).</string>
+    <string name="chat_undo_done">Tour annulé : fichiers restaurés (les suppressions restent irréversibles, détail au transcript).</string>
+    <string name="chat_compact_info">Le compactage s\'applique automatiquement au-delà du seuil de contexte (régime à hystérésis, REF-113).</string>
+    <string name="chat_init_info">Pour générer un AGENTS.md : demandez-le à l\'agent dans un message normal — la création passe par la permission.</string>
+    <string name="chat_unknown_command">Commande inconnue : %1$s (essayez /nouveau, /annuler, /modele, /compacter, /init).</string>
+    <string name="chat_menu_conversations">Conversations du projet</string>
+
     <string name="chat_menu_create_project">Créer un projet depuis cette conversation</string>
     <string name="chat_tool_actions">%1$d actions d\'outils</string>
     <string name="chat_answer_label">Réponse</string>

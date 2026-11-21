@@ -6,29 +6,30 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 /**
- * Stockage des conversations de l'assistant (Lot 0) : un fichier JSON par
- * conversation dans un dossier fourni par l'hôte (coquille Android :
- * {@code getFilesDir()/assistant/}). Écriture **atomique** (fichier
- * temporaire + renommage) pour qu'un arrêt brutal ne corrompe jamais une
- * conversation ; fichiers corrompus **ignorés avec avertissement** (jamais
- * un plantage, jamais une liste vide muette). Pur Java 8 (aucune API 9+ :
- * le module tourne sur l'appareil en API 28 sans désucrage).
+ * Stockage des conversations (Lot 4) : un fichier JSON par conversation —
+ * **double contenu** (transcript vu + historique exact vu par le modèle),
+ * fournisseur/modèle/effort épinglés, usage cumulé, version de schéma.
+ * Écriture **atomique** (temporaire + renommage), corrompus **ignorés avec
+ * avertissement** ; les fichiers du schéma v1 (Lot 0, transcript seul) se
+ * migrent à la lecture. Pur Java 8 (API 28 sans désucrage).
  *
- * <p>Le Lot 4 généralisera ce port (double contenu transcript/historique
- * modèle, schéma versionné, migration) ; Lot 0 : le transcript seul, déjà
- * derrière l'interface pour que la coquille ne dépende pas du format.</p>
+ * <p>Emplacements côté hôte : assistant {@code filesDir/assistant/}, agent
+ * {@code filesDir/agent/<empreinte-du-projet>/} (empreinte stable du chemin,
+ * voir {@link #fingerprint(String)}).</p>
  */
 public interface ConversationStore {
 
-    /** Résumé d'une conversation pour la liste (titre, date, compte de messages). */
+    /** Résumé d'une conversation pour la liste (titre, date, compte). */
     record Summary(String id, String title, long updatedAt, int messageCount) {}
 
     /** Conversations connues, de la plus récemment modifiée à la plus ancienne. */
@@ -51,6 +52,27 @@ public interface ConversationStore {
 
     /** Aléa des identifiants (jamais seedé : les identifiants ne se devinent pas). */
     SecureRandom RANDOM = new SecureRandom();
+
+    /**
+     * Empreinte stable d'un chemin de projet (noms de dossier sûrs) : hachage
+     * SHA-256 du chemin absolu, en hexadécimal borné.
+     */
+    static String fingerprint(String projectPath) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(
+                    (projectPath == null ? "" : projectPath)
+                            .getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder();
+            for (int i = 0; i < Math.min(12, hash.length); i++) {
+                hex.append(String.format("%02x", hash[i]));
+            }
+            return hex.toString();
+        } catch (Exception e) {
+            // SHA-256 existe partout ; repli déterministe honnête.
+            return Integer.toHexString(String.valueOf(projectPath).hashCode());
+        }
+    }
 
     /**
      * Implémentation fichiers JSON du port : un fichier {@code <id>.json}
@@ -152,29 +174,64 @@ public interface ConversationStore {
             }
         }
 
-        // ---- Sérialisation (schéma stable, Lot 0 ; codec Json du Lot 1) -----
+        // ---- Sérialisation (schéma v2, Lot 4) ---------------------------------
 
         /** Écrit le JSON d'une conversation (échappements complets par le codec). */
         static String writeJson(Conversation conversation) {
-            java.util.Map<String, Object> root = new java.util.LinkedHashMap<>();
+            Map<String, Object> root = new java.util.LinkedHashMap<>();
+            root.put("schema", Conversation.SCHEMA_VERSION);
             root.put("id", conversation.id());
             root.put("title", conversation.title());
             root.put("created", conversation.createdAt());
             root.put("updated", conversation.updatedAt());
+            root.put("provider", conversation.providerId());
+            root.put("model", conversation.model());
+            root.put("effort", conversation.effort());
+            Usage usage = conversation.usage();
+            Map<String, Object> usageJson = new java.util.LinkedHashMap<>();
+            usageJson.put("prompt", usage.promptTokens());
+            usageJson.put("completion", usage.completionTokens());
+            usageJson.put("reasoning", usage.reasoningTokens());
+            usageJson.put("cached", usage.cachedPromptTokens());
+            root.put("usage", usageJson);
             List<Object> messages = new ArrayList<>();
             for (Conversation.Message message : conversation.messages()) {
-                java.util.Map<String, Object> item = new java.util.LinkedHashMap<>();
+                Map<String, Object> item = new java.util.LinkedHashMap<>();
                 item.put("role", message.role());
                 item.put("content", message.content());
                 messages.add(item);
             }
             root.put("messages", messages);
+            List<Object> history = new ArrayList<>();
+            for (Conversation.HistoryEntry entry : conversation.history()) {
+                Map<String, Object> item = new java.util.LinkedHashMap<>();
+                item.put("role", entry.role());
+                item.put("content", entry.content());
+                item.put("toolCallId", entry.toolCallId());
+                if (entry.toolCalls() != null && !entry.toolCalls().isEmpty()) {
+                    List<Object> calls = new ArrayList<>();
+                    for (Conversation.ToolCallData call : entry.toolCalls()) {
+                        Map<String, Object> callJson = new java.util.LinkedHashMap<>();
+                        callJson.put("id", call.id());
+                        callJson.put("name", call.name());
+                        callJson.put("arguments", call.argumentsJson());
+                        calls.add(callJson);
+                    }
+                    item.put("toolCalls", calls);
+                }
+                history.add(item);
+            }
+            root.put("history", history);
             return jo.joide.ai.json.Json.write(root);
         }
 
-        /** Lit une conversation depuis son JSON ; exception lisible si corrompu. */
+        /**
+         * Lit une conversation depuis son JSON. Les fichiers v1 (Lot 0 :
+         * transcript seul, sans champ schema) migrent : le transcript devient
+         * aussi l'historique de départ (roles user/assistant rejouables).
+         */
         static Conversation readJson(String json) throws IOException {
-            java.util.Map<String, Object> root;
+            Map<String, Object> root;
             try {
                 root = jo.joide.ai.json.Json.parseObject(json);
             } catch (jo.joide.ai.json.JsonException e) {
@@ -184,22 +241,75 @@ public interface ConversationStore {
             if (!(id instanceof String)) {
                 throw new IOException("JSON de conversation invalide (id manquant)");
             }
-            List<Conversation.Message> parsedMessages = new ArrayList<>();
-            Object messages = root.get("messages");
-            if (messages instanceof List<?> items) {
+            boolean v1 = !(root.get("schema") instanceof Number n)
+                    || n.intValue() < 2;
+            List<Conversation.Message> messages = new ArrayList<>();
+            if (root.get("messages") instanceof List<?> items) {
                 for (Object item : items) {
-                    if (item instanceof java.util.Map<?, ?> message
+                    if (item instanceof Map<?, ?> message
                             && message.get("role") instanceof String role
                             && message.get("content") instanceof String content) {
-                        parsedMessages.add(new Conversation.Message(role, content));
+                        messages.add(new Conversation.Message(role, content));
                     }
                 }
             }
+            List<Conversation.HistoryEntry> history = new ArrayList<>();
+            if (root.get("history") instanceof List<?> entries) {
+                for (Object item : entries) {
+                    Conversation.HistoryEntry entry = readHistoryEntry(item);
+                    if (entry != null) {
+                        history.add(entry);
+                    }
+                }
+            } else if (v1) {
+                // Migration v1 → v2 : le transcript devient l'historique.
+                for (Conversation.Message message : messages) {
+                    history.add(Conversation.HistoryEntry.plain(
+                            message.role(), message.content()));
+                }
+            }
+            Usage usage = Usage.unknown();
+            if (root.get("usage") instanceof Map<?, ?> usageJson) {
+                usage = new Usage(longOf(usageJson.get("prompt")),
+                        longOf(usageJson.get("completion")),
+                        longOf(usageJson.get("reasoning")),
+                        longOf(usageJson.get("cached")));
+            }
             return new Conversation((String) id,
                     root.get("title") instanceof String title ? title : "",
-                    root.get("created") instanceof Number created ? created.longValue() : 0L,
-                    root.get("updated") instanceof Number updated ? updated.longValue() : 0L,
-                    parsedMessages);
+                    longOf(root.get("created")),
+                    longOf(root.get("updated")),
+                    root.get("provider") instanceof String provider ? provider : null,
+                    root.get("model") instanceof String model ? model : null,
+                    root.get("effort") instanceof String effort ? effort : null,
+                    usage, messages, history);
+        }
+
+        /** Entrée d'historique depuis sa forme JSON. */
+        private static Conversation.HistoryEntry readHistoryEntry(Object item) {
+            if (!(item instanceof Map<?, ?> entry)
+                    || !(entry.get("role") instanceof String role)) {
+                return null;
+            }
+            String content = entry.get("content") instanceof String content1 ? content1 : "";
+            String toolCallId = entry.get("toolCallId") instanceof String callId ? callId : null;
+            List<Conversation.ToolCallData> calls = null;
+            if (entry.get("toolCalls") instanceof List<?> rawCalls) {
+                calls = new ArrayList<>();
+                for (Object rawCall : rawCalls) {
+                    if (rawCall instanceof Map<?, ?> call
+                            && call.get("id") instanceof String callId2
+                            && call.get("name") instanceof String name
+                            && call.get("arguments") instanceof String arguments) {
+                        calls.add(new Conversation.ToolCallData(callId2, name, arguments));
+                    }
+                }
+            }
+            return new Conversation.HistoryEntry(role, content, calls, toolCallId);
+        }
+
+        private static long longOf(Object value) {
+            return value instanceof Number n ? n.longValue() : 0L;
         }
     }
 }
