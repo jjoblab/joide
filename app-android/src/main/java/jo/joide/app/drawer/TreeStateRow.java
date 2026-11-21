@@ -6,7 +6,7 @@ package jo.joide.app.drawer;
  * dossier vide, projet vide, listing tronqué (plafond), aucun résultat de
  * filtre. Jamais d'état muet.
  */
-enum TreeState { LOADING, ERROR, EMPTY_DIR, EMPTY_PROJECT, TRUNCATED, FILTER_EMPTY }
+enum TreeState { LOADING, ERROR, EMPTY_DIR, EMPTY_PROJECT, TRUNCATED, FILTER_EMPTY, ANDROID_EMPTY }
 
 record TreeStateRow(TreeState state, String relativePath, String message, int depth) {
 }

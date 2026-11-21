@@ -42,6 +42,7 @@ import java.util.function.Consumer;
 import jo.joide.app.R;
 import jo.joide.app.databinding.FilesTabFragmentBinding;
 import jo.joide.coregit.GitService;
+import jo.joide.files.AndroidView;
 import jo.joide.files.FileKind;
 import jo.joide.files.FileKinds;
 import jo.joide.files.FileTemplates;
@@ -124,6 +125,12 @@ public final class FilesTabFragment extends Fragment implements FileTreeAdapter.
     /** Dialogue de corbeille ouvert (rafraîchi après une restauration). */
     private AlertDialog trashDialog;
 
+    /** Vue Android active (Lot 3 : regroupement par module). */
+    private boolean androidView;
+
+    /** Scan du squelette Android en vol. */
+    private final Set<String> androidScanInFlight = new HashSet<>();
+
     private Runnable unsubscribeEvents;
     private final Handler main = new Handler(Looper.getMainLooper());
 
@@ -141,6 +148,7 @@ public final class FilesTabFragment extends Fragment implements FileTreeAdapter.
                 .get(WorkspaceViewModel.class);
         String path = viewModel.projectPath();
         root = path != null ? Paths.get(path) : null;
+        androidView = viewModel.androidView();
 
         setupTools();
         setupFilter();
@@ -191,7 +199,20 @@ public final class FilesTabFragment extends Fragment implements FileTreeAdapter.
             refreshProblemStates();
         });
         binding.treeFilter.setOnClickListener(v -> toggleFilter());
+        binding.treeViewProject.setOnClickListener(v -> setAndroidView(false));
+        binding.treeViewAndroid.setOnClickListener(v -> setAndroidView(true));
         tintFollow();
+    }
+
+    /** Bascule des vues Projet / Android (l'état survit aux rotations). */
+    private void setAndroidView(boolean android) {
+        if (androidView == android) {
+            return;
+        }
+        androidView = android;
+        viewModel.setAndroidView(android);
+        tintFollow();
+        renderTree();
     }
 
     /** Le bouton « suivre » est allumé (primaire) quand actif. */
@@ -201,6 +222,14 @@ public final class FilesTabFragment extends Fragment implements FileTreeAdapter.
                     followActive ? R.color.primaire : R.color.sur_var));
             binding.treeFilter.setColorFilter(getResources().getColor(
                     filterVisible ? R.color.primaire : R.color.sur_var));
+            binding.treeViewProject.setBackground(getResources().getDrawable(
+                    androidView ? R.drawable.fond_chip : R.drawable.fond_chip_on));
+            binding.treeViewProject.setTextColor(getResources().getColor(
+                    androidView ? R.color.sur : R.color.sur_sc2));
+            binding.treeViewAndroid.setBackground(getResources().getDrawable(
+                    androidView ? R.drawable.fond_chip_on : R.drawable.fond_chip));
+            binding.treeViewAndroid.setTextColor(getResources().getColor(
+                    androidView ? R.color.sur_sc2 : R.color.sur));
         }
     }
 
@@ -695,7 +724,11 @@ public final class FilesTabFragment extends Fragment implements FileTreeAdapter.
         pendingCounts.clear();
         String activeRel = activeRelative();
         List<Object> rows = new ArrayList<>();
-        appendDir(rows, ".", 0, activeRel);
+        if (androidView) {
+            appendAndroidView(rows, activeRel);
+        } else {
+            appendDir(rows, ".", 0, activeRel);
+        }
         List<Object> shown = applyFilter(rows);
         adapter.submit(shown, filterQuery);
         renderFilterCount(shown);
@@ -770,6 +803,108 @@ public final class FilesTabFragment extends Fragment implements FileTreeAdapter.
             rows.add(new TreeStateRow(TreeState.TRUNCATED, relative,
                     String.valueOf(FileTree.DEFAULT_MAX_ENTRIES), depth + 1));
         }
+    }
+
+    // ---- Vue Android (regroupement par module, adossée aux fichiers réels) --
+
+    /** Squelette de la vue Android : scan en vol → rangée de chargement. */
+    private void appendAndroidView(List<Object> rows, String activeRel) {
+        List<AndroidView.Node> nodes = viewModel.androidNodes();
+        if (nodes == null) {
+            rows.add(new TreeStateRow(TreeState.LOADING, ".",
+                    getString(R.string.tiroir_vue_android_scan), 0));
+            if (androidScanInFlight.isEmpty()) {
+                scanAndroidAsync();
+            }
+            return;
+        }
+        if (nodes.isEmpty()) {
+            rows.add(new TreeStateRow(TreeState.ANDROID_EMPTY, ".", null, 0));
+            return;
+        }
+        for (AndroidView.Node node : nodes) {
+            appendAndroidNode(rows, node, 0, activeRel);
+        }
+    }
+
+    /**
+     * Un nœud du squelette : groupe virtuel ou chemin réel. Les nœuds avec
+     * enfants (groupes, modules) s'ouvrent sur leur squelette ; les dossiers
+     * réels sans enfants (java, res) s'ouvrent par le pipeline de listing
+     * normal — packages compacts et décorations compris.
+     */
+    private void appendAndroidNode(List<Object> rows, AndroidView.Node node,
+            int depth, String activeRel) {
+        boolean group = node.group();
+        String key = group || node.relativePath() == null
+                ? node.id() : node.relativePath();
+        boolean open = viewModel.expandedDirs().contains(key);
+        boolean directory = group || node.directory();
+        String badge = !group && directory && !open && filterQuery.isEmpty()
+                ? badgeFor(key) : null;
+        rows.add(new TreeRow(key, key, androidLabel(node), directory, depth,
+                node.kind(), open,
+                group || node.relativePath() == null
+                        ? null : gitStates.get(node.relativePath()),
+                node.relativePath() == null
+                        ? null : problemStates.get(node.relativePath()),
+                node.relativePath() != null
+                        && node.relativePath().equals(activeRel),
+                selectedPaths.contains(key), selectionMode, badge));
+        if (!open) {
+            return;
+        }
+        if (!node.children().isEmpty()) {
+            for (AndroidView.Node child : node.children()) {
+                appendAndroidNode(rows, child, depth + 1, activeRel);
+            }
+        } else if (directory && node.relativePath() != null) {
+            appendDir(rows, node.relativePath(), depth + 1, activeRel);
+        }
+    }
+
+    /** Libellé d'un nœud : clé neutre traduite en ressource, jamais en dur. */
+    private String androidLabel(AndroidView.Node node) {
+        return switch (node.display()) {
+            case AndroidView.LABEL_SCRIPTS -> getString(R.string.tiroir_groupe_scripts);
+            case AndroidView.LABEL_MANIFESTS -> getString(R.string.tiroir_groupe_manifestes);
+            case AndroidView.LABEL_JAVA -> getString(R.string.tiroir_groupe_java);
+            case AndroidView.LABEL_JAVA_TEST -> getString(R.string.tiroir_groupe_java_test);
+            case AndroidView.LABEL_RES -> getString(R.string.tiroir_groupe_res);
+            default -> node.qualifier() == null ? node.display()
+                    : getString(R.string.tiroir_module_suffixe,
+                            node.display(), node.qualifier());
+        };
+    }
+
+    /** Scanne le squelette Android (modules réels), hors fil UI, annulable. */
+    private void scanAndroidAsync() {
+        if (root == null || binding == null) {
+            return;
+        }
+        if (!androidScanInFlight.add("scan")) {
+            return;
+        }
+        int gen = generation.get();
+        Thread worker = new Thread(() -> {
+            List<AndroidView.Node> nodes = null;
+            try {
+                nodes = AndroidView.build(root, 20,
+                        () -> generation.get() != gen);
+            } catch (IOException e) {
+                nodes = null; // squelette indisponible : l'état se dira.
+            }
+            List<AndroidView.Node> result = nodes;
+            post(gen, () -> {
+                androidScanInFlight.clear();
+                if (result != null) {
+                    viewModel.setAndroidNodes(result);
+                }
+                renderTree();
+            });
+        }, "tiroir-android-view");
+        worker.setDaemon(true);
+        worker.start();
     }
 
     /** Badge d'éléments d'un dossier replié (compte connu, sinon demandé). */
@@ -850,6 +985,10 @@ public final class FilesTabFragment extends Fragment implements FileTreeAdapter.
     /** Ouvre la filiation du fichier actif puis défile vers sa rangée. */
     private void revealActive(List<Object> shown, String activeRel) {
         boolean changed = false;
+        // Vue Android : le module racine est un nœud virtuel à ouvrir aussi.
+        if (androidView && viewModel.expandedDirs().add("module:.")) {
+            changed = true;
+        }
         int slash = activeRel.lastIndexOf('/');
         while (slash > 0) {
             if (viewModel.expandedDirs().add(activeRel.substring(0, slash))) {
@@ -886,7 +1025,9 @@ public final class FilesTabFragment extends Fragment implements FileTreeAdapter.
     @Override
     public void onRowClick(TreeRow row, View clicked) {
         if (selectionMode) {
-            toggleSelected(row);
+            if (!isVirtualKey(row.opPath())) {
+                toggleSelected(row);
+            }
             return;
         }
         if (row.directory()) {
@@ -917,7 +1058,15 @@ public final class FilesTabFragment extends Fragment implements FileTreeAdapter.
             toggleSelected(row);
             return;
         }
+        if (isVirtualKey(row.opPath())) {
+            return; // groupes et modules virtuels : pas d'opération dessus.
+        }
         showContextMenu(row, clicked);
+    }
+
+    /** Clé d'un nœud virtuel de la vue Android (groupe ou module racine). */
+    private static boolean isVirtualKey(String key) {
+        return key.startsWith("group:") || key.startsWith("module:");
     }
 
     @Override

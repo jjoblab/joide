@@ -10,7 +10,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <!-- Outils de l'arbre (studio : icônes 30dp, « suivre » actif par défaut) -->
+    <!-- Outils de l'arbre : vues Projet/Android (Lot 3) puis icônes 30dp -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -20,6 +20,38 @@
         android:paddingEnd="10dp"
         android:paddingTop="2dp"
         android:paddingBottom="6dp">
+
+        <TextView
+            android:id="@+id/tree_view_project"
+            style="@style/Chip"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:gravity="center"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:text="@string/tiroir_vue_projet"
+            android:textColor="@color/sur_sc2"
+            android:textSize="11.5sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tree_view_android"
+            style="@style/Chip"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:layout_marginStart="6dp"
+            android:gravity="center"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:text="@string/tiroir_vue_android"
+            android:textColor="@color/sur"
+            android:textSize="11.5sp"
+            android:textStyle="bold" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
 
         <ImageButton
             android:id="@+id/tree_collapse_all"

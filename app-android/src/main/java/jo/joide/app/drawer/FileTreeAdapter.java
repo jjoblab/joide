@@ -305,6 +305,14 @@ final class FileTreeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
                             .getColor(R.color.sur_var));
                     box.addView(none);
                 }
+                case ANDROID_EMPTY -> {
+                    TextView none = new TextView(context);
+                    none.setText(R.string.tiroir_vue_android_vide);
+                    none.setTextSize(12f);
+                    none.setTextColor(context.getResources()
+                            .getColor(R.color.sur_var));
+                    box.addView(none);
+                }
             }
         }
 

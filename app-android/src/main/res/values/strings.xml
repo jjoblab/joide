@@ -304,4 +304,14 @@
     <string name="tiroir_quand_minutes">il y a %1$d min</string>
     <string name="tiroir_quand_heures">il y a %1$d h</string>
     <string name="tiroir_quand_jours">il y a %1$d j</string>
+    <string name="tiroir_vue_projet">Projet</string>
+    <string name="tiroir_vue_android">Android</string>
+    <string name="tiroir_groupe_scripts">Gradle Scripts</string>
+    <string name="tiroir_groupe_manifestes">Manifestes</string>
+    <string name="tiroir_groupe_java">java</string>
+    <string name="tiroir_groupe_java_test">java (test)</string>
+    <string name="tiroir_groupe_res">res</string>
+    <string name="tiroir_module_suffixe">%1$s (%2$s)</string>
+    <string name="tiroir_vue_android_scan">Regroupement des modules…</string>
+    <string name="tiroir_vue_android_vide">Aucune structure Android (module Gradle) dans ce projet — revenez à la vue Projet</string>
 </resources>
