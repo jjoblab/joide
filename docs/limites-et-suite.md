@@ -40,29 +40,45 @@
   tableaux, cartes de code avec Copier), **bouton Appliquer** passant par
   la porte de permission.
 
-### Non fait (avec la raison) — à livrir dans une session suivante
-- **Lot 6** (design chat) : composer extensible multiligne, bouton Stop
-  visible (l'annulation existe côté moteur — `AiSessionViewModel.cancelTurn`
-  — mais le bouton n'est pas posé), jauge de contexte, sélecteur de modèle
-  en bottom sheet, RecyclerView + DiffUtil (le transcript reste LinearLayout),
-  accessibilité TalkBack complète.
-- **Lot 7** (réglages IA) : hub + sous-pages (Fournisseurs, Modèles,
-  Comportement, Permissions, Outils, Utilisation, Données, activation IA),
-  matrice de câblage dans docs/analyse-ia.md + test automatisé. La page
-  actuelle a été recâblée sur le registre réel (chips 4 fournisseurs,
-  modèle saisi, test de connexion pas encore posé).
-- **Lot 8** (intégrations atelier) : ouvrir fichier:ligne depuis le chat,
-  rafraîchissement éditeur/arbre après mutation (l'événementiel existe côté
-  tiroir : `WorkspaceEvents`), « Demander à l'IA » sur la sélection,
-  « Expliquer cette erreur » depuis les Problèmes.
-- **Lot 9** (qualité/docs) : ADR des décisions structurantes (fournisseurs,
-  codec JSON interne, stockage conversations, rendu Markdown maison, modèle
-  de réglages), contrôles automatiques API 28 sur le module `ai` (grep en CI),
-  perf 200 messages.
-- Ouvert mineur : changement de fournisseur en cours de conversation → la
-  session garde l'historique (`rebuildLoop`) mais le bouton n'existe pas
-  encore côté UI ; l'effort est lu globalement, l'épinglage par conversation
-  est archivé (champ `effort`) mais pas encore éditable.
+### Fait (suite — lots 6 à 8 + qualité)
+- **Lot 6** (`5d69e40`) : bouton **Stop** (annulation réelle), **ligne d'état**
+  (Réfléchit… / Écrit… / Exécute X…), **complétion @** sur l'arborescence
+  réelle (parcours borné hors fil UI), **état vide agent** avec 3 actions
+  réelles, cible 48 dp, `adjustResize` (composer visible avec le clavier).
+- **Lot 7** (`3435316`) : **hub Réglages IA** + sous-pages Fournisseurs
+  (afficher/masquer la clé, **Tester la connexion**, URL passerelle +
+  Réinitialiser, options OpenRouter : attribution X-Title, routage sort/
+  fallbacks/require_parameters/data_collection câblés dans la requête),
+  Modèles (**catalogue vivant** + cache 6 h + repli honnête, recherche,
+  badges, prix/contexte si connus, sélection persistée, saisie manuelle),
+  Comportement (effort, plafonds ; recherche web et MCP dits « à venir »),
+  Permissions (**mode de la porte enfin persisté**, restauration au
+  démarrage). **Matrice de câblage** docs/analyse-ia.md + contrôle
+  tools/check-cablage-ia.sh **ajouté à la CI**.
+- **Lot 8** (`79ac008`) : **bus d'espace de travail partagé** (atelier +
+  tiroir gauche) ; chaque mutation de l'agent publie FileChangedOnDisk →
+  l'onglet ouvert se relit depuis le disque ; bouton **Ouvrir** sur les
+  cartes de code avec cible ; **« Expliquer cette erreur »** depuis les
+  Problèmes (diagnostic exact prérempli à l'agent via openAgentPanel).
+- **Lot 9** : ADR-014 à ADR-018 (registre documentaire, codecs internes,
+  double contenu, rendu Markdown maison, matrice en CI) ; rapport final
+  docs/rapport-refonte-ia.md (diagnostic de la mission vérifié point par
+  point — aucun point inexact).
+
+### Non fait (avec la raison) — à livrer dans une session suivante
+- Migration **RecyclerView + DiffUtil** du transcript (perf très longues
+  conversations) ; jauge de contexte (le catalogue la rend possible, le
+  branchement reste) ; sélecteur de modèle en bottom sheet (la page Modèles
+  couvre le besoin en plein écran).
+- « Demander à l'IA » depuis la **sélection de l'éditeur** : l'API
+  (openAgentPanel/prefillPrompt) est posée et utilisée par les Problèmes ;
+  le déclencheur côté éditeur reste à brancher.
+- **Adaptateur Anthropic** (ADR-014 : doc officielle inaccessible depuis
+  l'environnement, sources tierces contradictoires) ; recherche web et MCP
+  (annoncés « à venir ») ; effort épinglable par conversation (champ archivé,
+  pas éditable) ; approbation « pour la session / tout le lot » (la porte
+  demande à chaque mutation aujourd'hui).
+- Perf 200 messages et tests Robolectric de la coquille : non mesurés.
 
 ## Tiroir gauche (mission prompt-agent-tiroir-gauche-refonte.md)
 
