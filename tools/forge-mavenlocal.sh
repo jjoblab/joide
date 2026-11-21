@@ -14,7 +14,14 @@
 set -euo pipefail
 FORGE="${1:?usage : forge-mavenlocal.sh <chemin-forge> <version> [gradle-bin]}"
 VERSION="${2:?version (ex. 0.2.6)}"
-GRADLE="${3:-gradle}"
+VERSION="${VERSION#v}"   # accepte « v0.2.13 » comme « 0.2.13 »
+if [ -n "${3:-}" ]; then
+    GRADLE="$3"
+elif [ -x "$FORGE/gradlew" ]; then
+    GRADLE="$FORGE/gradlew"   # wrapper de Forge : aucune installation de Gradle requise
+else
+    GRADLE="gradle"
+fi
 
 # Script d'initialisation : ajoute maven-publish aux modules bibliothèque de Forge
 # (api, json, client, setup — coquille ; engine en plus : le moteur factice des

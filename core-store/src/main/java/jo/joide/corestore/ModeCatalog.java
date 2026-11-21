@@ -36,24 +36,36 @@ public final class ModeCatalog {
         this.freeBytesRequired = freeBytesRequired;
     }
 
-    /** Catalogue du mode Forge (moteur + runtime + dexeur + signature). */
+    /**
+     * Catalogue du mode Forge : composants du manifeste signé de la version 0.2.13
+     * (identifiants et tailles identiques à manifest.json de la release). Valeur de
+     * repli hors ligne ; l'écran peut le remplacer par {@link #forge(List)} dès que
+     * le manifeste du canal est téléchargé et vérifié (source de vérité).
+     */
     public static ModeCatalog forge() {
-        return new ModeCatalog(
-                List.of(
-                        new Component("moteur-0.2.13",
-                                "Cœur du moteur + journal", 39_953_000L),
-                        new Component("jre-21",
-                                "Runtime Java (temurin aarch64)", 43_716_000L),
-                        new Component("java-compiler",
-                                "API java.compiler corrigée ART", 2_411_000L),
-                        new Component("ecj-3.36",
-                                "Compilateur Java (EPL-2.0)", 10_278_000L),
-                        new Component("d8-r8",
-                                "Dexeur (Apache-2.0)", 6_710_000L),
-                        new Component("apksig",
-                                "Signature APK (Apache-2.0)", 4_300_000L)),
-                List.of(),
-                220_000_000L);
+        return forge(List.of(
+                new Component("engine-core",
+                        "Cœur du moteur + journal", 118_714L),
+                new Component("java-compiler",
+                        "API java.compiler corrigée ART", 1_300_990L),
+                new Component("dexeur",
+                        "Dexeur (d8/r8)", 6_096_805L),
+                new Component("signeur",
+                        "Signature APK", 168_961L),
+                new Component("kotlin-compiler",
+                        "Compilateur Kotlin (expérimental sur ART)", 19_038_728L),
+                new Component("aapt2-arm64-v8a",
+                        "Outil de ressources aapt2 (arm64-v8a)", 2_002_090L),
+                new Component("platform-34",
+                        "Plateforme Android 34 (android.jar)", 24_149_757L)));
+    }
+
+    /**
+     * Catalogue du mode Forge construit depuis les composants d'un manifeste
+     * (identifiant, description, taille en octets du manifeste).
+     */
+    public static ModeCatalog forge(List<Component> manifestComponents) {
+        return new ModeCatalog(List.copyOf(manifestComponents), List.of(), 220_000_000L);
     }
 
     /** Catalogue du mode Gradle (préfixe bootstrap, outils, JDK, distribution). */

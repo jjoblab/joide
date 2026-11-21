@@ -15,13 +15,13 @@ final class ModeCatalogTest {
     @Test
     void leCatalogueForgeListeSesComposantsAvecTailles() {
         ModeCatalog catalog = ModeCatalog.forge();
-        assertEquals(6, catalog.components().size());
+        assertEquals(7, catalog.components().size());
         assertTrue(catalog.components().stream()
                 .allMatch(c -> c.bytes() > 0));
-        assertEquals("moteur-0.2.13", catalog.components().get(0).id());
-        // Le total ~100 Mo (docs/distribution du dépôt Forge).
-        assertTrue(catalog.totalBytes() > 90_000_000L,
-                "total Forge ~100 Mo : " + catalog.humanTotal());
+        assertEquals("engine-core", catalog.components().get(0).id());
+        // Total du manifeste 0.2.13 : ~52,9 Mo.
+        assertTrue(catalog.totalBytes() > 50_000_000L,
+                "total Forge ~53 Mo : " + catalog.humanTotal());
         assertTrue(catalog.humanTotal().endsWith("Mo"));
     }
 
