@@ -42,6 +42,40 @@ public final class GitService {
         }
     }
 
+    /**
+     * Suivi distant de la branche courante : branche distante, commits en avance
+     * (à pousser) et en retard (à tirer). {@code null} sans branche suivie.
+     */
+    public Tracking tracking() {
+        try (org.eclipse.jgit.api.Git git = org.eclipse.jgit.api.Git.open(
+                repositoryRoot.toFile())) {
+            org.eclipse.jgit.lib.Repository repo = git.getRepository();
+            org.eclipse.jgit.lib.BranchTrackingStatus status =
+                    org.eclipse.jgit.lib.BranchTrackingStatus.of(repo, repo.getBranch());
+            if (status == null) {
+                return null;
+            }
+            return new Tracking(
+                    org.eclipse.jgit.lib.Repository.shortenRefName(
+                            status.getRemoteTrackingBranch()),
+                    status.getAheadCount(), status.getBehindCount());
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    /** Dernière synchronisation (date de FETCH_HEAD) en millisecondes ; 0 si inconnue. */
+    public long lastSyncMillis() {
+        try (org.eclipse.jgit.api.Git git = org.eclipse.jgit.api.Git.open(
+                repositoryRoot.toFile())) {
+            java.io.File fetchHead = new java.io.File(
+                    git.getRepository().getDirectory(), "FETCH_HEAD");
+            return fetchHead.isFile() ? fetchHead.lastModified() : 0L;
+        } catch (IOException e) {
+            return 0L;
+        }
+    }
+
     /** Statut du dépôt : fichiers modifiés/ajoutés/supprimés, avec compte de lignes. */
     public List<FileStatus> status() throws IOException {
         List<FileStatus> out = new ArrayList<>();
@@ -190,6 +224,9 @@ public final class GitService {
     }
 
     /** Nature d'un changement (pastille de l'écran git). */
+    /** Suivi distant : branche distante, commits en avance et en retard. */
+    public record Tracking(String remoteBranch, int ahead, int behind) { }
+
     public enum ChangeKind { MODIFIED, ADDED, DELETED, UNTRACKED }
 
     /** Nature d'une ligne de diff (couleur rouge/vert). */

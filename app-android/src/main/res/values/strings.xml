@@ -145,7 +145,7 @@
     <string name="creation_modele_hint">Nom du projet</string>
     <string name="creation_depuis_modele">Depuis le modèle %1$s</string>
     <string name="creation_ok">Créer</string>
-    <string name="git_remote">origin/%1$s · synchronisé il y a 12 min</string>
+    <string name="git_remote_sync">%1$s · synchronisé il y a %2$s</string>
     <string name="git_ahead_behind">↓%1$d ↑%2$d</string>
     <string name="git_pull">Tirer (pull)</string>
     <string name="git_push">Pousser (push)</string>
@@ -234,4 +234,7 @@
     <string name="option_atelier_mode">Changer de mode</string>
     <string name="option_atelier_masquer_notice">Masquer la notice</string>
     <string name="dock_etat_pret">Prêt</string>
+    <string name="git_titre_projet">Git · %1$s</string>
+    <string name="git_sans_suivi">Aucune branche distante suivie</string>
+    <string name="git_sync_bientot">Synchronisation distante : bientôt disponible</string>
 </resources>

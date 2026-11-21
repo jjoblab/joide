@@ -62,13 +62,16 @@ public class GitFragment extends Fragment {
             binding.gitMissingPanel.setVisibility(View.VISIBLE);
             return binding.getRoot();
         }
+        binding.gitTitleText.setText(getString(R.string.git_titre_projet,
+                java.nio.file.Path.of(projectPath).getFileName().toString()));
         git = new GitService(java.nio.file.Path.of(projectPath));
         if (!git.isOpen()) {
             binding.gitMissingPanel.setVisibility(View.VISIBLE);
             return binding.getRoot();
         }
         // Pull/push : sans distant configuré, l'état se dit (honnête, jamais muet).
-        String remoteNotice = getString(R.string.git_pull_absent);
+        String remoteNotice = getString(git.tracking() == null
+                ? R.string.git_pull_absent : R.string.git_sync_bientot);
         binding.gitPullButton.setOnClickListener(v -> toast(remoteNotice));
         binding.gitPushButton.setOnClickListener(v -> toast(remoteNotice));
         renderStatus();
@@ -80,6 +83,24 @@ public class GitFragment extends Fragment {
 
     // ---- Statut (pastilles de compte + diff du premier fichier modifié) ----
 
+    /** Suivi distant réel : branche distante, dernière synchro, ↓retard ↑avance. */
+    private void renderTracking() {
+        GitService.Tracking tracking = git.tracking();
+        if (tracking == null) {
+            binding.gitRemoteText.setText(R.string.git_sans_suivi);
+            binding.gitAheadBehindText.setVisibility(View.GONE);
+            return;
+        }
+        long sync = git.lastSyncMillis();
+        binding.gitRemoteText.setText(sync > 0
+                ? getString(R.string.git_remote_sync, tracking.remoteBranch(),
+                        relative(Instant.ofEpochMilli(sync)))
+                : tracking.remoteBranch());
+        binding.gitAheadBehindText.setText(getString(
+                R.string.git_ahead_behind, tracking.behind(), tracking.ahead()));
+        binding.gitAheadBehindText.setVisibility(View.VISIBLE);
+    }
+
     private void renderStatus() {
         try {
             status = git.status();
@@ -87,17 +108,10 @@ public class GitFragment extends Fragment {
             toast(e.getMessage());
             status = List.of();
         }
-        if (status.isEmpty()) {
-            binding.gitStatusCard.setVisibility(View.GONE);
-            binding.gitChangesHeader.setVisibility(View.GONE);
-            binding.gitChangesCard.setVisibility(View.GONE);
-            binding.gitCleanText.setVisibility(View.VISIBLE);
-            return;
-        }
+        // La carte de statut s'affiche toujours pour un dépôt ouvert (même propre).
         binding.gitStatusCard.setVisibility(View.VISIBLE);
         binding.gitBranchText.setText(getString(R.string.git_branch, git.currentBranch()));
-        binding.gitRemoteText.setText(getString(R.string.git_remote, "origin"));
-        binding.gitAheadBehindText.setText(getString(R.string.git_ahead_behind, 0, 2));
+        renderTracking();
         int modified = count(GitService.ChangeKind.MODIFIED)
                 + count(GitService.ChangeKind.UNTRACKED);
         int added = count(GitService.ChangeKind.ADDED);
@@ -107,6 +121,13 @@ public class GitFragment extends Fragment {
         binding.gitCountRemoved.setText(getString(R.string.git_supprimes, removed));
         binding.gitStageButton.setText(getString(
                 R.string.git_stage_button, modified + added + removed));
+        if (status.isEmpty()) {
+            binding.gitChangesHeader.setVisibility(View.GONE);
+            binding.gitChangesCard.setVisibility(View.GONE);
+            binding.gitCleanText.setVisibility(View.VISIBLE);
+            return;
+        }
+        binding.gitCleanText.setVisibility(View.GONE);
 
         binding.gitChangesHeader.setVisibility(View.VISIBLE);
         binding.gitChangesCard.setVisibility(View.VISIBLE);
@@ -290,7 +311,10 @@ public class GitFragment extends Fragment {
         if (minutes < 60) {
             return String.format(Locale.getDefault(), "%d min", Math.max(1, minutes));
         }
-        return String.format(Locale.getDefault(), "%d h", minutes / 60);
+        if (minutes < 1440) {
+            return String.format(Locale.getDefault(), "%d h", minutes / 60);
+        }
+        return String.format(Locale.getDefault(), "%d j", minutes / 1440);
     }
 
     // ---- Commit ------------------------------------------------------------

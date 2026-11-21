@@ -157,7 +157,7 @@
                             android:layout_marginTop="1dp"
                             android:maxLines="2"
                             android:ellipsize="end"
-                            android:text="@string/git_remote"
+                            android:text="@string/git_sans_suivi"
                             android:textColor="@color/sur_var"
                             style="@style/Txt.BodyS" />
                     </LinearLayout>
@@ -318,8 +318,7 @@
                     android:layout_marginTop="8dp"
                     android:inputType="textCapSentences|textMultiLine"
                     android:importantForAutofill="no"
-                    android:hint="@string/git_commit_message_hint"
-                    android:text="@string/git_commit_message_demo" />
+                    android:hint="@string/git_commit_message_hint" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -384,8 +383,7 @@
                     android:textSize="12sp"
                     android:inputType="textUri"
                     android:importantForAutofill="no"
-                    android:hint="@string/git_clonage_url_hint"
-                    android:text="@string/git_clonage_url_hint" />
+                    android:hint="@string/git_clonage_url_hint" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
