@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace 'jo.joide.app'
-    compileSdk 36  // celeris AAR (2.1.0) exige 36 ; targetSdk reste 28 (ADR-009)
+    compileSdk 36  // celeris AAR (2.2.11) exige 36 ; targetSdk reste 28 (ADR-009)
     defaultConfig {
         applicationId 'jo.joide.app'
         minSdk 28
@@ -55,12 +55,13 @@ android {
 
 dependencies {
     // Brique céleris (consigne du propriétaire, conception §6) : version épinglée
-    // 2.1.0 via mavenLocal du checkout cloné (ADR-001 bis : pas de tag JitPack —
+    // 2.2.11 via mavenLocal du checkout cloné (ADR-001 bis : pas de tag JitPack —
     // demande B-01). La CI publie celeris vers mavenLocal avant le build.
-    implementation 'jo.celeris:android-view:2.1.0'
-    implementation 'jo.celeris:android-widgets:2.1.0'
-    implementation 'jo.celeris:android-host:2.1.0'
-    implementation 'jo.celeris:core-syntax-grammars:2.1.0'
+    // 2.2.11 : la carte des usages sert le document ouvert sans serveur (2e725f4).
+    implementation 'jo.celeris:android-view:2.2.11'
+    implementation 'jo.celeris:android-widgets:2.2.11'
+    implementation 'jo.celeris:android-host:2.2.11'
+    implementation 'jo.celeris:core-syntax-grammars:2.2.11'
     implementation project(':core-model')
     implementation project(':core-store')
     implementation project(':workbench-spi')

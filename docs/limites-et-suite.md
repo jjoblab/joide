@@ -16,7 +16,7 @@
 | L2 : assistant des modes (modèle d'états JVM + 4 pages sans dépendance pager), stockage du choix | Fait (rapport `docs/lots/LOT-02.md`) |
 | L3 : Forge consommé **comme bibliothèque versionnée** (mavenLocal du checkout épinglé v0.2.6, ADR-001), traducteur d'événements + intégration avec le **moteur factice réel** en processus séparé, installateur signé (manifeste falsifié refusé, altération → BROKEN), lancement `EngineClient` | Fait (rapport `docs/lots/LOT-03.md` ; `app_process` et canal HTTPS de production = appareil réel) |
 | L4 : détection des projets, accueil câblé (cartes + badge), création depuis modèles buildables, stockage privé | Fait (rapport `docs/lots/LOT-04.md`) |
-| L5 : atelier — éditeur **céleris 2.1.0 intégré** (mavenLocal du checkout, ADR-001 bis), tiroir fichiers, quatre sections, bouton Construire → Console/Problèmes | Fait (J2 logique ; APK en CI, appareil = limites §4 ; rapport `docs/lots/LOT-05.md`) |
+| L5 : atelier — éditeur **céleris 2.2.11 intégré** (mavenLocal du checkout, ADR-001 bis), tiroir fichiers, quatre sections, bouton Construire → Console/Problèmes | Fait (J2 logique ; APK en CI, appareil = limites §4 ; rapport `docs/lots/LOT-05.md`) |
 | L6 : mode Gradle — **codeide consulté (consigne)** : terminal = dépendance JitPack termux-emulator/view (Apache-2.0, PAS de fork GPLv3, clavier interne), environnement vérifié par phases avec reprise, build Gradle → Console | Fait (J3 logique ; 8 tests JVM ; APK en CI ; rapport `docs/lots/LOT-06.md`) |
 | CI : build JVM + APK signé + contrôles | Fait (démarrée ; les jobs suivants seront suivis dans les rapports de lots) |
 

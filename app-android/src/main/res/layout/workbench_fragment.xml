@@ -2,13 +2,16 @@
 <!-- Éditeur (studio HTML, onglet « Éditeur », 1:1) : tiroir gauche push 320dp
      (switcher Files·Chercher·Structure), top bar 52dp (menu, nom, pill mode,
      save/undo/redo/play/dots), onglets fichiers 40dp, fil d'Ariane 34dp
-     (segment code/aperçu), zone code sc_lowest, dock 26dp à poignée
-     (barre 52dp + corps à pills + onglets), clavier symboles beige. -->
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+     (segment code/aperçu), zone code sc_lowest, dock à 3 detents (BuildDock.kt :
+     60dp collapse → 60% half → plein sous la toolbar), clavier symboles beige. -->
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- Colonne principale : barre + onglets + fil d'Ariane + code (le dock
+         glisse par-dessus en bas, Behavior du panneau) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -219,13 +222,38 @@
             android:layout_weight="1"
             android:background="@color/sc_lowest" />
 
-        <!-- Dock (studio : sc, hauts 26dp, poignée + barre 52dp + corps repliable) -->
+        <!-- Clavier de symboles (studio : beige, rangée Tab + touches 36dp) -->
         <LinearLayout
-            android:id="@+id/dock"
+            android:id="@+id/symbol_bar"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:background="@drawable/fond_dock">
+            android:layout_height="46dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@color/clavier"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- Dock à 3 detents (BuildDock.kt : 60dp collapse → 60% half → plein).
+         fitToContents=false + maxHeight : le plein s'arrête SOUS la toolbar
+         (offsetTop 52dp + onglets 40dp + fil d'Ariane 34dp = 126dp du haut). -->
+    <FrameLayout
+        android:id="@+id/dock_sheet"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/fond_dock"
+        app:behavior_peekHeight="60dp"
+        app:behavior_fitToContents="false"
+        app:behavior_halfExpandedRatio="0.6"
+        app:behavior_hideable="false"
+        app:behavior_skipCollapsed="false"
+        app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
 
             <View
                 android:id="@+id/dock_handle"
@@ -236,7 +264,7 @@
                 android:layout_marginBottom="2dp"
                 android:background="@drawable/fond_handle" />
 
-            <!-- Barre du dock 52dp (studio : recherche, code, spark pc, dots badge 3, check ok) -->
+            <!-- Barre du dock 52dp (studio : recherche, terminal, spark pc, dots badge 3, check ok) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
@@ -258,12 +286,12 @@
                     app:tint="@color/sur_var" />
 
                 <ImageButton
-                    android:id="@+id/dock_code"
+                    android:id="@+id/terminal_button"
                     android:layout_width="44dp"
                     android:layout_height="38dp"
                     android:background="@null"
-                    android:contentDescription="@string/atelier_symboles"
-                    android:src="@drawable/ic_code"
+                    android:contentDescription="@string/terminal_titre"
+                    android:src="@drawable/ic_terminal"
                     android:scaleType="centerInside"
                     app:tint="@color/sur_var" />
 
@@ -311,28 +339,28 @@
                 </FrameLayout>
 
                 <ImageButton
-                    android:id="@+id/terminal_button"
+                    android:id="@+id/dock_build_state"
                     android:layout_width="32dp"
                     android:layout_height="32dp"
                     android:background="@drawable/fond_pill_ok"
-                    android:contentDescription="@string/terminal_titre"
+                    android:contentDescription="@string/atelier_construire"
                     android:src="@drawable/ic_check"
                     android:scaleType="centerInside"
                     app:tint="@color/ok" />
             </LinearLayout>
 
-            <!-- Corps du dock repliable (studio : pills + onglets + problème mono) -->
+            <!-- Corps du dock (sections : pills d'état + onglets du mode + contenus) -->
             <LinearLayout
                 android:id="@+id/dock_body"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="0dp"
+                android:layout_weight="1"
                 android:orientation="vertical"
                 android:paddingStart="14dp"
                 android:paddingEnd="14dp"
-                android:paddingBottom="14dp"
-                android:visibility="gone">
+                android:paddingBottom="14dp">
 
-                <!-- Rangée d'état du build (studio : 3 pills + copier) -->
+                <!-- Rangée d'état du build (studio : pills ok/err/warn + copier) -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -394,112 +422,113 @@
                         app:tint="@color/sur_var" />
                 </LinearLayout>
 
-                <!-- Onglets du dock (studio : Problèmes · Console · Étapes · Journal) -->
-                <LinearLayout
+                <!-- Onglets du dock (Forge : Console·Problèmes·Journal·Logcat ;
+                     Gradle : Console·Problèmes·Étapes·Terminal — studio, modeEditor) -->
+                <HorizontalScrollView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="10dp">
+                    android:scrollbars="none">
 
-                    <TextView
-                        android:id="@+id/dock_tab_problems"
-                        style="Chip"
+                    <LinearLayout
+                        android:id="@+id/dock_tabs"
                         android:layout_width="wrap_content"
-                        android:layout_height="32dp"
-                        android:gravity="center"
-                        android:background="@drawable/fond_chip_on"
-                        android:text="@string/section_problemes"
-                        android:textColor="@color/sur_sc2"
-                        android:textSize="@dimen/chip_txt"
-                        android:textStyle="bold" />
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="10dp" />
+                </HorizontalScrollView>
 
-                    <TextView
-                        android:id="@+id/dock_tab_console"
-                        style="Chip"
-                        android:layout_width="wrap_content"
-                        android:layout_height="32dp"
-                        android:layout_marginStart="8dp"
-                        android:gravity="center"
-                        android:text="@string/section_console"
-                        android:textColor="@color/sur"
-                        android:textSize="@dimen/chip_txt"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/dock_tab_steps"
-                        style="Chip"
-                        android:layout_width="wrap_content"
-                        android:layout_height="32dp"
-                        android:layout_marginStart="8dp"
-                        android:gravity="center"
-                        android:text="@string/section_etapes"
-                        android:textColor="@color/sur"
-                        android:textSize="@dimen/chip_txt"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/dock_tab_journal"
-                        style="Chip"
-                        android:layout_width="wrap_content"
-                        android:layout_height="32dp"
-                        android:layout_marginStart="8dp"
-                        android:gravity="center"
-                        android:text="@string/section_journal"
-                        android:textColor="@color/sur"
-                        android:textSize="@dimen/chip_txt"
-                        android:textStyle="bold" />
-                </LinearLayout>
-
-                <!-- Sortie mono (studio : sc_low + contour 12dp, 11.5sp) -->
-                <TextView
-                    android:id="@+id/console_output"
+                <!-- Contenus des sections (visibles selon l'onglet actif) -->
+                <FrameLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="monospace"
-                    android:textSize="11.5sp"
-                    android:lineSpacingMultiplier="1.55"
-                    android:padding="12dp"
-                    android:background="@drawable/fond_sortie_dock"
-                    android:textColor="@color/sur" />
+                    android:layout_height="0dp"
+                    android:layout_weight="1">
 
-                <TextView
-                    android:id="@+id/problems_list"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:visibility="gone"
-                    android:fontFamily="monospace"
-                    android:textSize="11.5sp"
-                    android:lineSpacingMultiplier="1.55"
-                    android:padding="12dp"
-                    android:background="@drawable/fond_sortie_dock"
-                    android:textColor="@color/sur" />
+                    <!-- Problèmes (rangées ✗/⚠/▸ + position, cliquables → fichier) -->
+                    <ScrollView
+                        android:id="@+id/problems_section"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scrollbars="none">
 
-                <TextView
-                    android:id="@+id/ide_journal"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:visibility="gone"
-                    android:fontFamily="monospace"
-                    android:textSize="11.5sp"
-                    android:lineSpacingMultiplier="1.55"
-                    android:padding="12dp"
-                    android:background="@drawable/fond_sortie_dock"
-                    android:textColor="@color/sur_var" />
+                        <LinearLayout
+                            android:id="@+id/problems_list"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="12dp"
+                            android:background="@drawable/fond_sortie_dock" />
+                    </ScrollView>
+
+                    <!-- Console (sortie du build, mono) -->
+                    <ScrollView
+                        android:id="@+id/console_section"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scrollbars="none">
+
+                        <TextView
+                            android:id="@+id/console_output"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="monospace"
+                            android:textSize="11.5sp"
+                            android:lineSpacingMultiplier="1.55"
+                            android:padding="12dp"
+                            android:background="@drawable/fond_sortie_dock"
+                            android:textColor="@color/sur" />
+                    </ScrollView>
+
+                    <!-- Étapes (les tâches du build en rangées d'horloge, mode Gradle) -->
+                    <ScrollView
+                        android:id="@+id/steps_section"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scrollbars="none">
+
+                        <LinearLayout
+                            android:id="@+id/steps_list"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="12dp"
+                            android:background="@drawable/fond_sortie_dock" />
+                    </ScrollView>
+
+                    <!-- Journal IDE (mono, sur_var) -->
+                    <ScrollView
+                        android:id="@+id/journal_section"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scrollbars="none">
+
+                        <TextView
+                            android:id="@+id/ide_journal"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="monospace"
+                            android:textSize="11.5sp"
+                            android:lineSpacingMultiplier="1.55"
+                            android:padding="12dp"
+                            android:background="@drawable/fond_sortie_dock"
+                            android:textColor="@color/sur_var" />
+                    </ScrollView>
+
+                    <!-- Logcat (mode Forge — pas encore câblé : état honnête) -->
+                    <TextView
+                        android:id="@+id/logcat_section"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:padding="12dp"
+                        android:background="@drawable/fond_sortie_dock"
+                        android:textColor="@color/sur_var"
+                        android:textSize="11.5sp"
+                        android:visibility="gone"
+                        style="Txt.BodyS" />
+                </FrameLayout>
             </LinearLayout>
         </LinearLayout>
-
-        <!-- Clavier de symboles (studio : beige, rangée Tab + touches 36dp) -->
-        <LinearLayout
-            android:id="@+id/symbol_bar"
-            android:layout_width="match_parent"
-            android:layout_height="46dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:background="@color/clavier"
-            android:paddingStart="4dp"
-            android:paddingEnd="4dp"
-            android:visibility="gone" />
-    </LinearLayout>
+    </FrameLayout>
 
     <!-- Tiroir gauche (studio : push 320dp, switcher + arbre + actions) -->
     <FrameLayout
@@ -631,4 +660,5 @@
             </LinearLayout>
         </LinearLayout>
     </FrameLayout>
-</FrameLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
+

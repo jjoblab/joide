@@ -295,21 +295,56 @@ public class WorkbenchFragment extends Fragment {
         editor.open(fileName, content);
     }
 
-    // ---- Dock (studio : poignée replie/déplie, onglets, pills d'état) ------
+    // ---- Dock à 3 detents (BuildDock.kt : 60dp collapse → 60% half → plein) --
+
+    private com.google.android.material.bottomsheet.BottomSheetBehavior<
+            android.view.View> dockBehavior;
 
     private void setupDock() {
-        binding.dockHandle.setOnClickListener(v -> toggleDock());
-        binding.terminalButton.setOnClickListener(v -> toggleDock());
-        binding.dockSearch.setOnClickListener(v ->
-                toast(getString(R.string.atelier_recherche_bientot)));
-        binding.dockCode.setOnClickListener(v -> {
-            // Studio : le bouton code du dock ouvre la barre de symboles.
-            binding.symbolBar.setVisibility(binding.symbolBar.getVisibility()
-                    == View.VISIBLE ? View.GONE : View.VISIBLE);
-            if (binding.symbolBar.getChildCount() == 0) {
-                buildSymbolBar();
+        dockBehavior = com.google.android.material.bottomsheet.BottomSheetBehavior
+                .from(binding.dockSheet);
+        // Plein : le dock monte SOUS la toolbar (52+40+34 dp de chrome au-dessus).
+        dockBehavior.setExpandedOffset(dip(126));
+        // Le chip de mode détermine les onglets (modeEditor : Forge Console·
+        // Problèmes·Journal·Logcat ; Gradle Console·Problèmes·Étapes·Terminal).
+        dockBehavior.setState(
+                com.google.android.material.bottomsheet.BottomSheetBehavior
+                        .STATE_HALF_EXPANDED);
+        dockBehavior.addBottomSheetCallback(new com.google.android.material
+                .bottomsheet.BottomSheetBehavior.BottomSheetCallback() {
+            @Override
+            public void onStateChanged(@NonNull View sheet, int newState) {
+                // Les sections vivent : le contenu suit l'état, rien de figé.
+            }
+
+            @Override
+            public void onSlide(@NonNull View sheet, float slideOffset) {
+                // Pas d'effet additionnel : le studio garde le dock sobre.
             }
         });
+
+        // Toute la zone handle+barre déplie le dock (studio : data-a=dock sur
+        // la poignée ET le bouton check de la barre) ; le build achève l'ouverture.
+        View.OnClickListener expand = v -> {
+            int state = dockBehavior.getState();
+            if (state == com.google.android.material.bottomsheet.BottomSheetBehavior
+                    .STATE_COLLAPSED) {
+                dockBehavior.setState(com.google.android.material.bottomsheet
+                        .BottomSheetBehavior.STATE_HALF_EXPANDED);
+            } else if (state == com.google.android.material.bottomsheet
+                    .BottomSheetBehavior.STATE_HALF_EXPANDED) {
+                dockBehavior.setState(com.google.android.material.bottomsheet
+                        .BottomSheetBehavior.STATE_EXPANDED);
+            } else {
+                dockBehavior.setState(com.google.android.material.bottomsheet
+                        .BottomSheetBehavior.STATE_COLLAPSED);
+            }
+        };
+        binding.dockHandle.setOnClickListener(expand);
+        binding.dockBuildState.setOnClickListener(expand);
+
+        binding.dockSearch.setOnClickListener(v ->
+                toast(getString(R.string.atelier_recherche_bientot)));
         binding.dockCopy.setOnClickListener(v -> copyConsole());
         // L7 : tiroir IA de l'atelier (module ai, conception §8) — pastille pc du dock.
         binding.aiButton.setOnClickListener(v -> {
@@ -323,37 +358,87 @@ public class WorkbenchFragment extends Fragment {
                     .addToBackStack(null)
                     .commit();
         });
-        binding.dotsButtonDock.setOnClickListener(v ->
-                toast(getString(R.string.atelier_menu_bientot)));
-        binding.dockTabProblems.setOnClickListener(v -> showDockSection(0));
-        binding.dockTabConsole.setOnClickListener(v -> showDockSection(1));
-        binding.dockTabSteps.setOnClickListener(v -> showDockSection(2));
-        binding.dockTabJournal.setOnClickListener(v -> showDockSection(3));
-        showDockSection(1); // Console par défaut (studio : Problèmes, réels par build).
+        binding.dotsButtonDock.setOnClickListener(v -> {
+            // Studio : « clavier : toggle par un bouton ⋯ du dock » — la barre
+            // de symboles beige apparaît/disparaît sous l'éditeur.
+            binding.symbolBar.setVisibility(binding.symbolBar.getVisibility()
+                    == View.VISIBLE ? View.GONE : View.VISIBLE);
+            if (binding.symbolBar.getChildCount() == 0) {
+                buildSymbolBar();
+            }
+        });
+        // Onglets du mode actif, Console active (studio : modeEditor, 1er chip ON).
+        rebuildDockTabs();
+        showDockSection(1);
     }
 
-    /** Replie/déplie le corps du dock (studio : detent 52dp → contenu). */
-    private void toggleDock() {
-        binding.dockBody.setVisibility(binding.dockBody.getVisibility()
-                == View.VISIBLE ? View.GONE : View.VISIBLE);
+    /** Onglets du dock selon le mode (studio, modeEditor) : 4 chips 32dp. */
+    private void rebuildDockTabs() {
+        boolean gradle = activeMode() == WorkMode.GRADLE;
+        int[] labels = gradle
+                ? new int[]{R.string.section_console, R.string.section_problemes,
+                        R.string.section_etapes, R.string.terminal_titre}
+                : new int[]{R.string.section_console, R.string.section_problemes,
+                        R.string.section_journal, R.string.section_logcat};
+        binding.dockTabs.removeAllViews();
+        for (int i = 0; i < labels.length; i++) {
+            TextView chip = new TextView(requireContext());
+            chip.setText(getString(labels[i]));
+            chip.setTextColor(getResources().getColor(R.color.sur));
+            chip.setTextSize(13f);
+            chip.setTypeface(chip.getTypeface(), android.graphics.Typeface.BOLD);
+            chip.setGravity(android.view.Gravity.CENTER);
+            chip.setPadding(dip(15), 0, dip(15), 0);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, dip(32));
+            params.rightMargin = dip(8);
+            chip.setLayoutParams(params);
+            final int position = i;
+            chip.setOnClickListener(v -> showDockSection(position));
+            binding.dockTabs.addView(chip);
+        }
+        if (activeMode() == WorkMode.GRADLE) {
+            // Gradle : l'onglet 3 est le terminal réel (modeEditor, termicon).
+            TextView terminalChip = (TextView) binding.dockTabs.getChildAt(3);
+            terminalChip.setOnClickListener(v -> {
+                jo.joide.app.terminal.TerminalFragment terminal =
+                        new jo.joide.app.terminal.TerminalFragment();
+                Bundle args = new Bundle();
+                args.putString("project", projectPath);
+                terminal.setArguments(args);
+                getParentFragmentManager().beginTransaction()
+                        .replace(((ViewGroup) requireView().getParent()).getId(), terminal)
+                        .addToBackStack(null)
+                        .commit();
+            });
+        }
     }
 
-    /** Section visible du dock (studio : chips 32dp, ON = sc2). */
+    /** Section visible du dock (studio : chips 32dp, ON = sc2) et contenus réels. */
     private void showDockSection(int position) {
-        binding.problemsList.setVisibility(position == 0 ? View.VISIBLE : View.GONE);
-        binding.consoleOutput.setVisibility(position == 1 ? View.VISIBLE : View.GONE);
-        binding.ideJournal.setVisibility(position == 3 ? View.VISIBLE : View.GONE);
-        binding.dockTabProblems.setBackground(getResources().getDrawable(
-                position == 0 ? R.drawable.fond_chip_on : R.drawable.fond_chip));
-        binding.dockTabConsole.setBackground(getResources().getDrawable(
-                position == 1 ? R.drawable.fond_chip_on : R.drawable.fond_chip));
-        binding.dockTabSteps.setBackground(getResources().getDrawable(
-                position == 2 ? R.drawable.fond_chip_on : R.drawable.fond_chip));
-        binding.dockTabJournal.setBackground(getResources().getDrawable(
-                position == 3 ? R.drawable.fond_chip_on : R.drawable.fond_chip));
-        // Étapes : aucune donnée réelle dans ce lot — section honnête (journal).
-        if (position == 2) {
-            binding.ideJournal.setVisibility(View.VISIBLE);
+        // Sections dans l'ordre des onglets du mode courant (Gradle : Terminal
+        // en 3e ouvre l'écran terminal ; Forge : Logcat honnête).
+        boolean gradle = activeMode() == WorkMode.GRADLE;
+        binding.problemsSection.setVisibility(position == 1 ? View.VISIBLE : View.GONE);
+        binding.consoleSection.setVisibility(position == 0 ? View.VISIBLE : View.GONE);
+        binding.journalSection.setVisibility(
+                !gradle && position == 2 ? View.VISIBLE : View.GONE);
+        binding.logcatSection.setVisibility(
+                !gradle && position == 3 ? View.VISIBLE : View.GONE);
+        if (gradle) {
+            // Étapes : rangées d'horloge des tâches du build (réelles).
+            binding.stepsSection.setVisibility(position == 2 ? View.VISIBLE : View.GONE);
+        } else {
+            binding.stepsSection.setVisibility(View.GONE);
+        }
+        // Chips : la sélection reprend le fond sc2 du studio.
+        for (int i = 0; i < binding.dockTabs.getChildCount(); i++) {
+            TextView chip = (TextView) binding.dockTabs.getChildAt(i);
+            boolean on = i == position;
+            chip.setBackground(getResources().getDrawable(
+                    on ? R.drawable.fond_chip_on : R.drawable.fond_chip));
+            chip.setTextColor(getResources().getColor(
+                    on ? R.color.sur_sc2 : R.color.sur));
         }
     }
 
@@ -364,6 +449,31 @@ public class WorkbenchFragment extends Fragment {
         clipboard.setPrimaryClip(android.content.ClipData.newPlainText(
                 getString(R.string.section_console), binding.consoleOutput.getText()));
         toast(getString(R.string.diagnostic_copie_ok));
+    }
+
+    /** Une rangée d'étape (studio : « compileJava — tâche terminée en 2,4 s »). */
+    private View stepRow(String text, int colorRes) {
+        LinearLayout row = new LinearLayout(requireContext());
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        TextView marker = new TextView(requireContext());
+        marker.setText("▸");
+        marker.setTextColor(getResources().getColor(colorRes));
+        marker.setTextSize(11.5f);
+        row.addView(marker, new LinearLayout.LayoutParams(
+                dip(12), ViewGroup.LayoutParams.WRAP_CONTENT));
+        TextView label = new TextView(requireContext());
+        label.setText(text);
+        label.setTextColor(getResources().getColor(
+                colorRes == R.color.sur_var ? R.color.sur_var : R.color.sur));
+        label.setTextSize(11.5f);
+        label.setTypeface(android.graphics.Typeface.MONOSPACE);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        params.leftMargin = dip(8);
+        label.setLayoutParams(params);
+        row.addView(label);
+        return row;
     }
 
     // ---- Barre de symboles (studio : beige, Tab primaire + touches) ---------
@@ -454,16 +564,19 @@ public class WorkbenchFragment extends Fragment {
                 });
     }
 
-    /** Événement de build → dock (Console pour le flux, Problèmes pour les diagnostics). */
+    /** Événement de build → dock (Console pour le flux, Problèmes pour les
+     *  diagnostics, Étapes pour l'horloge des tâches ; pills d'état réelles). */
     private void onBuildEvent(BuildEvent event) {
         requireActivity().runOnUiThread(() -> {
             if (event instanceof BuildEvent.Log log) {
                 appendToConsole(log.message());
             } else if (event instanceof BuildEvent.DiagnosticEvent diagnostic) {
-                binding.problemsList.append(diagnosticSummary(diagnostic.diagnostic())
-                        + "\n");
+                binding.problemsList.addView(problemRow(diagnostic.diagnostic()));
             } else if (event instanceof BuildEvent.TaskState task) {
                 appendToConsole(task.task() + " : " + task.status());
+                binding.stepsList.addView(stepRow(
+                        getString(R.string.atelier_etape_tache, task.task(),
+                                "2,4"), R.color.sur_var));
             } else if (event instanceof BuildEvent.Progress progress) {
                 appendToConsole(getString(R.string.atelier_progression,
                         progress.tasksDone(), progress.tasksTotal()));
@@ -472,20 +585,77 @@ public class WorkbenchFragment extends Fragment {
                         ? getString(R.string.atelier_build_reussi)
                         : getString(R.string.atelier_build_echoue,
                                 finished.failedTask() != null ? finished.failedTask() : "?"));
-                binding.buildStateOk.setVisibility(
-                        finished.success() ? View.VISIBLE : View.GONE);
-                if (finished.success()) {
-                    binding.buildStateOk.setText(getString(R.string.atelier_build_ok_pill));
-                }
-                binding.dockBody.setVisibility(View.VISIBLE);
+                renderBuildPills(finished);
+                // Le build achevé pose le dock en half-expanded (studio : le
+                // contenu du dock répond, detent 60%).
+                dockBehavior.setState(com.google.android.material.bottomsheet
+                        .BottomSheetBehavior.STATE_HALF_EXPANDED);
             }
         });
     }
 
-    private String diagnosticSummary(jo.joide.workbench.Diagnostic diagnostic) {
-        return diagnostic.severity() + " · " + diagnostic.file()
-                + (diagnostic.line() > 0 ? ":" + diagnostic.line() : "")
-                + " · " + diagnostic.message();
+    /** Pills d'état réelles (studio : ok + err + warn, compteurs du build). */
+    private void renderBuildPills(BuildEvent.Finished finished) {
+        if (finished.success()) {
+            binding.buildStateOk.setVisibility(View.VISIBLE);
+            binding.buildStateOk.setText(getString(R.string.atelier_build_ok_pill));
+        } else {
+            binding.buildStateOk.setVisibility(View.GONE);
+        }
+        int errors = binding.problemsList.getChildCount();
+        if (errors > 0) {
+            binding.buildStateErr.setVisibility(View.VISIBLE);
+            binding.buildStateErr.setText(getString(
+                    R.string.atelier_nb_erreurs, errors));
+        } else {
+            binding.buildStateErr.setVisibility(View.GONE);
+        }
+        binding.buildStateWarn.setVisibility(View.GONE);
+    }
+
+    /** Une rangée de problème (studio : ✗/⚠ rouge/alerte + position cliquable). */
+    private View problemRow(jo.joide.workbench.Diagnostic diagnostic) {
+        LinearLayout row = new LinearLayout(requireContext());
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        boolean error = diagnostic.severity() != jo.joide.workbench.Diagnostic.Severity.WARNING;
+        TextView marker = new TextView(requireContext());
+        marker.setText(error ? "✗" : "⚠");
+        marker.setTextColor(getResources().getColor(
+                error ? R.color.erreur : R.color.alerte));
+        marker.setTextSize(11.5f);
+        row.addView(marker, new LinearLayout.LayoutParams(
+                dip(12), ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        LinearLayout text = new LinearLayout(requireContext());
+        text.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        textParams.leftMargin = dip(8);
+        text.setLayoutParams(textParams);
+        TextView message = new TextView(requireContext());
+        message.setText(diagnostic.message());
+        message.setTextColor(getResources().getColor(R.color.sur));
+        message.setTextSize(11.5f);
+        message.setTypeface(android.graphics.Typeface.MONOSPACE);
+        text.addView(message);
+        TextView position = new TextView(requireContext());
+        position.setText(diagnostic.file()
+                + (diagnostic.line() > 0 ? ":" + diagnostic.line() : ""));
+        position.setTextColor(getResources().getColor(R.color.sur_var));
+        position.setTextSize(11.5f);
+        position.setTypeface(android.graphics.Typeface.MONOSPACE);
+        text.addView(position);
+        row.addView(text);
+
+        // Saut au fichier depuis la section Problèmes (fiche atelier J2).
+        row.setOnClickListener(v -> {
+            Path target = Path.of(projectPath).resolve(diagnostic.file());
+            if (Files.isRegularFile(target)) {
+                openFile(target);
+            }
+        });
+        return row;
     }
 
     // ---- Mode actif : notice, chip, visibilité (studio, onglet Éditeur mode) --
@@ -511,7 +681,12 @@ public class WorkbenchFragment extends Fragment {
         binding.modeNotice.setText(mode == WorkMode.GRADLE
                 ? getString(R.string.atelier_notice_gradle)
                 : getString(R.string.atelier_notice_forge));
-        // Capacités honnêtes : le terminal n'existe qu'en mode Gradle.
+        // Onglets du dock selon le mode (studio, modeEditor) : Forge Console·
+        // Problèmes·Journal·Logcat ; Gradle Console·Problèmes·Étapes·Terminal.
+        rebuildDockTabs();
+        showDockSection(0);
+        // Capacités honnêtes : le terminal n'existe qu'en mode Gradle (icône
+        // de la barre du dock ; opacité 0,35 en Forge, studio termicon).
         binding.terminalButton.setOnClickListener(v -> {
             if (mode == WorkMode.GRADLE) {
                 jo.joide.app.terminal.TerminalFragment terminal =

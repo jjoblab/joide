@@ -217,4 +217,9 @@
     <string name="creation_template_forge">Application Forge</string>
     <string name="creation_template_gradle">Application Gradle</string>
     <string name="creation_nom_defaut">MonApplication</string>
+    <string name="logcat_etat">Logcat : nécessite un appareil branché (lot diagnostic appareil) — cette section reste vide sans adb</string>
+    <string name="atelier_etape_tache">%1$s — tâche terminée en %2$s s</string>
+    <string name="atelier_etape_debut">%1$s — en cours…</string>
+    <string name="atelier_etape_init">initialisation — en cours…</string>
+    <string name="atelier_nb_erreurs">%1$d erreurs</string>
 </resources>
