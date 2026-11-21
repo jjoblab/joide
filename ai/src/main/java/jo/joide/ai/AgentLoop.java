@@ -79,29 +79,43 @@ public final class AgentLoop {
     private final ConversationHistory history = new ConversationHistory();
     private final int maxIterations;
     private final BuildRunner buildRunner;
+    private final boolean toolsEnabled;
 
     /** Boucle standard : plafond d'itérations par tour (défaut 16), sans build. */
     public AgentLoop(AiProvider provider, LlmTransport transport, String baseUrl,
             String apiKey, String model, AgentWorkspace workspace, PermissionGate gate) {
-        this(provider, transport, baseUrl, apiKey, model, workspace, gate, 16, null);
+        this(provider, transport, baseUrl, apiKey, model, workspace, gate, 16, null, true);
     }
 
     /** Boucle avec outil de build : l'agent construit via le BuildBackend du mode actif. */
     public AgentLoop(AiProvider provider, LlmTransport transport, String baseUrl,
             String apiKey, String model, AgentWorkspace workspace, PermissionGate gate,
             BuildRunner buildRunner) {
-        this(provider, transport, baseUrl, apiKey, model, workspace, gate, 16, buildRunner);
+        this(provider, transport, baseUrl, apiKey, model, workspace, gate, 16, buildRunner, true);
     }
 
     public AgentLoop(AiProvider provider, LlmTransport transport, String baseUrl,
             String apiKey, String model, AgentWorkspace workspace, PermissionGate gate,
             int maxIterations) {
-        this(provider, transport, baseUrl, apiKey, model, workspace, gate, maxIterations, null);
+        this(provider, transport, baseUrl, apiKey, model, workspace, gate, maxIterations, null, true);
     }
 
     public AgentLoop(AiProvider provider, LlmTransport transport, String baseUrl,
             String apiKey, String model, AgentWorkspace workspace, PermissionGate gate,
             int maxIterations, BuildRunner buildRunner) {
+        this(provider, transport, baseUrl, apiKey, model, workspace, gate,
+                maxIterations, buildRunner, true);
+    }
+
+    /**
+     * Boucle complète (Lot 0 Assistant/Agent) : {@code toolsEnabled = false}
+     * donne la boucle de l'assistant général — **aucun outil exposé au
+     * modèle** (roster vide, aucun schéma envoyé) : l'assistant ne peut ni
+     * lire ni modifier un projet, par construction.
+     */
+    public AgentLoop(AiProvider provider, LlmTransport transport, String baseUrl,
+            String apiKey, String model, AgentWorkspace workspace, PermissionGate gate,
+            int maxIterations, BuildRunner buildRunner, boolean toolsEnabled) {
         this.provider = provider;
         this.transport = transport;
         this.baseUrl = baseUrl;
@@ -111,6 +125,7 @@ public final class AgentLoop {
         this.gate = gate;
         this.maxIterations = maxIterations;
         this.buildRunner = buildRunner;
+        this.toolsEnabled = toolsEnabled;
     }
 
     /** Historique complet (transcript persisté par l'hôte si besoin). */
@@ -201,8 +216,11 @@ public final class AgentLoop {
             messages.add(new LlmTransport.ChatMessage(entry.role(), entry.content(),
                     entry.toolCalls(), entry.toolCallId()));
         }
-        messages.add(LlmTransport.ChatMessage.system(
-                SystemPrompt.sessionContext(gateMode(), projectContext())));
+        // Sans outils (assistant général) : aucune porte à mentionner — le
+        // contexte volatile dit simplement au modèle de répondre directement.
+        messages.add(LlmTransport.ChatMessage.system(toolsEnabled
+                ? SystemPrompt.sessionContext(gateMode(), projectContext())
+                : SystemPrompt.sessionContext(projectContext())));
         return messages;
     }
 
@@ -309,8 +327,11 @@ public final class AgentLoop {
 
     // ---- Outils du roster (lecture : jamais gated ; écriture : gated) -------
 
-    /** Roster d'outils du tour (figé par instance de boucle). */
+    /** Roster d'outils du tour (figé par instance de boucle ; vide sans outils). */
     List<Tool> tools() {
+        if (!toolsEnabled) {
+            return java.util.Collections.emptyList();
+        }
         java.util.List<Tool> roster = new java.util.ArrayList<>(java.util.List.of(
                 readFileTool(), listFilesTool(), searchTool(),
                 writeFileTool(), createFileTool(), deleteFileTool()));

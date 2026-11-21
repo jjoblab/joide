@@ -75,6 +75,20 @@ public final class SystemPrompt {
         return context.toString();
     }
 
+    /**
+     * Moitié volatile de l'assistant général (Lot 0, sans outils) : aucune
+     * porte à mentionner — l'assistant ne peut rien permissionner ; le
+     * contexte lui dit de répondre directement sans prétendre agir.
+     */
+    public static String sessionContext(String projectContext) {
+        StringBuilder context = new StringBuilder(
+                "Aucun outil n'est disponible : réponds directement, sans en appeler.");
+        if (projectContext != null && !projectContext.trim().isEmpty()) {
+            context.append("\n\nContexte :\n").append(projectContext.trim());
+        }
+        return context.toString();
+    }
+
     private static String modeLine(PermissionGate.Mode mode) {
         return switch (mode) {
             case ASK_EACH -> "demander à chaque mutation (l'utilisateur approuvera ou refusera)";

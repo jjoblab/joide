@@ -27,6 +27,7 @@ class AgentLoopTest {
 
         private final List<Response> script = new ArrayList<>();
         private final List<List<ChatMessage>> sentMessages = new CopyOnWriteArrayList<>();
+        private final List<ChatRequest> sentRequests = new CopyOnWriteArrayList<>();
         private int requestCount;
 
         void respond(Response response) {
@@ -41,6 +42,10 @@ class AgentLoopTest {
             return sentMessages.get(sentMessages.size() - 1);
         }
 
+        ChatRequest lastRequest() {
+            return sentRequests.get(sentRequests.size() - 1);
+        }
+
         @Override
         public List<String> listModels(String baseUrl, String apiKey) {
             return List.of("modele-mock-a", "modele-mock-b");
@@ -51,6 +56,7 @@ class AgentLoopTest {
                 Consumer<StreamEvent> onEvent) {
             requestCount++;
             sentMessages.add(request.messages());
+            sentRequests.add(request);
             Response response = script.isEmpty()
                     ? new Response("(aucune réponse scriptée)", List.of())
                     : script.remove(0);
@@ -200,8 +206,36 @@ class AgentLoopTest {
                 new PermissionGate.Scripted(PermissionGate.Mode.AUTO_ACCEPT))
                 .turn("encore", e -> { });
         // Le tour de clôture n'expose AUCUN outil (dernière requête).
-        // On vérifie via la dernière requête : tools vides → le mock reçoit tools.
-        // (le mock ne stocke pas tools — le contrôle du plafond ci-dessus suffit.)
+        assertTrue(transport.lastRequest().tools().isEmpty(),
+                "le tour de clôture part sans outils");
+    }
+
+    @Test
+    void noToolsLoopExposesNoToolsAndMentionsNoPermissionGate() {
+        // Lot 0 — assistant général : la boucle sans outils n'expose RIEN au
+        // modèle (roster vide) et le contexte volatile ne parle pas de porte.
+        MockTransport transport = new MockTransport();
+        transport.respond(new MockTransport.Response("Voilà une explication.", List.of()));
+        List<AgentLoop.LoopEvent> events = new CopyOnWriteArrayList<>();
+        AgentLoop assistantLoop = new AgentLoop(AiProvider.gateway(transport), transport,
+                "http://localhost:11434", null, "modele-mock",
+                new AgentWorkspace.InMemory(),
+                new PermissionGate.Scripted(PermissionGate.Mode.AUTO_ACCEPT),
+                4, null, false);
+        assistantLoop.setProjectContext("Aucun projet ouvert : conversation générale.");
+
+        assistantLoop.turn("explique-moi les records", events::add);
+
+        assertTrue(transport.lastRequest().tools().isEmpty(),
+                "aucun outil n'est exposé au modèle de l'assistant");
+        String volatileContext = transport.lastMessages()
+                .get(transport.lastMessages().size() - 1).content();
+        assertTrue(volatileContext.contains("Aucun outil"),
+                "le contexte volatile dit au modèle de répondre directement");
+        assertFalse(volatileContext.contains("Mode de permission"),
+                "aucune ligne de permission pour l'assistant sans outils");
+        assertTrue(events.get(events.size() - 1) instanceof AgentLoop.LoopEvent.TurnCompleted,
+                "le tour se termine normalement en une itération");
     }
 
     @Test
