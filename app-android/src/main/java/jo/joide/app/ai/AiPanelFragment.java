@@ -47,6 +47,35 @@ import jo.joide.ai.PermissionGate;
  */
 public final class AiPanelFragment extends Fragment {
 
+    private static final String ARG_PROJECT = "project";
+
+    /**
+     * Agent du projet (tiroir droit de l'atelier) : lit, écrit et construit dans le
+     * projet ouvert, sous la porte de permission.
+     */
+    public static AiPanelFragment forProject(String projectPath) {
+        AiPanelFragment fragment = new AiPanelFragment();
+        Bundle args = new Bundle();
+        args.putString(ARG_PROJECT, projectPath);
+        fragment.setArguments(args);
+        return fragment;
+    }
+
+    /**
+     * Assistant général (accueil) : conversation sans projet — aucun accès aux
+     * fichiers, rien à approuver.
+     */
+    public static AiPanelFragment assistant() {
+        return new AiPanelFragment();
+    }
+
+    /** Chemin du projet de l'agent ; null pour l'assistant général. */
+    @Nullable
+    private String projectRoot() {
+        Bundle args = getArguments();
+        return args != null ? args.getString(ARG_PROJECT, null) : null;
+    }
+
     private AiPanelFragmentBinding binding;
     private String lastQuestion;
     private PermissionGate gate;
@@ -58,6 +87,15 @@ public final class AiPanelFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
             @Nullable Bundle savedInstanceState) {
         binding = AiPanelFragmentBinding.inflate(inflater, container, false);
+        // Deux rôles distincts : l'agent du projet (titre « Agent · nom », porte de
+        // permission) et l'assistant général de l'accueil (sans fichiers, sans permission).
+        String root = projectRoot();
+        if (root != null) {
+            binding.chatTitle.setText(getString(R.string.chat_agent_title,
+                    new java.io.File(root).getName()));
+        } else {
+            binding.permPill.setVisibility(View.GONE);
+        }
 
         // Composer : envoyer la demande (bouton rond 48 primaire du studio).
         binding.sendButton.setOnClickListener(v -> ask(binding.inputField
@@ -161,7 +199,7 @@ public final class AiPanelFragment extends Fragment {
 
         // La boucle tourne hors fil UI (pool dédié — conception §10).
         new Thread(() -> {
-            String projectRoot = requireArguments().getString("project", null);
+            String projectRoot = projectRoot();
             AgentWorkspace workspace = projectRoot != null
                     ? new AgentWorkspace.OnProject(
                             new java.io.File(projectRoot).toPath())
@@ -170,7 +208,9 @@ public final class AiPanelFragment extends Fragment {
             AgentLoop loop = new AgentLoop(AiProvider.gateway(transport), transport,
                     "http://localhost:11434", null, "modele-local",
                     workspace, gate, 16);
-            loop.setProjectContext("Projet : " + (projectRoot != null ? projectRoot : "(aucun)"));
+            loop.setProjectContext(projectRoot != null
+                    ? "Projet : " + projectRoot
+                    : getString(R.string.chat_assistant_contexte));
             List<AgentLoop.LoopEvent> events = new CopyOnWriteArrayList<>();
             loop.turn(message, events::add);
             requireActivity().runOnUiThread(() -> events.forEach(this::render));

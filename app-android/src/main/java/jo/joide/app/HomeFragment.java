@@ -233,7 +233,7 @@ public class HomeFragment extends Fragment {
         binding.navIa.setOnClickListener(v ->
                 getParentFragmentManager().beginTransaction()
                         .replace(((ViewGroup) requireView().getParent()).getId(),
-                                new jo.joide.app.ai.AiPanelFragment())
+                                jo.joide.app.ai.AiPanelFragment.assistant())
                         .addToBackStack(null).commit());
         binding.navApprendre.setOnClickListener(v ->
                 showTransientNotice(getString(R.string.accueil_nav_bientot)));

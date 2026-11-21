@@ -140,4 +140,6 @@
     <string name="settings_ia_permission_ask">Demander</string>
     <string name="settings_ia_permission_plan">Plan seulement</string>
     <string name="settings_ia_permission_auto">Auto</string>
+    <string name="chat_agent_title">Agent · %1$s</string>
+    <string name="chat_assistant_contexte">Aucun projet ouvert : conversation générale, sans accès aux fichiers ni au build.</string>
 </resources>

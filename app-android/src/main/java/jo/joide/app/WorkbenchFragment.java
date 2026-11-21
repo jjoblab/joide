@@ -232,10 +232,8 @@ public class WorkbenchFragment extends Fragment {
     /** Ouvre le tiroir droit : agent IA (fragment enfant créé à la première ouverture). */
     private void openAiDrawer() {
         if (getChildFragmentManager().findFragmentById(R.id.ai_drawer_container) == null) {
-            jo.joide.app.ai.AiPanelFragment panel = new jo.joide.app.ai.AiPanelFragment();
-            Bundle args = new Bundle();
-            args.putString("project", projectPath);
-            panel.setArguments(args);
+            jo.joide.app.ai.AiPanelFragment panel =
+                    jo.joide.app.ai.AiPanelFragment.forProject(projectPath);
             getChildFragmentManager().beginTransaction()
                     .replace(R.id.ai_drawer_container, panel)
                     .commit();
