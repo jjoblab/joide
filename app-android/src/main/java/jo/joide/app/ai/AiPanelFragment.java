@@ -247,10 +247,14 @@ public final class AiPanelFragment extends Fragment {
                 .getSharedPreferences(SettingsIaPageFragment.IA_PREFS,
                         android.content.Context.MODE_PRIVATE)
                 .getInt("iterations_max", 16);
+        int maxTokens = requireContext()
+                .getSharedPreferences(SettingsIaPageFragment.IA_PREFS,
+                        android.content.Context.MODE_PRIVATE)
+                .getInt("tokens_max", 4096);
         return new AgentLoop(ai, transport, ai.defaultBaseUrl(), vaultKey(provider),
                 persistedModel(provider, ai), workspace,
                 jo.joide.app.settings.SettingsFragment.sharedGate(),
-                maxIterations, null, root == null);
+                maxIterations, null, root == null, maxTokens, null);
     }
 
     /** Ouvre la page Réglage IA (fournisseurs, clé, modèle) — plein écran. */
@@ -456,9 +460,14 @@ public final class AiPanelFragment extends Fragment {
             }
         } else if (event instanceof AgentLoop.LoopEvent.TurnFailed failure) {
             keepThinkingAsAnswer();
-            String reason = failure.message() != null
-                    ? failure.message() : getString(R.string.chat_error_generic);
-            renderError(reason, failure.message());
+            // Cause typée (Lot 1) : chaque erreur a son message — plus de
+            // texte de 401 pour tout.
+            jo.joide.ai.LlmError error = failure.error();
+            String reason = error != null && error.getMessage() != null
+                    ? error.getMessage()
+                    : failure.message() != null ? failure.message()
+                    : getString(R.string.chat_error_generic);
+            renderError(reason, error);
         }
     }
 
@@ -825,20 +834,26 @@ public final class AiPanelFragment extends Fragment {
         appendView(question.getRoot());
     }
 
-    /** Carte erreur (studio : conteneur_erreur, ic_bell, chips Réessayer / Réglages). */
-    private void renderError(String body, String rawMessage) {
-        CarteErreurBinding error = CarteErreurBinding.inflate(getLayoutInflater());
-        error.errorTitle.setText(getString(R.string.chat_error_title));
-        error.errorBody.setText(rawMessage != null && rawMessage.contains("401")
-                ? getString(R.string.chat_error_body_401) : body);
-        error.errorRetry.setOnClickListener(v -> {
-            binding.transcriptList.removeView(error.getRoot());
+    /**
+     * Carte erreur (studio : conteneur_erreur, chips Réessayer / Réglages) :
+     * titre et corps selon la cause typée (Lot 1) — chaque erreur a son
+     * message, plus de texte de 401 pour tout.
+     */
+    private void renderError(String body, @Nullable jo.joide.ai.LlmError error) {
+        CarteErreurBinding errorCard = CarteErreurBinding.inflate(getLayoutInflater());
+        errorCard.errorTitle.setText(error != null
+                ? error.kind().title() : getString(R.string.chat_error_title));
+        String actionSuffix = error != null && error.kind().action() != null
+                ? "\n\n" + error.kind().action() : "";
+        errorCard.errorBody.setText(body + actionSuffix);
+        errorCard.errorRetry.setOnClickListener(v -> {
+            binding.transcriptList.removeView(errorCard.getRoot());
             if (lastQuestion != null) {
                 ask(lastQuestion, false);
             }
         });
-        error.errorSettings.setOnClickListener(v -> openSettingsIa());
-        appendView(error.getRoot());
+        errorCard.errorSettings.setOnClickListener(v -> openSettingsIa());
+        appendView(errorCard.getRoot());
     }
 
     /** Pose une vue dans le transcript et déroule vers le bas. */

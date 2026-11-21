@@ -152,310 +152,54 @@ public interface ConversationStore {
             }
         }
 
-        // ---- Sérialisation (schéma stable,_lot 0) ---------------------------
+        // ---- Sérialisation (schéma stable, Lot 0 ; codec Json du Lot 1) -----
 
-        /** Écrit le JSON d'une conversation (échappements complets). */
+        /** Écrit le JSON d'une conversation (échappements complets par le codec). */
         static String writeJson(Conversation conversation) {
-            StringBuilder json = new StringBuilder(128);
-            json.append("{\"id\":").append(MiniJson.quote(conversation.id()));
-            json.append(",\"title\":").append(MiniJson.quote(conversation.title()));
-            json.append(",\"created\":").append(conversation.createdAt());
-            json.append(",\"updated\":").append(conversation.updatedAt());
-            json.append(",\"messages\":[");
-            for (int i = 0; i < conversation.messages().size(); i++) {
-                if (i > 0) {
-                    json.append(',');
-                }
-                json.append("{\"role\":")
-                        .append(MiniJson.quote(conversation.messages().get(i).role()))
-                        .append(",\"content\":")
-                        .append(MiniJson.quote(conversation.messages().get(i).content()))
-                        .append('}');
+            java.util.Map<String, Object> root = new java.util.LinkedHashMap<>();
+            root.put("id", conversation.id());
+            root.put("title", conversation.title());
+            root.put("created", conversation.createdAt());
+            root.put("updated", conversation.updatedAt());
+            List<Object> messages = new ArrayList<>();
+            for (Conversation.Message message : conversation.messages()) {
+                java.util.Map<String, Object> item = new java.util.LinkedHashMap<>();
+                item.put("role", message.role());
+                item.put("content", message.content());
+                messages.add(item);
             }
-            json.append("]}");
-            return json.toString();
+            root.put("messages", messages);
+            return jo.joide.ai.json.Json.write(root);
         }
 
         /** Lit une conversation depuis son JSON ; exception lisible si corrompu. */
         static Conversation readJson(String json) throws IOException {
-            Object parsed = MiniJson.parse(json);
-            if (!(parsed instanceof java.util.Map<?, ?> root)) {
-                throw new IOException("JSON de conversation invalide (racine non objet)");
+            java.util.Map<String, Object> root;
+            try {
+                root = jo.joide.ai.json.Json.parseObject(json);
+            } catch (jo.joide.ai.json.JsonException e) {
+                throw new IOException("JSON de conversation invalide : " + e.getMessage());
             }
             Object id = root.get("id");
-            Object title = root.get("title");
-            Object created = root.get("created");
-            Object updated = root.get("updated");
-            Object messages = root.get("messages");
-            if (!(id instanceof String) || !(messages instanceof List<?>)) {
-                throw new IOException("JSON de conversation invalide (champs manquants)");
+            if (!(id instanceof String)) {
+                throw new IOException("JSON de conversation invalide (id manquant)");
             }
             List<Conversation.Message> parsedMessages = new ArrayList<>();
-            for (Object item : (List<?>) messages) {
-                if (item instanceof java.util.Map<?, ?> message
-                        && message.get("role") instanceof String role
-                        && message.get("content") instanceof String content) {
-                    parsedMessages.add(new Conversation.Message(role, content));
+            Object messages = root.get("messages");
+            if (messages instanceof List<?> items) {
+                for (Object item : items) {
+                    if (item instanceof java.util.Map<?, ?> message
+                            && message.get("role") instanceof String role
+                            && message.get("content") instanceof String content) {
+                        parsedMessages.add(new Conversation.Message(role, content));
+                    }
                 }
             }
-            return new Conversation((String) id, title instanceof String value ? value : "",
-                    created instanceof Number number ? number.longValue() : 0L,
-                    updated instanceof Number number ? number.longValue() : 0L,
+            return new Conversation((String) id,
+                    root.get("title") instanceof String title ? title : "",
+                    root.get("created") instanceof Number created ? created.longValue() : 0L,
+                    root.get("updated") instanceof Number updated ? updated.longValue() : 0L,
                     parsedMessages);
-        }
-    }
-
-    /**
-     * Mini lecteur/écrivain JSON du Lot 0 (objets, tableaux, chaînes avec
-     * échappements complets dont les points de code « backslash-u »,
-     * nombres, booléens, null). Le Lot 1 livrera le codec complet du module
-     * (erreurs typées, positions) ; celui-ci couvre exactement le schéma des
-     * conversations, en Java 8.
-     */
-    final class MiniJson {
-
-        private MiniJson() {}
-
-        /** Échappement JSON d'une valeur de chaîne. */
-        static String quote(String value) {
-            StringBuilder json = new StringBuilder("\"");
-            for (int i = 0; i < value.length(); i++) {
-                char c = value.charAt(i);
-                switch (c) {
-                    case '"' -> json.append("\\\"");
-                    case '\\' -> json.append("\\\\");
-                    case '\n' -> json.append("\\n");
-                    case '\r' -> json.append("\\r");
-                    case '\t' -> json.append("\\t");
-                    default -> {
-                        if (c < 0x20) {
-                            json.append(String.format("\\u%04x", (int) c));
-                        } else {
-                            json.append(c);
-                        }
-                    }
-                }
-            }
-            return json.append('"').toString();
-        }
-
-        /** Analyse un document JSON (Map/List/String/Number/Boolean/null). */
-        static Object parse(String json) throws IOException {
-            Reader reader = new Reader(json);
-            Object value = reader.readValue();
-            reader.skipSpaces();
-            if (!reader.atEnd()) {
-                throw reader.error("caractère en trop après la valeur");
-            }
-            return value;
-        }
-
-        /** Lecteur à curseur (messages d'erreur avec position). */
-        private static final class Reader {
-
-            private final String text;
-            private int at;
-
-            Reader(String text) {
-                this.text = text;
-            }
-
-            boolean atEnd() {
-                return at >= text.length();
-            }
-
-            Object readValue() throws IOException {
-                skipSpaces();
-                if (atEnd()) {
-                    throw error("valeur attendue");
-                }
-                char c = text.charAt(at);
-                switch (c) {
-                    case '{' -> {
-                        return readObject();
-                    }
-                    case '[' -> {
-                        return readArray();
-                    }
-                    case '"' -> {
-                        return readString();
-                    }
-                    case 't' -> {
-                        expect("true");
-                        return Boolean.TRUE;
-                    }
-                    case 'f' -> {
-                        expect("false");
-                        return Boolean.FALSE;
-                    }
-                    case 'n' -> {
-                        expect("null");
-                        return null;
-                    }
-                    default -> {
-                        return readNumber();
-                    }
-                }
-            }
-
-            private java.util.Map<String, Object> readObject() throws IOException {
-                at++; // '{'
-                java.util.Map<String, Object> object = new java.util.LinkedHashMap<>();
-                skipSpaces();
-                if (!atEnd() && text.charAt(at) == '}') {
-                    at++;
-                    return object;
-                }
-                while (true) {
-                    skipSpaces();
-                    if (atEnd() || text.charAt(at) != '"') {
-                        throw error("clé de chaîne attendue");
-                    }
-                    String key = readString();
-                    skipSpaces();
-                    if (atEnd() || text.charAt(at) != ':') {
-                        throw error("deux-points attendu");
-                    }
-                    at++;
-                    object.put(key, readValue());
-                    skipSpaces();
-                    if (atEnd()) {
-                        throw error("objet non fermé");
-                    }
-                    char next = text.charAt(at);
-                    if (next == ',') {
-                        at++;
-                    } else if (next == '}') {
-                        at++;
-                        return object;
-                    } else {
-                        throw error("virgule ou accolade fermante attendue");
-                    }
-                }
-            }
-
-            private List<Object> readArray() throws IOException {
-                at++; // '['
-                List<Object> array = new ArrayList<>();
-                skipSpaces();
-                if (!atEnd() && text.charAt(at) == ']') {
-                    at++;
-                    return array;
-                }
-                while (true) {
-                    array.add(readValue());
-                    skipSpaces();
-                    if (atEnd()) {
-                        throw error("tableau non fermé");
-                    }
-                    char next = text.charAt(at);
-                    if (next == ',') {
-                        at++;
-                    } else if (next == ']') {
-                        at++;
-                        return array;
-                    } else {
-                        throw error("virgule ou crochet fermant attendu");
-                    }
-                }
-            }
-
-            private String readString() throws IOException {
-                at++; // '"'
-                StringBuilder value = new StringBuilder();
-                while (true) {
-                    if (atEnd()) {
-                        throw error("chaîne non fermée");
-                    }
-                    char c = text.charAt(at++);
-                    if (c == '"') {
-                        return value.toString();
-                    }
-                    if (c != '\\') {
-                        value.append(c);
-                        continue;
-                    }
-                    if (atEnd()) {
-                        throw error("échappement incomplet");
-                    }
-                    char escape = text.charAt(at++);
-                    switch (escape) {
-                        case '"' -> value.append('"');
-                        case '\\' -> value.append('\\');
-                        case '/' -> value.append('/');
-                        case 'b' -> value.append('\b');
-                        case 'f' -> value.append('\f');
-                        case 'n' -> value.append('\n');
-                        case 'r' -> value.append('\r');
-                        case 't' -> value.append('\t');
-                        case 'u' -> {
-                            if (at + 4 > text.length()) {
-                                throw error("\\uXXXX incomplet");
-                            }
-                            try {
-                                value.append((char) Integer.parseInt(
-                                        text.substring(at, at + 4), 16));
-                            } catch (NumberFormatException e) {
-                                throw error("\\uXXXX invalide");
-                            }
-                            at += 4;
-                        }
-                        default -> throw error("échappement inconnu \\" + escape);
-                    }
-                }
-            }
-
-            private Number readNumber() throws IOException {
-                int start = at;
-                if (!atEnd() && (text.charAt(at) == '-' || text.charAt(at) == '+')) {
-                    at++;
-                }
-                boolean decimal = false;
-                while (!atEnd()) {
-                    char c = text.charAt(at);
-                    if (c >= '0' && c <= '9') {
-                        at++;
-                    } else if (c == '.' || c == 'e' || c == 'E' || c == '-'
-                            || c == '+') {
-                        decimal = decimal || c == '.' || c == 'e' || c == 'E';
-                        at++;
-                    } else {
-                        break;
-                    }
-                }
-                if (at == start) {
-                    throw error("valeur invalide");
-                }
-                String literal = text.substring(start, at);
-                try {
-                    return decimal ? (Number) Double.parseDouble(literal)
-                            : (Number) Long.parseLong(literal);
-                } catch (NumberFormatException e) {
-                    throw error("nombre invalide : " + literal);
-                }
-            }
-
-            private void expect(String literal) throws IOException {
-                if (!text.startsWith(literal, at)) {
-                    throw error(literal + " attendu");
-                }
-                at += literal.length();
-            }
-
-            private void skipSpaces() {
-                while (!atEnd()) {
-                    char c = text.charAt(at);
-                    if (c == ' ' || c == '\n' || c == '\r' || c == '\t') {
-                        at++;
-                    } else {
-                        break;
-                    }
-                }
-            }
-
-            private IOException error(String message) {
-                return new IOException("JSON invalide à " + at + " : " + message);
-            }
         }
     }
 }

@@ -3,11 +3,11 @@ package jo.joide.ai;
 import java.util.List;
 
 /**
- * Transport LLM (lot L7, conception §8) : port unique pour l'envoi d'une requête
- * de complétion en flux (SSE) — l'implémentation de production est
- * `HttpURLConnection` (Android 28, pas de dépendance réseau ajoutée), les tests
- * injectent un transport mock. Le réseau n'est jamais appelé sur le fil UI
- * (conception §10 : l'IA tourne dans son service avec son propre pool).
+ * Transport LLM (port du module ai) : envoi d'une complétion en flux (SSE).
+ * L'implémentation de production est {@link HttpLlmTransport}
+ * ({@code HttpURLConnection}, disponible dès l'API 24, aucune dépendance) ;
+ * les tests injectent un transport mock. Le réseau n'est jamais appelé sur
+ * le fil UI (conception §10).
  */
 public interface LlmTransport {
 
@@ -15,7 +15,7 @@ public interface LlmTransport {
     record ChatMessage(String role, String content, List<ToolCall> toolCalls,
             String toolCallId) {
 
-        /** Message système (moitié stable en préfixe, volatile en fin d'historique). */
+        /** Message système (moitié stable en préfixe, volatile en fin). */
         public static ChatMessage system(String content) {
             return new ChatMessage("system", content, null, null);
         }
@@ -39,27 +39,50 @@ public interface LlmTransport {
     /** Appel d'outil demandé par le modèle (apparié par identifiant au résultat). */
     record ToolCall(String id, String name, String argumentsJson) {}
 
-    /** Outil exposé au modèle (roster de la moitié stable du prompt). */
-    record ToolSpec(String name, String description) {}
+    /**
+     * Outil exposé au modèle (Lot 1) : le **schéma JSON des paramètres**
+     * accompagne la description — sans lui, un fournisseur conforme reçoit
+     * des outils muets et le modèle ne sait pas quels arguments fournir.
+     */
+    record ToolSpec(String name, String description, String parametersSchemaJson) {
 
-    /** Requête de complétion. */
+        /** Outil sans paramètres (schéma d'objet vide, valide). */
+        public static ToolSpec of(String name, String description) {
+            return new ToolSpec(name, description, "{\"type\":\"object\",\"properties\":{}}");
+        }
+    }
+
+    /** Requête de complétion (jeton d'annulation et effort optionnels). */
     record ChatRequest(String model, List<ChatMessage> messages, List<ToolSpec> tools,
-            int maxTokens) {}
+            int maxTokens, String reasoningEffort, CancellationToken cancellation) {
 
-    /** Delta de flux : texte, appel d'outil (cumulatif à l'arrivée), fin ou échec. */
+        /** Requête simple (sans annulation ni effort). */
+        public ChatRequest(String model, List<ChatMessage> messages,
+                List<ToolSpec> tools, int maxTokens) {
+            this(model, messages, tools, maxTokens, null, null);
+        }
+    }
+
+    /** Delta de flux : texte, raisonnement, appel d'outil, usage, fin ou échec. */
     sealed interface StreamEvent {
 
         /** Fragment de texte du modèle. */
         record Text(String delta) implements StreamEvent {}
 
-        /** Appel d'outil complet (nom + arguments JSON cumulés). */
+        /** Fragment de raisonnement (jamais mélangé à la réponse). */
+        record Reasoning(String delta) implements StreamEvent {}
+
+        /** Appel d'outil complet (nom + arguments JSON cumulés par index). */
         record ToolCallEvent(ToolCall call) implements StreamEvent {}
 
-        /** Fin normale de la génération. */
+        /** Usage signalé par le fournisseur (fin de flux). */
+        record UsageEvent(Usage usage) implements StreamEvent {}
+
+        /** Fin normale (vraie raison d'arrêt : stop, length, tool_calls…). */
         record Finish(String stopReason) implements StreamEvent {}
 
-        /** Échec du flux (réseau, quota, refus) : message lisible, jamais la clé. */
-        record Failure(String message) implements StreamEvent {}
+        /** Échec du flux : message rédigé, jamais la clé, cause typée. */
+        record Failure(String message, LlmError error) implements StreamEvent {}
     }
 
     /**
@@ -71,9 +94,9 @@ public interface LlmTransport {
     /**
      * Lance une requête de complétion en flux.
      *
-     * @param baseUrl   base de l'endpoint (passerelle : URL utilisateur).
+     * @param baseUrl   base de l'endpoint (fournisseur ou passerelle).
      * @param apiKey    clé du fournisseur (peut être nulle sur serveur local).
-     * @param request   requête (modèle, messages, outils).
+     * @param request   requête (modèle, messages, outils, jeton d'annulation).
      * @param onEvent   consommateur de chaque delta (thread transport).
      */
     void chat(String baseUrl, String apiKey, ChatRequest request,

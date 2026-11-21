@@ -29,6 +29,8 @@ class AgentLoopTest {
         private final List<List<ChatMessage>> sentMessages = new CopyOnWriteArrayList<>();
         private final List<ChatRequest> sentRequests = new CopyOnWriteArrayList<>();
         private int requestCount;
+        /** Erreur à lancer au prochain chat (tests d'échecs typés). */
+        LlmError throwOnChat;
 
         void respond(Response response) {
             script.add(response);
@@ -53,10 +55,13 @@ class AgentLoopTest {
 
         @Override
         public void chat(String baseUrl, String apiKey, ChatRequest request,
-                Consumer<StreamEvent> onEvent) {
+                Consumer<StreamEvent> onEvent) throws LlmError {
             requestCount++;
             sentMessages.add(request.messages());
             sentRequests.add(request);
+            if (throwOnChat != null) {
+                throw throwOnChat;
+            }
             Response response = script.isEmpty()
                     ? new Response("(aucune réponse scriptée)", List.of())
                     : script.remove(0);
@@ -236,6 +241,77 @@ class AgentLoopTest {
                 "aucune ligne de permission pour l'assistant sans outils");
         assertTrue(events.get(events.size() - 1) instanceof AgentLoop.LoopEvent.TurnCompleted,
                 "le tour se termine normalement en une itération");
+    }
+
+    @Test
+    void schemasAreExposedWithTools() {
+        // Lot 1 : chaque outil part AVEC son schéma de paramètres.
+        MockTransport transport = new MockTransport();
+        transport.respond(new MockTransport.Response("ok", List.of()));
+
+        loop(transport, new AgentWorkspace.InMemory(),
+                new PermissionGate.Scripted(PermissionGate.Mode.AUTO_ACCEPT))
+                .turn("dis ok", e -> { });
+
+        boolean allSchemaed = transport.lastRequest().tools().stream()
+                .allMatch(spec -> spec.parametersSchemaJson() != null
+                        && spec.parametersSchemaJson().contains("\"type\":\"object\""));
+        assertTrue(allSchemaed, "les outils partent avec un schéma de paramètres");
+    }
+
+    @Test
+    void cancelledDuringMutationMarksPendingCallsInterrupted() {
+        // Lot 1 : Stop pendant un tour — la mutation non exécutée reçoit un
+        // résultat « interrompu » (l'appariement reste valide), le tour échoue
+        // avec la cause annulée.
+        MockTransport transport = new MockTransport();
+        transport.respond(new MockTransport.Response("je m'y mets", List.of(
+                new LlmTransport.ToolCall("m1", "ecrire_fichier",
+                        "{\"path\":\"Main.java\",\"content\":\"x\"}"))));
+        AgentWorkspace.InMemory workspace = new AgentWorkspace.InMemory();
+        workspace.put("Main.java", "avant");
+        CancellationToken cancellation = new CancellationToken();
+        List<AgentLoop.LoopEvent> events = new CopyOnWriteArrayList<>();
+        AgentLoop agent = loop(transport, workspace,
+                new PermissionGate.Scripted(PermissionGate.Mode.AUTO_ACCEPT));
+
+        agent.turn("modifie", event -> {
+            events.add(event);
+            if (event instanceof AgentLoop.LoopEvent.Delta) {
+                cancellation.cancel(); // Stop pendant la génération
+            }
+        }, cancellation);
+
+        AgentLoop.LoopEvent last = events.get(events.size() - 1);
+        assertTrue(last instanceof AgentLoop.LoopEvent.TurnFailed failure
+                && failure.error() != null
+                && failure.error().kind() == LlmError.Kind.CANCELLED,
+                "le tour échoue avec la cause annulation");
+        assertEquals("avant", workspace.get("Main.java"), "aucune mutation exécutée");
+        boolean interrupted = agent.history().full().stream()
+                .anyMatch(entry -> "tool".equals(entry.role())
+                        && entry.toolCallId() != null && entry.toolCallId().equals("m1")
+                        && entry.content() != null
+                        && entry.content().contains("Interrompu"));
+        assertTrue(interrupted, "l'appel non exécuté reçoit un résultat interrompu");
+    }
+
+    @Test
+    void turnFailedCarriesTypedErrorFromTransport() {
+        // Lot 1 : une LlmError du transport traverse la boucle sans perdre
+        // sa cause (plus de message de 401 pour tout).
+        MockTransport transport = new MockTransport();
+        transport.throwOnChat = LlmError.rateLimited("trop vite", 30);
+        List<AgentLoop.LoopEvent> events = new CopyOnWriteArrayList<>();
+
+        loop(transport, new AgentWorkspace.InMemory(),
+                new PermissionGate.Scripted(PermissionGate.Mode.AUTO_ACCEPT))
+                .turn("demande", events::add);
+
+        assertTrue(events.get(events.size() - 1) instanceof AgentLoop.LoopEvent.TurnFailed failure
+                && failure.error().kind() == LlmError.Kind.RATE_LIMIT
+                && failure.error().retryAfterSeconds() == 30,
+                "la cause typée et le délai traversent la boucle");
     }
 
     @Test

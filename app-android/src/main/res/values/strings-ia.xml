@@ -26,8 +26,7 @@
     <string name="chat_question_body">Deux fichiers portent MainActivity : app et wear. Lequel modifier ?</string>
     <string name="chat_question_option_app">app/MainActivity</string>
     <string name="chat_question_option_wear">wear/MainActivity</string>
-    <string name="chat_error_title">Clé API rejetée</string>
-    <string name="chat_error_body_401">Le fournisseur répond 401 · vérifiez la clé dans Paramètres → IA (jamais affichée dans les journaux).</string>
+    <string name="chat_error_title">Erreur</string>
     <string name="chat_error_retry">Réessayer</string>
     <string name="chat_error_open_settings">Ouvrir Paramètres</string>
     <string name="chat_no_key">Aucune clé IA au coffre : réglez un fournisseur dans les paramètres. La passerelle locale fonctionne sans clé.</string>
