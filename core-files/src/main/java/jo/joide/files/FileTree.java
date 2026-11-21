@@ -129,4 +129,106 @@ public final class FileTree {
         }
         return dir;
     }
+
+    // ---- Lot 3 : compte borné et chaîne compacte ---------------------------
+
+    /** Nombre d'entrées d'un dossier (plafond atteint = dit honnêtement). */
+    public record Count(int entries, boolean capped) {}
+
+    /**
+     * Compte les entrées (fichiers et dossiers, récursif) sous un dossier —
+     * parcours en largeur **borné** à {@code maxEntries} et annulable ;
+     * dossiers ignorés exclus. Le plafond atteint se dit
+     * ({@link Count#capped}), jamais de compte menteur.
+     */
+    public static Count countAll(Path root, String relative, int maxEntries,
+            Cancelled cancelled) throws IOException {
+        Path start = resolve(root, relative);
+        if (!Files.isDirectory(start)) {
+            throw new IOException("Dossier introuvable : " + relative);
+        }
+        List<Path> queue = new ArrayList<>();
+        queue.add(start);
+        int count = 0;
+        while (!queue.isEmpty()) {
+            if (cancelled != null && cancelled.isCancelled()) {
+                return new Count(count, true);
+            }
+            Path dir = queue.remove(0);
+            try (var stream = Files.list(dir)) {
+                for (Path child : (Iterable<Path>) stream::iterator) {
+                    String name = child.getFileName().toString();
+                    if (Files.isDirectory(child)) {
+                        if (isIgnoredDir(name)) {
+                            continue;
+                        }
+                        count++;
+                        if (count >= maxEntries) {
+                            return new Count(count, true);
+                        }
+                        queue.add(child);
+                    } else {
+                        count++;
+                        if (count >= maxEntries) {
+                            return new Count(count, true);
+                        }
+                    }
+                }
+            }
+        }
+        return new Count(count, false);
+    }
+
+    /** Une chaîne de dossiers compacts (« com.example.app » sur une ligne). */
+    public record Chain(String display, String lastRelative, int levels) {}
+
+    /**
+     * Chaîne compacte depuis un dossier : descend tant que le dossier ne
+     * contient **qu'un seul enfant, un dossier** (aucun fichier à côté) —
+     * convention des arborescences d'IDE pour les packages. borné à
+     * {@code maxDepth} niveaux, annulable ; sans chaîne, retourne le dossier
+     * tel quel ({@code levels = 1}).
+     */
+    public static Chain compactChain(Path root, String relative, int maxDepth,
+            Cancelled cancelled) throws IOException {
+        String display = fileNameOf(relative);
+        String current = normalizeRelative(relative);
+        int levels = 1;
+        while (levels < maxDepth) {
+            if (cancelled != null && cancelled.isCancelled()) {
+                break;
+            }
+            Listing listing = list(root, current, true, 2, null);
+            if (listing.entries().size() != 1 || !listing.entries().get(0).directory()) {
+                break; // plusieurs enfants, ou un fichier : la chaîne s'arrête.
+            }
+            Entry only = listing.entries().get(0);
+            current = only.relativePath();
+            display += "." + only.name();
+            levels++;
+        }
+        return new Chain(display, current, levels);
+    }
+
+    /** Nom de fichier d'un chemin relatif (« . » = chaîne vide). */
+    private static String fileNameOf(String relative) {
+        String normalized = normalizeRelative(relative);
+        int slash = normalized.lastIndexOf('/');
+        return slash < 0 ? normalized : normalized.substring(slash + 1);
+    }
+
+    /** « . » et vide normalisés ; « ./x » → « x » ; pas de « / » final. */
+    private static String normalizeRelative(String relative) {
+        if (relative == null || relative.isEmpty() || ".".equals(relative)) {
+            return "";
+        }
+        String p = relative;
+        while (p.startsWith("./")) {
+            p = p.substring(2);
+        }
+        if (p.endsWith("/")) {
+            p = p.substring(0, p.length() - 1);
+        }
+        return p;
+    }
 }
