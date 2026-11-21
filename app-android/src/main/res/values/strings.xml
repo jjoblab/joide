@@ -222,4 +222,10 @@
     <string name="atelier_etape_debut">%1$s — en cours…</string>
     <string name="atelier_etape_init">initialisation — en cours…</string>
     <string name="atelier_nb_erreurs">%1$d erreurs</string>
+    <!-- Menu d'options de la barre de l'éditeur -->
+    <string name="option_atelier_fichiers">Fichiers du projet</string>
+    <string name="option_atelier_agent_ia">Agent IA</string>
+    <string name="option_atelier_construire">Construire</string>
+    <string name="option_atelier_terminal">Terminal</string>
+    <string name="option_atelier_recherche">Rechercher</string>
 </resources>

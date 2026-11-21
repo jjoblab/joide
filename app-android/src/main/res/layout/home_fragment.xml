@@ -37,11 +37,11 @@
                     android:layout_weight="1"
                     android:text="@string/accueil_titre"
                     android:textColor="@color/sur"
-                    style="Txt.Xl" />
+                    style="@style/Txt.Xl" />
 
                 <ImageButton
                     android:id="@+id/bell_button"
-                    style="IconBtn"
+                    style="@style/IconBtn"
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:contentDescription="@string/accueil_bell"
@@ -72,7 +72,7 @@
 
                 <LinearLayout
                     android:id="@+id/filter_all"
-                    style="Chip"
+                    style="@style/Chip"
                     android:layout_width="wrap_content"
                     android:layout_height="38dp"
                     android:gravity="center_vertical">
@@ -101,7 +101,7 @@
 
                 <LinearLayout
                     android:id="@+id/filter_forge"
-                    style="Chip"
+                    style="@style/Chip"
                     android:layout_width="wrap_content"
                     android:layout_height="38dp"
                     android:layout_marginStart="8dp"
@@ -131,7 +131,7 @@
 
                 <LinearLayout
                     android:id="@+id/filter_gradle"
-                    style="Chip"
+                    style="@style/Chip"
                     android:layout_width="wrap_content"
                     android:layout_height="38dp"
                     android:layout_marginStart="8dp"
@@ -196,7 +196,7 @@
                     android:layout_marginTop="10dp"
                     android:gravity="center"
                     android:text="@string/accueil_vide_studio"
-                    style="Txt.BodyS" />
+                    style="@style/Txt.BodyS" />
             </LinearLayout>
 
             <!-- CTA 64dp asymétrique + tonal64 « Plus » (studio) -->
@@ -209,7 +209,7 @@
 
                 <LinearLayout
                     android:id="@+id/new_project_button"
-                    style="Cta"
+                    style="@style/Cta"
                     android:layout_width="0dp"
                     android:layout_height="64dp"
                     android:layout_weight="1">
@@ -234,7 +234,7 @@
 
                 <LinearLayout
                     android:id="@+id/more_button"
-                    style="Tonal64"
+                    style="@style/Tonal64"
                     android:layout_width="64dp"
                     android:layout_height="64dp"
                     android:layout_marginStart="10dp"
@@ -267,7 +267,7 @@
                 android:layout_marginTop="8dp"
                 android:padding="12dp"
                 android:visibility="gone"
-                style="Txt.BodyS" />
+                style="@style/Txt.BodyS" />
         </LinearLayout>
     </ScrollView>
 

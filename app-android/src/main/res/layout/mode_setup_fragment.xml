@@ -46,7 +46,7 @@
 
             <LinearLayout
                 android:id="@+id/welcome_next_button"
-                style="Cta"
+                style="@style/Cta"
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/ctah_hauteur"
                 android:layout_marginTop="24dp"
@@ -102,7 +102,7 @@
 
             <LinearLayout
                 android:id="@+id/forge_select_button"
-                style="Cta"
+                style="@style/Cta"
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/ctah_hauteur"
                 android:layout_marginTop="20dp"
@@ -169,7 +169,7 @@
 
             <LinearLayout
                 android:id="@+id/gradle_select_button"
-                style="Cta"
+                style="@style/Cta"
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/ctah_hauteur"
                 android:layout_marginTop="20dp"
@@ -227,7 +227,7 @@
 
             <LinearLayout
                 android:id="@+id/confirm_button"
-                style="Cta"
+                style="@style/Cta"
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/ctah_hauteur"
                 android:layout_marginTop="24dp"

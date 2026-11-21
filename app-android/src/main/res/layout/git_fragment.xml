@@ -21,7 +21,7 @@
 
         <ImageButton
             android:id="@+id/git_back_button"
-            style="IconBtn"
+            style="@style/IconBtn"
             android:layout_width="@dimen/iconbtn_cote"
             android:layout_height="@dimen/iconbtn_cote"
             android:layout_marginEnd="4dp"
@@ -39,11 +39,11 @@
             android:ellipsize="end"
             android:text="@string/git_title"
             android:textColor="@color/sur"
-            style="Txt.Xl" />
+            style="@style/Txt.Xl" />
 
         <ImageButton
             android:id="@+id/git_pull_button"
-            style="IconBtn"
+            style="@style/IconBtn"
             android:layout_width="@dimen/iconbtn_cote"
             android:layout_height="@dimen/iconbtn_cote"
             android:contentDescription="@string/git_pull"
@@ -52,7 +52,7 @@
 
         <ImageButton
             android:id="@+id/git_push_button"
-            style="IconBtn"
+            style="@style/IconBtn"
             android:layout_width="@dimen/iconbtn_cote"
             android:layout_height="@dimen/iconbtn_cote"
             android:layout_marginStart="4dp"
@@ -90,7 +90,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/git_absent_titre"
                     android:textColor="@color/sur"
-                    style="Txt.Sm" />
+                    style="@style/Txt.Sm" />
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -99,13 +99,13 @@
                     android:gravity="center"
                     android:text="@string/git_absent_corps"
                     android:textColor="@color/sur_var"
-                    style="Txt.BodyS" />
+                    style="@style/Txt.BodyS" />
             </LinearLayout>
 
             <!-- Carte statut : pastille sc2, branche, remote, pill ahead/behind -->
             <LinearLayout
                 android:id="@+id/git_status_card"
-                style="Carte"
+                style="@style/Carte"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
@@ -148,7 +148,7 @@
                             android:ellipsize="end"
                             android:text="@string/git_branch"
                             android:textColor="@color/sur"
-                            style="Txt.Sm" />
+                            style="@style/Txt.Sm" />
 
                         <TextView
                             android:id="@+id/git_remote_text"
@@ -159,12 +159,12 @@
                             android:ellipsize="end"
                             android:text="@string/git_remote"
                             android:textColor="@color/sur_var"
-                            style="Txt.BodyS" />
+                            style="@style/Txt.BodyS" />
                     </LinearLayout>
 
                     <TextView
                         android:id="@+id/git_ahead_behind_text"
-                        style="Pill"
+                        style="@style/Pill"
                         android:layout_width="wrap_content"
                         android:layout_height="@dimen/pill_hauteur"
                         android:background="@drawable/fond_pill_ok"
@@ -183,7 +183,7 @@
 
                     <TextView
                         android:id="@+id/git_count_modified"
-                        style="Pill"
+                        style="@style/Pill"
                         android:layout_width="wrap_content"
                         android:layout_height="@dimen/pill_hauteur"
                         android:background="@drawable/fond_pill_warn"
@@ -194,7 +194,7 @@
 
                     <TextView
                         android:id="@+id/git_count_added"
-                        style="Pill"
+                        style="@style/Pill"
                         android:layout_width="wrap_content"
                         android:layout_height="@dimen/pill_hauteur"
                         android:layout_marginStart="8dp"
@@ -206,7 +206,7 @@
 
                     <TextView
                         android:id="@+id/git_count_removed"
-                        style="Pill"
+                        style="@style/Pill"
                         android:layout_width="wrap_content"
                         android:layout_height="@dimen/pill_hauteur"
                         android:layout_marginStart="8dp"
@@ -226,13 +226,13 @@
                 android:layout_marginTop="18dp"
                 android:layout_marginBottom="8dp"
                 android:text="@string/git_section_modifications"
-                style="Txt.Eyebrow"
+                style="@style/Txt.Eyebrow"
                 android:visibility="gone" />
 
             <!-- Carte fichiers : rangées + bloc diff coloré -->
             <LinearLayout
                 android:id="@+id/git_changes_card"
-                style="Carte"
+                style="@style/Carte"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
@@ -262,7 +262,7 @@
                 android:layout_marginTop="18dp"
                 android:text="@string/git_rien_propre"
                 android:textColor="@color/sur_var"
-                style="Txt.BodyS"
+                style="@style/Txt.BodyS"
                 android:visibility="gone" />
 
             <!-- Eyebrow Historique -->
@@ -273,13 +273,13 @@
                 android:layout_marginTop="18dp"
                 android:layout_marginBottom="8dp"
                 android:text="@string/git_section_historique"
-                style="Txt.Eyebrow"
+                style="@style/Txt.Eyebrow"
                 android:visibility="gone" />
 
             <!-- Carte commits (rangées construites par le fragment) -->
             <LinearLayout
                 android:id="@+id/git_log_card"
-                style="Carte"
+                style="@style/Carte"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
@@ -295,7 +295,7 @@
             <!-- Carte commit : label + champ + 2 chips 44dp -->
             <LinearLayout
                 android:id="@+id/git_commit_card"
-                style="Carte"
+                style="@style/Carte"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
@@ -308,11 +308,11 @@
                     android:layout_height="wrap_content"
                     android:text="@string/git_commit_message_hint"
                     android:textColor="@color/sur"
-                    style="Txt.Label" />
+                    style="@style/Txt.Label" />
 
                 <EditText
                     android:id="@+id/git_commit_message"
-                    style="Champ"
+                    style="@style/Champ"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
@@ -329,7 +329,7 @@
 
                     <TextView
                         android:id="@+id/git_stage_button"
-                        style="Chip"
+                        style="@style/Chip"
                         android:layout_width="0dp"
                         android:layout_height="44dp"
                         android:layout_weight="1"
@@ -341,7 +341,7 @@
 
                     <TextView
                         android:id="@+id/git_commit_button"
-                        style="Chip"
+                        style="@style/Chip"
                         android:layout_width="0dp"
                         android:layout_height="44dp"
                         android:layout_weight="1"
@@ -373,11 +373,11 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
                     android:text="@string/git_clonage_section_titre"
-                    style="Txt.Eyebrow" />
+                    style="@style/Txt.Eyebrow" />
 
                 <EditText
                     android:id="@+id/git_clone_url"
-                    style="Champ"
+                    style="@style/Champ"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:fontFamily="monospace"
@@ -396,7 +396,7 @@
 
                     <TextView
                         android:id="@+id/git_clone_button"
-                        style="Chip"
+                        style="@style/Chip"
                         android:layout_width="0dp"
                         android:layout_height="40dp"
                         android:layout_weight="1"
@@ -413,7 +413,7 @@
                         android:layout_marginStart="10dp"
                         android:text="@string/git_clonage_detection"
                         android:textColor="@color/sur_var"
-                        style="Txt.BodyS" />
+                        style="@style/Txt.BodyS" />
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>

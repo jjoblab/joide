@@ -28,7 +28,7 @@
 
         <ImageButton
             android:id="@+id/diagnostic_back_button"
-            style="IconBtn"
+            style="@style/IconBtn"
             android:layout_width="@dimen/iconbtn_cote"
             android:layout_height="@dimen/iconbtn_cote"
             android:contentDescription="@string/commun_retour"
@@ -41,11 +41,11 @@
             android:layout_marginStart="4dp"
             android:text="@string/diagnostic_title"
             android:textColor="@color/sur"
-            style="Txt.Xl" />
+            style="@style/Txt.Xl" />
 
         <ImageButton
             android:id="@+id/diagnostic_copy_button"
-            style="IconBtn"
+            style="@style/IconBtn"
             android:layout_width="@dimen/iconbtn_cote"
             android:layout_height="@dimen/iconbtn_cote"
             android:contentDescription="@string/diagnostic_copy_desc"
@@ -53,7 +53,7 @@
 
         <ImageButton
             android:id="@+id/diagnostic_share_button"
-            style="IconBtn"
+            style="@style/IconBtn"
             android:layout_width="@dimen/iconbtn_cote"
             android:layout_height="@dimen/iconbtn_cote"
             android:contentDescription="@string/diagnostic_share_desc"
@@ -78,7 +78,7 @@
 
             <!-- Carte « Versions constatées » -->
             <LinearLayout
-                style="Carte"
+                style="@style/Carte"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
@@ -90,7 +90,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="10dp"
                     android:text="@string/diagnostic_versions_section"
-                    style="Txt.Eyebrow" />
+                    style="@style/Txt.Eyebrow" />
 
                 <!-- Lignes label/sur_var + mono (remplies par DiagnosticFragment) -->
                 <LinearLayout
@@ -102,7 +102,7 @@
 
             <!-- Carte « Installation des modes » -->
             <LinearLayout
-                style="Carte"
+                style="@style/Carte"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
@@ -114,7 +114,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="10dp"
                     android:text="@string/diagnostic_modes_section"
-                    style="Txt.Eyebrow" />
+                    style="@style/Txt.Eyebrow" />
 
                 <!-- Rangée Forge (INSTALLÉ / Forge / 184,3 Mo) -->
                 <LinearLayout
@@ -128,7 +128,7 @@
 
                     <TextView
                         android:id="@+id/diagnostic_mode_forge_state"
-                        style="Pill"
+                        style="@style/Pill"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:background="@drawable/fond_pill_ok"
@@ -144,7 +144,7 @@
                         android:layout_marginStart="10dp"
                         android:text="@string/mode_forge_nom"
                         android:textColor="@color/sur"
-                        style="Txt.Sm" />
+                        style="@style/Txt.Sm" />
 
                     <TextView
                         android:id="@+id/diagnostic_mode_forge_size"
@@ -152,7 +152,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="10dp"
                         android:layout_gravity="end"
-                        style="Txt.BodyS" />
+                        style="@style/Txt.BodyS" />
                 </LinearLayout>
 
                 <View
@@ -173,7 +173,7 @@
 
                     <TextView
                         android:id="@+id/diagnostic_mode_gradle_state"
-                        style="Pill"
+                        style="@style/Pill"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:background="@drawable/fond_pill_sc_highest"
@@ -189,7 +189,7 @@
                         android:layout_marginStart="10dp"
                         android:text="@string/mode_gradle_nom"
                         android:textColor="@color/sur"
-                        style="Txt.Sm" />
+                        style="@style/Txt.Sm" />
 
                     <TextView
                         android:id="@+id/diagnostic_mode_gradle_size"
@@ -197,13 +197,13 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="10dp"
                         android:layout_gravity="end"
-                        style="Txt.BodyS" />
+                        style="@style/Txt.BodyS" />
                 </LinearLayout>
             </LinearLayout>
 
             <!-- Carte « Journal borné du dernier build » -->
             <LinearLayout
-                style="Carte"
+                style="@style/Carte"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
@@ -215,7 +215,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="10dp"
                     android:text="@string/diagnostic_build_log_section"
-                    style="Txt.Eyebrow" />
+                    style="@style/Txt.Eyebrow" />
 
                 <!-- Bloc mono sc_lowest contour rayon 12 -->
                 <TextView
@@ -235,12 +235,12 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
                     android:text="@string/diagnostic_build_log_note"
-                    style="Txt.BodyS" />
+                    style="@style/Txt.BodyS" />
             </LinearLayout>
 
             <!-- Carte « Journal des écroulements (borné à 20) » -->
             <LinearLayout
-                style="Carte"
+                style="@style/Carte"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
@@ -252,7 +252,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="10dp"
                     android:text="@string/diagnostic_crash_log_section"
-                    style="Txt.Eyebrow" />
+                    style="@style/Txt.Eyebrow" />
 
                 <TextView
                     android:id="@+id/diagnostic_crash_log"
@@ -273,7 +273,7 @@
 
                 <LinearLayout
                     android:id="@+id/diagnostic_copy_chip"
-                    style="Chip"
+                    style="@style/Chip"
                     android:layout_width="0dp"
                     android:layout_height="46dp"
                     android:layout_weight="1"
@@ -298,7 +298,7 @@
 
                 <LinearLayout
                     android:id="@+id/diagnostic_share_chip"
-                    style="Chip"
+                    style="@style/Chip"
                     android:layout_width="0dp"
                     android:layout_height="46dp"
                     android:layout_weight="1"

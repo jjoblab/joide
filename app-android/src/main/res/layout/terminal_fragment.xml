@@ -32,7 +32,7 @@
 
         <ImageButton
             android:id="@+id/terminal_back_button"
-            style="IconBtn"
+            style="@style/IconBtn"
             android:layout_width="@dimen/iconbtn_cote"
             android:layout_height="@dimen/iconbtn_cote"
             android:contentDescription="@string/commun_retour"
@@ -49,11 +49,11 @@
             android:ellipsize="end"
             android:text="@string/terminal_titre"
             android:textColor="@color/sur"
-            style="Txt.Sm" />
+            style="@style/Txt.Sm" />
 
         <TextView
             android:id="@+id/terminal_env_badge"
-            style="Pill"
+            style="@style/Pill"
             android:layout_width="wrap_content"
             android:layout_height="@dimen/pill_hauteur"
             android:layout_marginStart="6dp"
@@ -65,7 +65,7 @@
 
         <ImageButton
             android:id="@+id/new_session_button"
-            style="IconBtn"
+            style="@style/IconBtn"
             android:layout_width="@dimen/iconbtn_cote"
             android:layout_height="@dimen/iconbtn_cote"
             android:layout_marginStart="6dp"
@@ -138,7 +138,7 @@
 
         <EditText
             android:id="@+id/terminal_input"
-            style="Champ"
+            style="@style/Champ"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -190,25 +190,25 @@
                 android:paddingStart="4dp"
                 android:paddingEnd="4dp">
 
-                <TextView android:tag="esc" style="KbdTouche" android:text="@string/terminal_kbd_esc" />
-                <TextView android:tag="tab" style="KbdTouche" android:text="@string/terminal_kbd_tab" />
-                <TextView android:tag="ctrl" style="KbdTouche" android:text="@string/terminal_kbd_ctrl" />
-                <TextView android:tag="alt" style="KbdTouche" android:text="@string/terminal_kbd_alt" />
-                <TextView android:tag="left" style="KbdTouche" android:text="@string/terminal_kbd_gauche" />
-                <TextView android:tag="right" style="KbdTouche" android:text="@string/terminal_kbd_droite" />
-                <TextView android:tag="up" style="KbdTouche" android:text="@string/terminal_kbd_haut" />
-                <TextView android:tag="down" style="KbdTouche" android:text="@string/terminal_kbd_bas" />
-                <TextView android:tag="home" style="KbdTouche" android:text="@string/terminal_kbd_home" />
-                <TextView android:tag="end" style="KbdTouche" android:text="@string/terminal_kbd_end" />
-                <TextView android:tag="pgup" style="KbdTouche" android:text="@string/terminal_kbd_pgup" />
-                <TextView android:tag="pgdn" style="KbdTouche" android:text="@string/terminal_kbd_pgdn" />
-                <TextView android:tag="pipe" style="KbdTouche" android:text="@string/terminal_kbd_pipe" />
-                <TextView android:tag="tilde" style="KbdTouche" android:text="@string/terminal_kbd_tilde" />
-                <TextView android:tag="slash" style="KbdTouche" android:text="@string/terminal_kbd_slash" />
-                <TextView android:tag="minus" style="KbdTouche" android:text="@string/terminal_kbd_moins" />
-                <TextView android:tag="lt" style="KbdTouche" android:text="@string/terminal_kbd_inf" />
-                <TextView android:tag="gt" style="KbdTouche" android:text="@string/terminal_kkbd_sup" />
-                <TextView android:tag="dollar" style="KbdTouche" android:text="@string/terminal_kbd_dollar" />
+                <TextView android:tag="esc" style="@style/KbdTouche" android:text="@string/terminal_kbd_esc" />
+                <TextView android:tag="tab" style="@style/KbdTouche" android:text="@string/terminal_kbd_tab" />
+                <TextView android:tag="ctrl" style="@style/KbdTouche" android:text="@string/terminal_kbd_ctrl" />
+                <TextView android:tag="alt" style="@style/KbdTouche" android:text="@string/terminal_kbd_alt" />
+                <TextView android:tag="left" style="@style/KbdTouche" android:text="@string/terminal_kbd_gauche" />
+                <TextView android:tag="right" style="@style/KbdTouche" android:text="@string/terminal_kbd_droite" />
+                <TextView android:tag="up" style="@style/KbdTouche" android:text="@string/terminal_kbd_haut" />
+                <TextView android:tag="down" style="@style/KbdTouche" android:text="@string/terminal_kbd_bas" />
+                <TextView android:tag="home" style="@style/KbdTouche" android:text="@string/terminal_kbd_home" />
+                <TextView android:tag="end" style="@style/KbdTouche" android:text="@string/terminal_kbd_end" />
+                <TextView android:tag="pgup" style="@style/KbdTouche" android:text="@string/terminal_kbd_pgup" />
+                <TextView android:tag="pgdn" style="@style/KbdTouche" android:text="@string/terminal_kbd_pgdn" />
+                <TextView android:tag="pipe" style="@style/KbdTouche" android:text="@string/terminal_kbd_pipe" />
+                <TextView android:tag="tilde" style="@style/KbdTouche" android:text="@string/terminal_kbd_tilde" />
+                <TextView android:tag="slash" style="@style/KbdTouche" android:text="@string/terminal_kbd_slash" />
+                <TextView android:tag="minus" style="@style/KbdTouche" android:text="@string/terminal_kbd_moins" />
+                <TextView android:tag="lt" style="@style/KbdTouche" android:text="@string/terminal_kbd_inf" />
+                <TextView android:tag="gt" style="@style/KbdTouche" android:text="@string/terminal_kkbd_sup" />
+                <TextView android:tag="dollar" style="@style/KbdTouche" android:text="@string/terminal_kbd_dollar" />
             </LinearLayout>
         </HorizontalScrollView>
     </LinearLayout>

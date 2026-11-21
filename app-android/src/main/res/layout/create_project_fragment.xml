@@ -21,7 +21,7 @@
 
         <ImageButton
             android:id="@+id/create_back"
-            style="IconBtn"
+            style="@style/IconBtn"
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:contentDescription="@string/commun_retour"
@@ -36,7 +36,7 @@
             android:layout_weight="1"
             android:text="@string/creation_titre"
             android:textColor="@color/sur"
-            style="Txt.Xl" />
+            style="@style/Txt.Xl" />
     </LinearLayout>
 
     <ScrollView
@@ -62,7 +62,7 @@
 
                 <TextView
                     android:id="@+id/create_search"
-                    style="Champ"
+                    style="@style/Champ"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="10dp"
@@ -91,7 +91,7 @@
                     android:layout_marginTop="14dp"
                     android:layout_marginBottom="8dp"
                     android:text="@string/creation_recommandes"
-                    style="Txt.Eyebrow" />
+                    style="@style/Txt.Eyebrow" />
 
                 <LinearLayout
                     android:id="@+id/create_templates"
@@ -118,7 +118,7 @@
 
                     <ImageButton
                         android:id="@+id/create_to_step1"
-                        style="IconBtn"
+                        style="@style/IconBtn"
                         android:layout_width="40dp"
                         android:layout_height="40dp"
                         android:layout_marginStart="-12dp"
@@ -139,13 +139,13 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:textColor="@color/sur"
-                            style="Txt.Xl" />
+                            style="@style/Txt.Xl" />
 
                         <TextView
                             android:id="@+id/create_template_desc"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            style="Txt.BodyS" />
+                            style="@style/Txt.BodyS" />
                     </LinearLayout>
                 </LinearLayout>
 
@@ -156,11 +156,11 @@
                     android:layout_marginBottom="8dp"
                     android:text="@string/creation_nom_label"
                     android:textColor="@color/sur"
-                    style="Txt.Label" />
+                    style="@style/Txt.Label" />
 
                 <EditText
                     android:id="@+id/create_name_field"
-                    style="Champ"
+                    style="@style/Champ"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:importantForAutofill="no"
@@ -174,11 +174,11 @@
                     android:layout_marginBottom="8dp"
                     android:text="@string/creation_paquet_label"
                     android:textColor="@color/sur"
-                    style="Txt.Label" />
+                    style="@style/Txt.Label" />
 
                 <EditText
                     android:id="@+id/create_package_field"
-                    style="Champ"
+                    style="@style/Champ"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:fontFamily="monospace"
@@ -194,7 +194,7 @@
                     android:layout_marginBottom="8dp"
                     android:text="@string/creation_vues_label"
                     android:textColor="@color/sur"
-                    style="Txt.Label" />
+                    style="@style/Txt.Label" />
 
                 <LinearLayout
                     android:id="@+id/create_views"
@@ -209,7 +209,7 @@
                     android:layout_marginBottom="8dp"
                     android:text="@string/creation_r8_label"
                     android:textColor="@color/sur"
-                    style="Txt.Label" />
+                    style="@style/Txt.Label" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -225,7 +225,7 @@
                         android:layout_weight="1"
                         android:text="@string/creation_r8_desc"
                         android:textColor="@color/sur"
-                        style="Txt.BodyS" />
+                        style="@style/Txt.BodyS" />
 
                     <Switch
                         android:id="@+id/create_r8_switch"
@@ -239,7 +239,7 @@
 
                 <LinearLayout
                     android:id="@+id/create_go"
-                    style="Cta"
+                    style="@style/Cta"
                     android:layout_width="match_parent"
                     android:layout_height="64dp"
                     android:gravity="center">
@@ -269,7 +269,7 @@
                     android:layout_marginTop="10dp"
                     android:gravity="center"
                     android:text="@string/creation_derivation_note"
-                    style="Txt.BodyS" />
+                    style="@style/Txt.BodyS" />
             </LinearLayout>
         </LinearLayout>
     </ScrollView>

@@ -51,6 +51,8 @@
     <dimen name="drawer_gauche_l">320dp</dimen>
     <dimen name="drawer_droit_l">420dp</dimen>
     <dimen name="dock_rayon">26dp</dimen>
+    <!-- Hauteur du dock replié : l'éditeur la réserve, jamais masqué par le dock -->
+    <dimen name="dock_replie_hauteur">60dp</dimen>
     <dimen name="dockbar_hauteur">52dp</dimen>
     <dimen name="kbd_touche_h">36dp</dimen>
     <dimen name="kbd_pleine_h">258dp</dimen>

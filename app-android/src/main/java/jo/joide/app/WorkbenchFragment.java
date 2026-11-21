@@ -71,6 +71,7 @@ public class WorkbenchFragment extends Fragment {
         projectPath = projectPath();
 
         if (projectPath != null) {
+            setupDrawers();
             setupTopBar();
             setupFilesTree();
             setupTabs();
@@ -87,19 +88,101 @@ public class WorkbenchFragment extends Fragment {
     private void setupTopBar() {
         binding.projectTitle.setText(Path.of(projectPath).getFileName().toString());
         binding.menuButton.setOnClickListener(v ->
-                binding.leftDrawer.setVisibility(View.VISIBLE));
+                binding.drawerLayout.openDrawer(androidx.core.view.GravityCompat.START));
         binding.closeLeft.setOnClickListener(v ->
-                binding.leftDrawer.setVisibility(View.GONE));
-        binding.leftScrim.setOnClickListener(v ->
-                binding.leftDrawer.setVisibility(View.GONE));
-        binding.dotsButton.setOnClickListener(v ->
-                toast(getString(R.string.atelier_menu_bientot)));
+                binding.drawerLayout.closeDrawer(androidx.core.view.GravityCompat.START));
+        binding.dotsButton.setOnClickListener(this::showOptionsMenu);
         // Studio : save/undo/redo — la brique céleris porte ces états (L5) ;
         // les boutons disent honnêtement l'état.
         String editorState = getString(R.string.atelier_editeur_brique);
         binding.saveButton.setOnClickListener(v -> toast(editorState));
         binding.undoButton.setOnClickListener(v -> toast(editorState));
         binding.redoButton.setOnClickListener(v -> toast(editorState));
+    }
+
+    // ---- Tiroirs (gauche : fichiers · droite : agent IA) — ils POUSSENT le contenu --
+
+    private void setupDrawers() {
+        androidx.drawerlayout.widget.DrawerLayout drawers = binding.drawerLayout;
+        // Pas de voile : le contenu est poussé, pas recouvert.
+        drawers.setScrimColor(android.graphics.Color.TRANSPARENT);
+        drawers.setDrawerElevation(0f);
+        int screenWidth = getResources().getDisplayMetrics().widthPixels;
+        ViewGroup.LayoutParams right = binding.rightDrawer.getLayoutParams();
+        right.width = Math.min(dip(420), screenWidth - dip(56));
+        binding.rightDrawer.setLayoutParams(right);
+        ViewGroup.LayoutParams left = binding.leftDrawerPanel.getLayoutParams();
+        left.width = Math.min(dip(320), screenWidth - dip(56));
+        binding.leftDrawerPanel.setLayoutParams(left);
+
+        androidx.activity.OnBackPressedCallback closeOnBack =
+                new androidx.activity.OnBackPressedCallback(false) {
+                    @Override
+                    public void handleOnBackPressed() {
+                        drawers.closeDrawers();
+                    }
+                };
+        requireActivity().getOnBackPressedDispatcher()
+                .addCallback(getViewLifecycleOwner(), closeOnBack);
+
+        drawers.addDrawerListener(new androidx.drawerlayout.widget.DrawerLayout
+                .SimpleDrawerListener() {
+            @Override
+            public void onDrawerSlide(@NonNull View drawerView, float slideOffset) {
+                // Gauche : le contenu glisse vers la droite ; droite : vers la gauche.
+                float sign = drawerView == binding.rightDrawer ? -1f : 1f;
+                binding.mainContent.setTranslationX(
+                        sign * drawerView.getWidth() * slideOffset);
+            }
+
+            @Override
+            public void onDrawerOpened(@NonNull View drawerView) {
+                closeOnBack.setEnabled(true);
+            }
+
+            @Override
+            public void onDrawerClosed(@NonNull View drawerView) {
+                closeOnBack.setEnabled(
+                        drawers.isDrawerOpen(androidx.core.view.GravityCompat.START)
+                                || drawers.isDrawerOpen(androidx.core.view.GravityCompat.END));
+            }
+        });
+    }
+
+    /** Ouvre le tiroir droit : agent IA (fragment enfant créé à la première ouverture). */
+    private void openAiDrawer() {
+        if (getChildFragmentManager().findFragmentById(R.id.ai_drawer_container) == null) {
+            jo.joide.app.ai.AiPanelFragment panel = new jo.joide.app.ai.AiPanelFragment();
+            Bundle args = new Bundle();
+            args.putString("project", projectPath);
+            panel.setArguments(args);
+            getChildFragmentManager().beginTransaction()
+                    .replace(R.id.ai_drawer_container, panel)
+                    .commit();
+        }
+        binding.drawerLayout.openDrawer(androidx.core.view.GravityCompat.END);
+    }
+
+    /** Menu d'options de la barre (⋯) : actions réelles de l'atelier. */
+    private void showOptionsMenu(View anchor) {
+        android.widget.PopupMenu menu = new android.widget.PopupMenu(requireContext(), anchor);
+        menu.inflate(R.menu.workbench_options);
+        menu.setOnMenuItemClickListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.option_fichiers) {
+                binding.drawerLayout.openDrawer(androidx.core.view.GravityCompat.START);
+            } else if (id == R.id.option_agent_ia) {
+                openAiDrawer();
+            } else if (id == R.id.option_construire) {
+                binding.buildButton.performClick();
+            } else if (id == R.id.option_terminal) {
+                binding.terminalButton.performClick();
+            } else if (id == R.id.option_recherche) {
+                binding.dockSearch.performClick();
+            }
+            return true;
+        });
+        menu.show();
     }
 
     // ---- Onglets de fichiers (studio : 32dp sc2, point alerte, ×) ----------
@@ -291,6 +374,12 @@ public class WorkbenchFragment extends Fragment {
                             .builtinPacks()
                             .build();
             editor = jo.celeris.android.host.CelerisEditor.attach(view, popups, kit);
+            boolean night = (getResources().getConfiguration().uiMode
+                    & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                    == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+            view.settings().setTheme(night
+                    ? jo.celeris.android.view.EditorThemes.DARK
+                    : jo.celeris.android.view.EditorThemes.CLAIR);
         }
         editor.open(fileName, content);
     }
@@ -347,17 +436,7 @@ public class WorkbenchFragment extends Fragment {
                 toast(getString(R.string.atelier_recherche_bientot)));
         binding.dockCopy.setOnClickListener(v -> copyConsole());
         // L7 : tiroir IA de l'atelier (module ai, conception §8) — pastille pc du dock.
-        binding.aiButton.setOnClickListener(v -> {
-            jo.joide.app.ai.AiPanelFragment panel =
-                    new jo.joide.app.ai.AiPanelFragment();
-            Bundle args = new Bundle();
-            args.putString("project", projectPath);
-            panel.setArguments(args);
-            getParentFragmentManager().beginTransaction()
-                    .replace(((ViewGroup) requireView().getParent()).getId(), panel)
-                    .addToBackStack(null)
-                    .commit();
-        });
+        binding.aiButton.setOnClickListener(v -> openAiDrawer());
         binding.dotsButtonDock.setOnClickListener(v -> {
             // Studio : « clavier : toggle par un bouton ⋯ du dock » — la barre
             // de symboles beige apparaît/disparaît sous l'éditeur.
