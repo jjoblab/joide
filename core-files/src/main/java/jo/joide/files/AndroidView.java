@@ -155,13 +155,17 @@ public final class AndroidView {
                 }
                 if (Files.isRegularFile(child.resolve("build.gradle"))) {
                     children.add(name);
-                    if (found.size() + children.size() >= maxModules) {
-                        break; // garde-fou : le plafond se voit (modules manquants).
-                    }
                 }
             }
+            // Tri AVANT le plafond : l'ordre de Files.list dépend du système
+            // de fichiers — le comportement doit être déterministe partout.
             children.sort(Comparator.naturalOrder());
-            found.addAll(children);
+            for (String child : children) {
+                if (found.size() >= maxModules) {
+                    break; // garde-fou : le plafond se voit (modules manquants).
+                }
+                found.add(child);
+            }
         }
         return found;
     }
