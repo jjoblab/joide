@@ -31,7 +31,8 @@ Consigne du propriétaire (2026-11-20) : à l'étape terminal (L6), consulter au
 `jjoblab/codeide` (dépôt de l'écosystème maison) en complément du packaging
 (`codeide-packages`) et des forks de la famille libre — la base de code terminal à
 reprendre sera choisie à ce moment-là.
-| L7 | IA : fournisseurs, conversation, contexte, outils, approbation, clés chiffrées (EncryptedSharedPreferences, repli mémoire) | — (prochain lot ; plan dans `analyse-ia.md` et conception §8) |
+| L7 | IA : fournisseurs (laboratoire + passerelle compatible OpenAI, liste vivante avec repli statique), boucle d'agent (2 moitiés de prompt, plafond + tour de clôture, appariement appel/résultat, compactage hystérésis), outils sur port étroit (lectures parallèles / mutations séquentielles), porte de permission unique (3 modes), coffre chiffré + tiroir IA | Fait (12 tests mock verts ; conversation réelle = appareil ; rapport `docs/lots/LOT-07.md`) |
+| L8 | Paramètres IA complets (approbation interactive avec diff dans l'invite), builds par l'agent via le `BuildBackend`, service IA, diagnostic | prochain lot |
 | L8 | Paramètres, changement/réparation/désinstallation de mode, rapport de diagnostic, journal des écroulements | — |
 | L9 | Qualité : tests étendus, performances, accessibilité, sécurité, publication | **J4** |
 
