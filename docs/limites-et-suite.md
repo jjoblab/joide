@@ -86,14 +86,23 @@
 - **Lot 0** (`ffb36a0`) : extraction sans régression — `LeftDrawerFragment` +
   onglets, `WorkspaceViewModel`, contrat `WorkbenchHost`, bus
   `WorkspaceEvents` (workbench-spi, testé), largeur min(320dp, écran−56dp)
-  aux dimens, « Files » → « Fichiers ».
+  aux dimens, « Files » → « Fichiers ». Le bus est **partagé avec l'agent IA**
+  depuis le Lot 8 de la refonte IA (les mutations de l'agent y publient).
+- **Lot 1** (`ce8cd8b`) : module `core-files` (JVM pur, 7 tests) —
+  `FileTree` (listing paresseux borné et annulable, dossiers générés/VCS
+  ignorés, tri dossiers d'abord insensible à la casse, chemins confinés,
+  troncature dite) et `FileIcons` (extension → catégorie stable, secrets
+  marqués). Fondation des lots 2-8.
 
-### Non fait (lots 1 à 8) — raisons
-- Lots 1-8 non commencés (moteur de fichiers `core-files`, icônes/guides,
-  UI Fichiers, recherche, structure, `core-git` robuste, onglet Git dans le
-  tiroir, réglages/robustesse) : la session de travail a été consacrée à la
-  refonte IA (lots 0-5) comme l'ordonnait la mission ; l'aperçu validé
-  (`docs/mockups/tiroir-gauche.html`) décrit précisément chaque lot.
+### Non fait (lots 2 à 8) — raisons
+- Lots 2-8 non commencés dans cette session (icônes/guides, UI Fichiers
+  virtuelle sur core-files, recherche, structure, `core-git` robuste, onglet
+  Git dans le tiroir, réglages/robustesse) : la session a livré la refonte IA
+  complète (lots 0-9) puis le Lot 1 ; l'aperçu validé
+  (`docs/mockups/tiroir-gauche.html`) et ce fichier décrivent la suite.
+  Point d'entrée du Lot 2 : consommer `FileTree.list`/`FileIcons` dans
+  l'onglet Fichiers du tiroir (tâche de fond + résultats sur le fil UI,
+  annulables).
 
 ## Comment continuer
 1. `cd /home/z/my-project/joide && git pull` — tout est poussé sur `main`.
