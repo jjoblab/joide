@@ -40,8 +40,14 @@ import jo.joide.workbench.WorkMode;
  * <p>J2 : le build du mode actif alimente la Console et la section Problèmes
  * (diagnostics avec position). Les états restent honnêtes : les commandes
  * portées par les briques non encore câblées se disent, jamais muettes.</p>
+ *
+ * <p>Lot 0 Assistant/Agent : l'atelier est l'hôte du contexte vivant de
+ * l'agent du tiroir droit ({@link jo.joide.app.ai.AgentContext}) — fichier
+ * actif (tampon vivant de l'éditeur), diagnostics du dernier build,
+ * sélection courante. Des valeurs réelles uniquement.</p>
  */
-public class WorkbenchFragment extends Fragment {
+public class WorkbenchFragment extends Fragment
+        implements jo.joide.app.ai.AgentContext {
 
     private static final String ARG_PROJECT = "project";
 
@@ -276,6 +282,12 @@ public class WorkbenchFragment extends Fragment {
 
     private final List<Path> openTabs = new ArrayList<>();
 
+    /** Fichier actif de l'éditeur (contexte vivant de l'agent — Lot 0). */
+    private Path activeFile;
+
+    /** Diagnostics du dernier build (« fichier:ligne: message » — Lot 0). */
+    private final List<String> lastDiagnostics = new ArrayList<>();
+
     private void setupTabs() {
         // Premier fichier ouvert d'emblée (studio : MainActivity.java actif).
         try (var stream = Files.walk(Path.of(projectPath))) {
@@ -422,6 +434,7 @@ public class WorkbenchFragment extends Fragment {
 
     /** Ouvre un fichier dans l'éditeur (onglet actif). */
     private void openFile(Path file) {
+        activeFile = file;
         try {
             String content = new String(Files.readAllBytes(file),
                     StandardCharsets.UTF_8);
@@ -430,6 +443,61 @@ public class WorkbenchFragment extends Fragment {
             appendToJournal(getString(R.string.atelier_lecture_impossible,
                     file.getFileName().toString()));
         }
+    }
+
+    // ---- Contexte vivant de l'agent (Lot 0 : valeurs réelles seulement) ----
+
+    @Nullable
+    @Override
+    public String agentActiveFileName() {
+        return activeFile != null ? activeFile.getFileName().toString() : null;
+    }
+
+    @Nullable
+    @Override
+    public String agentActiveFilePath() {
+        return activeFile != null ? relativize(activeFile) : null;
+    }
+
+    @Nullable
+    @Override
+    public String agentActiveFileContent() {
+        // Tampon vivant de l'éditeur (modifications non enregistrées comprises),
+        // pas une relecture disque — le fichier peut être en cours d'édition.
+        return editor != null && editor.session() != null
+                ? editor.session().text() : null;
+    }
+
+    @NonNull
+    @Override
+    public List<String> agentProblemLines() {
+        return new ArrayList<>(lastDiagnostics);
+    }
+
+    @Nullable
+    @Override
+    public String agentSelectionText() {
+        if (editor == null || editor.session() == null) {
+            return null;
+        }
+        jo.celeris.core.text.TextSession session = editor.session();
+        String text = session.text();
+        StringBuilder selection = new StringBuilder();
+        for (jo.celeris.core.text.SelRange range : session.selection().ranges()) {
+            if (range.isEmpty()) {
+                continue;
+            }
+            int start = Math.max(0, Math.min(range.start(), text.length()));
+            int end = Math.max(start, Math.min(range.end(), text.length()));
+            if (selection.length() > 0) {
+                selection.append('\n');
+            }
+            selection.append(text, start, end);
+            if (selection.length() > 2_000) {
+                break; // garde-fou : une sélection bornée suffit au contexte
+            }
+        }
+        return selection.length() == 0 ? null : selection.toString();
     }
 
     // ---- Éditeur (brique céleris, conception §6) ----------------------------
@@ -673,6 +741,8 @@ public class WorkbenchFragment extends Fragment {
 
     /** Le build suit le mode actif : Forge par le moteur, Gradle dans le terminal. */
     private void runBuild() {
+        // Nouveau build : les diagnostics rendus à l'agent repartent de zéro.
+        lastDiagnostics.clear();
         if (activeMode() == WorkMode.GRADLE) {
             runGradleBuild();
         } else {
@@ -725,6 +795,11 @@ public class WorkbenchFragment extends Fragment {
                 appendToConsole(log.message());
             } else if (event instanceof BuildEvent.DiagnosticEvent diagnostic) {
                 binding.problemsList.addView(problemRow(diagnostic.diagnostic()));
+                // Diagnostic réel gardé pour le contexte de l'agent (Lot 0).
+                lastDiagnostics.add(diagnostic.diagnostic().file()
+                        + (diagnostic.diagnostic().line() > 0
+                                ? ":" + diagnostic.diagnostic().line() : "")
+                        + ": " + diagnostic.diagnostic().message());
             } else if (event instanceof BuildEvent.TaskState task) {
                 appendToConsole(task.task() + " : " + task.status());
                 binding.stepsList.addView(stepRow(

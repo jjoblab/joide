@@ -29,9 +29,32 @@ import jo.joide.corestore.ProjectTemplates;
  */
 public class CreateProjectFragment extends Fragment {
 
+    /** Argument optionnel (Lot 0 Assistant/Agent) : nom de projet suggéré. */
+    private static final String ARG_SUGGESTED_NAME = "suggested_name";
+
     private CreateProjectFragmentBinding binding;
     private String chosenTemplate;
     private ProjectStore store;
+
+    /**
+     * Entrée avec nom suggéré (« Créer un projet depuis cette conversation ») :
+     * le champ nom de l'étape 2 est prérempli si l'utilisateur n'a rien saisi.
+     * L'entrée sans argument (accueil) est inchangée.
+     */
+    public static CreateProjectFragment withSuggestedName(String suggestedName) {
+        CreateProjectFragment fragment = new CreateProjectFragment();
+        Bundle args = new Bundle();
+        args.putString(ARG_SUGGESTED_NAME, suggestedName);
+        fragment.setArguments(args);
+        return fragment;
+    }
+
+    /** Nom suggéré (argument optionnel) ; null si absent. */
+    @Nullable
+    private String suggestedName() {
+        return getArguments() != null
+                ? getArguments().getString(ARG_SUGGESTED_NAME, null) : null;
+    }
 
     @Nullable
     @Override
@@ -171,9 +194,12 @@ public class CreateProjectFragment extends Fragment {
         binding.createTemplateDesc.setText(getString(forge
                 ? R.string.creation_template_desc_forge
                 : R.string.creation_template_desc_gradle));
-        // Nom par défaut dérivé (studio : MonApplication prérempli).
+        // Nom par défaut dérivé (studio : MonApplication prérempli) ; le nom
+        // suggéré d'une conversation de l'assistant prime s'il existe.
         if (binding.createNameField.getText().length() == 0) {
-            binding.createNameField.setText(getString(R.string.creation_nom_defaut));
+            String suggested = suggestedName();
+            binding.createNameField.setText(suggested != null && !suggested.isEmpty()
+                    ? suggested : getString(R.string.creation_nom_defaut));
         }
     }
 

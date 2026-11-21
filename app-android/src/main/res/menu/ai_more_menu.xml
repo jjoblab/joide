@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Menu ⋯ du panneau IA (Lot 0) : réglages pour tous, création de projet
+     depuis la conversation pour l'assistant général uniquement. -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/action_create_project"
+        android:title="@string/chat_menu_create_project" />
+    <item
+        android:id="@+id/action_ia_settings"
+        android:title="@string/chat_menu_settings" />
+</menu>

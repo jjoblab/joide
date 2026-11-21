@@ -21,7 +21,6 @@
     <string name="chat_thinking">En réflexion…</string>
     <string name="chat_tool_done_summary">✓ %1$s · %2$s</string>
     <string name="chat_tool_running">%1$s…</string>
-    <string name="chat_tool_files">%1$d outils · %2$d fichiers</string>
     <string name="chat_tool_lines">+4 −1 lignes</string>
     <string name="chat_question_title">Fichier cible ?</string>
     <string name="chat_question_body">Deux fichiers portent MainActivity : app et wear. Lequel modifier ?</string>
@@ -142,4 +141,42 @@
     <string name="settings_ia_permission_auto">Auto</string>
     <string name="chat_agent_title">Agent · %1$s</string>
     <string name="chat_assistant_contexte">Aucun projet ouvert : conversation générale, sans accès aux fichiers ni au build.</string>
+
+    <!-- ===== Lot 0 : séparation Assistant (accueil) / Agent (tiroir) ===== -->
+
+    <!-- Barre de l'assistant (écran plein, bouton retour) et menu ⋯ -->
+    <string name="chat_back">Retour</string>
+    <string name="chat_menu_settings">Réglages IA</string>
+    <string name="chat_menu_create_project">Créer un projet depuis cette conversation</string>
+    <string name="chat_tool_actions">%1$d actions d\'outils</string>
+    <string name="chat_answer_label">Réponse</string>
+    <string name="chat_error_generic">Le tour a échoué (réseau ou fournisseur) : réessayez, ou vérifiez les réglages du fournisseur.</string>
+    <string name="chat_attach_bientot">Les pièces jointes arrivent avec le nouveau composer (à venir).</string>
+
+    <!-- Suggestions de départ (conversation vide de l\'assistant) -->
+    <string name="chat_suggestion_concept">Expliquer un concept</string>
+    <string name="chat_suggestion_project">Idée de projet</string>
+    <string name="chat_suggestion_build">Comprendre une erreur de build</string>
+    <string name="chat_suggestion_java">Apprendre Java</string>
+
+    <!-- Liste des conversations de l\'assistant -->
+    <string name="chat_list_new_conversation">Nouvelle conversation</string>
+    <string name="chat_list_untitled">Conversation sans titre</string>
+    <string name="chat_list_empty_title">Aucune conversation</string>
+    <string name="chat_list_empty_body">Les conversations de l\'assistant apparaîtront ici. Commencez par une question ou une suggestion.</string>
+    <string name="chat_list_message_count">%1$d messages</string>
+    <string name="chat_list_loading">Chargement des conversations…</string>
+
+    <!-- Puces de contexte de l\'agent (valeurs réelles de l\'atelier) -->
+    <string name="agent_chip_open_file">Fichier ouvert (%1$s)</string>
+    <string name="agent_chip_problems">Problèmes (%1$d)</string>
+    <string name="agent_chip_selection">Sélection</string>
+    <string name="agent_chip_cd_toggle">Joindre ce contexte au prochain message</string>
+
+    <!-- Dates relatives des conversations -->
+    <string name="time_now">à l\'instant</string>
+    <string name="time_min_ago">il y a %1$d min</string>
+    <string name="time_hours_ago">il y a %1$d h</string>
+    <string name="time_yesterday">hier</string>
+    <string name="time_days_ago">il y a %1$d j</string>
 </resources>

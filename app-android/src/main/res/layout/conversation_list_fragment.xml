@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Liste des conversations de l'assistant (Lot 0) : écran d'entrée de
+     l'onglet IA de l'accueil — barre (retour + Assistant), CTA « Nouvelle
+     conversation », cartes des conversations passées (titre dérivé du
+     premier message, date relative, nombre de messages), état vide honnête.
+     Le chargement se fait hors fil UI (le fragment remplit la liste en
+     retour). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/fond">
+
+    <!-- ===== Barre ===== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="10dp">
+
+        <ImageView
+            android:id="@+id/list_back_button"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_back"
+            android:background="@drawable/fond_iconbtn"
+            android:scaleType="center"
+            android:contentDescription="@string/chat_back"
+            app:tint="@color/sur_var" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:text="@string/chat_assistant_title"
+            style="@style/Txt.Xl" />
+    </LinearLayout>
+
+    <!-- ===== CTA Nouvelle conversation ===== -->
+    <LinearLayout
+        android:id="@+id/new_conversation_button"
+        style="@style/Cta"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/ctah_hauteur"
+        android:orientation="horizontal"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="6dp">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_plus"
+            android:scaleType="centerInside"
+            android:importantForAccessibility="no"
+            app:tint="@color/sur_primaire" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:text="@string/chat_list_new_conversation"
+            android:textColor="@color/sur_primaire"
+            android:textSize="@dimen/txt_body"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- ===== Liste des conversations ===== -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:scrollbars="none"
+        android:overScrollMode="never">
+
+        <LinearLayout
+            android:id="@+id/conversations_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="20dp" />
+    </ScrollView>
+
+    <!-- ===== État vide (dit honnêtement qu'il n'y a rien) ===== -->
+    <LinearLayout
+        android:id="@+id/empty_state"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingHorizontal="32dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_spark"
+            android:importantForAccessibility="no"
+            app:tint="@color/sur_var" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/chat_list_empty_title"
+            android:textColor="@color/sur"
+            android:textSize="@dimen/txt_med"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center"
+            android:text="@string/chat_list_empty_body"
+            android:textColor="@color/sur_var"
+            android:textSize="@dimen/txt_body_s" />
+    </LinearLayout>
+</LinearLayout>

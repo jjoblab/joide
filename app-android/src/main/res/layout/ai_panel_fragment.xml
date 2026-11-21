@@ -19,6 +19,18 @@
         android:paddingHorizontal="12dp"
         android:paddingVertical="10dp">
 
+        <ImageView
+            android:id="@+id/chat_back_button"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="4dp"
+            android:src="@drawable/ic_back"
+            android:background="@drawable/fond_iconbtn"
+            android:scaleType="center"
+            android:contentDescription="@string/chat_back"
+            android:visibility="gone"
+            app:tint="@color/sur_var" />
+
         <FrameLayout
             android:layout_width="26dp"
             android:layout_height="26dp"
@@ -79,6 +91,27 @@
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:background="@color/contour_var" />
+
+    <!-- ===== Puces sous l'en-tête (Lot 0) : contexte de l'agent (fichier
+         ouvert, problèmes, sélection — valeurs réelles) ou suggestions de
+         départ de l'assistant (conversation vide). Une seule rangée pour les
+         deux rôles, remplie par le fragment. ===== -->
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:overScrollMode="never">
+
+        <LinearLayout
+            android:id="@+id/chips_row"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="8dp"
+            android:visibility="gone" />
+    </HorizontalScrollView>
 
     <!-- ===== Zone scroll du transcript ===== -->
     <ScrollView
