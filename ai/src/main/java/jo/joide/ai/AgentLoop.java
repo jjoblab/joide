@@ -78,16 +78,30 @@ public final class AgentLoop {
     private final PermissionGate gate;
     private final ConversationHistory history = new ConversationHistory();
     private final int maxIterations;
+    private final BuildRunner buildRunner;
 
-    /** Boucle standard : plafond d'itérations par tour (défaut 16). */
+    /** Boucle standard : plafond d'itérations par tour (défaut 16), sans build. */
     public AgentLoop(AiProvider provider, LlmTransport transport, String baseUrl,
             String apiKey, String model, AgentWorkspace workspace, PermissionGate gate) {
-        this(provider, transport, baseUrl, apiKey, model, workspace, gate, 16);
+        this(provider, transport, baseUrl, apiKey, model, workspace, gate, 16, null);
+    }
+
+    /** Boucle avec outil de build : l'agent construit via le BuildBackend du mode actif. */
+    public AgentLoop(AiProvider provider, LlmTransport transport, String baseUrl,
+            String apiKey, String model, AgentWorkspace workspace, PermissionGate gate,
+            BuildRunner buildRunner) {
+        this(provider, transport, baseUrl, apiKey, model, workspace, gate, 16, buildRunner);
     }
 
     public AgentLoop(AiProvider provider, LlmTransport transport, String baseUrl,
             String apiKey, String model, AgentWorkspace workspace, PermissionGate gate,
             int maxIterations) {
+        this(provider, transport, baseUrl, apiKey, model, workspace, gate, maxIterations, null);
+    }
+
+    public AgentLoop(AiProvider provider, LlmTransport transport, String baseUrl,
+            String apiKey, String model, AgentWorkspace workspace, PermissionGate gate,
+            int maxIterations, BuildRunner buildRunner) {
         this.provider = provider;
         this.transport = transport;
         this.baseUrl = baseUrl;
@@ -96,6 +110,7 @@ public final class AgentLoop {
         this.workspace = workspace;
         this.gate = gate;
         this.maxIterations = maxIterations;
+        this.buildRunner = buildRunner;
     }
 
     /** Historique complet (transcript persisté par l'hôte si besoin). */
@@ -296,8 +311,48 @@ public final class AgentLoop {
 
     /** Roster d'outils du tour (figé par instance de boucle). */
     List<Tool> tools() {
-        return List.of(readFileTool(), listFilesTool(), searchTool(),
-                writeFileTool(), createFileTool(), deleteFileTool());
+        java.util.List<Tool> roster = new java.util.ArrayList<>(java.util.List.of(
+                readFileTool(), listFilesTool(), searchTool(),
+                writeFileTool(), createFileTool(), deleteFileTool()));
+        if (buildRunner != null) {
+            roster.add(buildTool());
+        }
+        return java.util.List.copyOf(roster);
+    }
+
+    /** Outil de build : passe par le BuildRunner du mode actif (jamais un moteur concurrent). */
+    private Tool buildTool() {
+        return new Tool() {
+            @Override public String name() { return "construire_module"; }
+            @Override public String description() {
+                return "Compile le module du projet via le moteur du mode actif "
+                        + "(retourne le journal borné à la fin ; lecture seule pour la "
+                        + "permission : le build écrit dans les répertoires de sortie).";
+            }
+            @Override public boolean readOnly() { return true; }
+            @Override public String run(AgentWorkspace w, String args) throws Exception {
+                BuildRunner.BuildOutcome outcome = buildRunner.build(
+                        argumentsProjectRootOf(args));
+                return (outcome.success() ? "BUILD REUSSI" : "BUILD ECHOUE")
+                        + " (" + outcome.eventCount() + " evenements)\n"
+                        + outcome.tailLog();
+            }
+        };
+    }
+
+    /** Racine projet des arguments ({"project":"…"} — défaut : le contexte posé par l'hôte). */
+    private static String argumentsProjectRootOf(String args) {
+        if (args == null) {
+            return null;
+        }
+        int key = args.indexOf("project");
+        if (key < 0) {
+            return null;
+        }
+        int colon = args.indexOf(':', key);
+        int open = args.indexOf('"', colon);
+        int close = args.indexOf('"', open + 1);
+        return (open >= 0 && close > open) ? args.substring(open + 1, close) : null;
     }
 
     private Tool readFileTool() {

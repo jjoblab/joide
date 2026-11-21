@@ -22,4 +22,35 @@
     <string name="assistant_sous_titre">Choisissez votre mode de travail</string>
     <string name="assistant_choisir">Installer ce mode</string>
     <string name="commun_retour">Retour</string>
+
+    <string name="parametres_section_ia">IA</string>
+    <string name="parametres_ia_cle_hint">Clé API du laboratoire (au coffre chiffré)</string>
+    <string name="parametres_ia_cle_poser">Mettre la clé au coffre</string>
+    <string name="parametres_ia_cle_coffre">Clé mise au coffre chiffré</string>
+    <string name="parametres_ia_cle_retiree">Clé retirée du coffre</string>
+    <string name="parametres_ia_permission">Mode de permission de l\'agent</string>
+    <string name="parametres_ia_permission_ask">Demander à chaque mutation</string>
+    <string name="parametres_ia_permission_auto">Accepter automatiquement</string>
+    <string name="parametres_ia_permission_plan">Plan seulement (aucune mutation)</string>
+    <string name="parametres_ia_notice">Ce qui sort de l\'appareil : la conversation complète (messages, pièces jointes, résultats d\'outils — donc contenus de fichiers lus et sorties de build) part chez le fournisseur.</string>
+    <string name="parametres_section_modes">Modes de build</string>
+    <string name="parametres_mode_installe">installé</string>
+    <string name="parametres_mode_absent">non installé</string>
+    <string name="parametres_mode_installer">Installer</string>
+    <string name="parametres_mode_basculer">Basculer vers ce mode</string>
+    <string name="parametres_mode_bascule_ok">Mode actif changé</string>
+    <string name="parametres_mode_reparer">Réparer</string>
+    <string name="parametres_mode_desinstaller">Désinstaller</string>
+    <string name="parametres_mode_desinstalle">Mode désinstallé</string>
+    <string name="parametres_mode_fait">Fait</string>
+    <string name="parametres_section_diagnostic">Diagnostic</string>
+    <string name="parametres_diagnostic_copier">Copier le rapport</string>
+    <string name="parametres_diagnostic_copie">Rapport copié (secrets rédigés)</string>
+    <string name="parametres_diagnostic_partager">Partager…</string>
+    <string name="parametres_diagnostic_titre">Rapport de diagnostic JoIDE</string>
+
+    <string name="ia_permission_titre">Autoriser l\'agent ?</string>
+    <string name="ia_permission_refuser">Refuser</string>
+    <string name="ia_permission_unefois">Permettre une fois</string>
+    <string name="ia_permission_session">Permettre pour la session</string>
 </resources>

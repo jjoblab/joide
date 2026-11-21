@@ -48,6 +48,20 @@ public class HomeFragment extends Fragment {
         binding.projectsRecycler.setLayoutManager(new LinearLayoutManager(getContext()));
         refresh();
 
+        // L8 : entrée Paramètres dans le menu de la toolbar (IA, modes, diagnostic).
+        binding.toolbar.inflateMenu(R.menu.home_menu);
+        binding.toolbar.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == R.id.action_settings) {
+                getParentFragmentManager().beginTransaction()
+                        .replace(((ViewGroup) requireView().getParent()).getId(),
+                                new jo.joide.app.settings.SettingsFragment())
+                        .addToBackStack(null)
+                        .commit();
+                return true;
+            }
+            return false;
+        });
+
         binding.newProjectButton.setOnClickListener(v -> createFromTemplate("forge-java"));
         binding.fabNewProject.setOnClickListener(v -> createFromTemplate("forge-java"));
         binding.importProjectButton.setOnClickListener(v -> {

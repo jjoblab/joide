@@ -79,23 +79,18 @@ public final class AiPanelFragment extends Fragment {
         }
         appendToTranscript("\n> " + message);
 
-        // Porte réelle de la coquille : demander à chaque fois (défaut sûr),
-        // l'approbation par l'utilisateur arrive avec le lot paramètres (L8) —
-        // la porte reste le SEUL point de décision (REF-117).
-        gate = gate != null ? gate
-                : new PermissionGate() {
-                    @Override public Mode mode() { return Mode.ASK_EACH; }
-                    @Override public boolean authorize(PermissionRequest request) {
-                        // Tiroir L7 : l'approbation interactive (diff dans l'invite)
-                        // est portée par la section paramètres du lot L8 ; en
-                        // attendant le mode sûr = refus informatif au modèle.
-                        requireActivity().runOnUiThread(() ->
-                                appendToTranscript("\n[mutation « " + request.tool()
-                                        + " » sur " + request.path()
-                                        + " : approuvez-la dans les paramètres IA]"));
-                        return false;
-                    }
-                };
+        // Porte interactive partagée avec les paramètres (porte unique, REF-117) :
+        // le décideur affiche le dialogue AVEC le diff dans l'invite, et rend
+        // refuser / permettre une fois / permettre pour la session ; la fermeture
+        // du dialogue vaut refus (défaut sûr).
+        jo.joide.ai.InteractivePermissionGate interactiveGate =
+                jo.joide.app.settings.SettingsFragment.sharedGate();
+        if (interactiveGate instanceof PermissionGate) {
+            gate = interactiveGate;
+            interactiveGate.setDecider((request, onAnswer) ->
+                    requireActivity().runOnUiThread(() ->
+                            promptPermission(request, onAnswer)));
+        }
 
         // La boucle tourne hors fil UI (pool dédié — conception §10).
         new Thread(() -> {
@@ -128,6 +123,33 @@ public final class AiPanelFragment extends Fragment {
         } else if (event instanceof AgentLoop.LoopEvent.TurnFailed failure) {
             appendToTranscript("\n[échec : " + failure.message() + "]");
         }
+    }
+
+    /** Dialogue d'approbation : le diff AVANT d'agir vit DANS l'invite (REF-117). */
+    private void promptPermission(PermissionGate.PermissionRequest request,
+            java.util.function.Consumer<jo.joide.ai.InteractivePermissionGate.Decision> onAnswer) {
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(
+                requireContext());
+        StringBuilder message = new StringBuilder("L'agent veut : ")
+                .append(request.tool()).append(" — ").append(request.path());
+        if (request.preview() != null && !request.preview().isEmpty()) {
+            message.append("\n\nAperçu du fichier (avant) :\n")
+                    .append(request.preview());
+        }
+        builder.setTitle(R.string.ia_permission_titre)
+                .setMessage(message)
+                .setNegativeButton(R.string.ia_permission_refuser,
+                        (d, w) -> onAnswer.accept(
+                                jo.joide.ai.InteractivePermissionGate.Decision.DENY))
+                .setPositiveButton(R.string.ia_permission_unefois,
+                        (d, w) -> onAnswer.accept(
+                                jo.joide.ai.InteractivePermissionGate.Decision.ALLOW_ONCE))
+                .setNeutralButton(R.string.ia_permission_session,
+                        (d, w) -> onAnswer.accept(
+                                jo.joide.ai.InteractivePermissionGate.Decision.ALLOW_SESSION))
+                .setOnCancelListener(d -> onAnswer.accept(
+                        jo.joide.ai.InteractivePermissionGate.Decision.DENY));
+        builder.show();
     }
 
     private void appendToTranscript(String line) {

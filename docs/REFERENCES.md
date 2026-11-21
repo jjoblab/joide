@@ -152,6 +152,29 @@ résultats d'outils récents (4) jamais éliminés ; `serverManaged()` quand le
 fournisseur rogne lui-même — deux rogneurs invalideraient mutuellement leur
 cache). Aucune ligne de code copiée (clean-room, réimplémentation Java).
 
+### Reconsultation du 2026-11-21 (lot L8 — paramètres, diagnostic)
+
+Re-consultation **au même SHA épinglé `1b1a305`**, hors du dépôt de travail, avant
+l'implémentation du lot L8. Fichiers relus : `BuiltInSettingsPages.kt` (pages de
+paramètres **déclaratives** : une page = une liste de contrôles typés rendus
+génériquement, clés **locales à la page** rangées sous `settings.<page>.<clé>` ;
+page **Privacy & Data** honnête — métriques « jamais votre code ni vos noms de
+fichiers », actions « vider les caches (jamais les sources) / voir les
+journaux / sauvegarder les projets »), `AgentPlugin.kt` (la page de réglages IA
+**vit dans le plugin** : choix de fournisseur, une clé par fournisseur, effort
+de raisonnement 7 niveaux, maxTokens/maxIterations/rpm/tpmK en avancé ;
+**base URL de passerelle** compatible OpenAI ; « aucun renommage manuel »),
+`Settings.kt` (SPI de page : `controls()` re-questions à l'affichage,
+`onChanged`/`onAction` — built-ins et plugins sur le même chemin de rendu),
+`DaemonCrashNote.kt` (**note de plantage écrite par le processus mourant** :
+gestionnaire installé **devant** le gestionnaire par défaut puis chaîné à lui
+(« le processus meurt et la mort est enregistrée comme avant ») ; message borné
+à 300 caractères + heap utilisé/max ; blame plugin si le stack traverse un
+plugin — l'UI éteint le plugin fautive), `AgentSessionStore.kt` (une session =
+un fichier JSON **écrit entier via temp+move atomique après chaque tour**,
+contenant **le transcript ET l'historique modèle** ; titre = première ligne du
+premier message utilisateur, borné). Aucune ligne copiée (clean-room, Java).
+
 ## Suivi des écarts après implémentation
 
 Chaque lot (L0-L9) relit la partie correspondante du produit de référence **après**
