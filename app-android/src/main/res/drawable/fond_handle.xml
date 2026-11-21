@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Poignée du studio : 38×5, contour 55 %. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="@color/contour" />
+    <solid android:color="@color/contour_var" />
     <corners android:radius="3dp" />
 </shape>

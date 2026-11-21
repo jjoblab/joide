@@ -107,6 +107,32 @@ public class WorkbenchFragment extends Fragment {
         binding.redoButton.setOnClickListener(v -> toast(editorState));
     }
 
+    /** Thème de l'éditeur aux couleurs de la maquette v2 (fond sc-lowest, encres du studio). */
+    private jo.celeris.android.view.EditorTheme editorThemeV2(boolean night) {
+        int selection = (requireContext().getColor(R.color.primaire) & 0x00FFFFFF) | 0x40000000;
+        jo.celeris.android.view.SyntaxPalette palette = night
+                ? new jo.celeris.android.view.SyntaxPalette(
+                        0xFFCC7832, 0xFF7FDBCA, 0xFFC3E88D, 0xFF82AAFF,
+                        0xFF90937E, 0xFFB4AFA3, 0xFFFFCB6B, 0xFFB0BEC5,
+                        0xFFE3E3E3, 0xFFE3E3E3, 0xFFF06292, 0xFFE3E3E3,
+                        0xFFE3E3E3, 0xFFFF8A80)
+                : new jo.celeris.android.view.SyntaxPalette(
+                        0xFF6A1B9A, 0xFF00695C, 0xFF2E7D32, 0xFF1565C0,
+                        0xFF767966, 0xFF6D4C41, 0xFF8D5000, 0xFF455A64,
+                        0xFF202124, 0xFF202124, 0xFFAD1457, 0xFF202124,
+                        0xFF202124, 0xFFC62828);
+        return new jo.celeris.android.view.EditorTheme(night ? 2 : 1,
+                requireContext().getColor(R.color.sc_lowest),
+                requireContext().getColor(R.color.sur),
+                selection,
+                requireContext().getColor(R.color.primaire),
+                requireContext().getColor(R.color.contour),
+                0x00000000,
+                palette,
+                night ? jo.celeris.core.syntax.scope.ScopeThemes.dark()
+                        : jo.celeris.core.syntax.scope.ScopeThemes.light());
+    }
+
     /** Bascule la barre de symboles sous l'éditeur (v2 : via le menu ⋯ ou le ⋯ du dock). */
     private void toggleSymbolBar() {
         binding.symbolBar.setVisibility(binding.symbolBar.getVisibility()
@@ -290,14 +316,14 @@ public class WorkbenchFragment extends Fragment {
         LinearLayout tab = new LinearLayout(requireContext());
         tab.setOrientation(LinearLayout.HORIZONTAL);
         tab.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        int pad = dip(12);
-        tab.setPadding(pad, 0, pad, 0);
+        tab.setPadding(dip(12), 0, dip(6), 0);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, dip(32));
-        params.rightMargin = dip(2);
+        params.rightMargin = dip(6);
         tab.setLayoutParams(params);
         tab.setBackground(active
-                ? getResources().getDrawable(R.drawable.fond_onglet_fichier) : null);
+                ? getResources().getDrawable(R.drawable.fond_onglet_fichier)
+                : getResources().getDrawable(R.drawable.fond_onglet_inactif));
 
         ImageView icon = new ImageView(requireContext());
         icon.setImageResource(R.drawable.ic_file);
@@ -331,9 +357,10 @@ public class WorkbenchFragment extends Fragment {
         close.setImageResource(R.drawable.ic_x);
         close.setColorFilter(getResources().getColor(
                 active ? R.color.sur_sc2 : R.color.sur_var));
-        LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(dip(12), dip(12));
-        closeParams.leftMargin = dip(7);
+        LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(dip(20), dip(20));
+        closeParams.leftMargin = dip(4);
         close.setLayoutParams(closeParams);
+        close.setPadding(dip(4), dip(4), dip(4), dip(4));
         close.setOnClickListener(v -> {
             openTabs.remove(file);
             setupTabs();
@@ -440,9 +467,8 @@ public class WorkbenchFragment extends Fragment {
             boolean night = (getResources().getConfiguration().uiMode
                     & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
                     == android.content.res.Configuration.UI_MODE_NIGHT_YES;
-            view.settings().setTheme(night
-                    ? jo.celeris.android.view.EditorThemes.DARK
-                    : jo.celeris.android.view.EditorThemes.CLAIR);
+            view.settings().setTheme(editorThemeV2(night));
+            view.settings().setFontSizeSp(12.5f);
         }
         editor.open(fileName, content);
     }
@@ -614,26 +640,21 @@ public class WorkbenchFragment extends Fragment {
 
     /** Rangée de touches du studio : Tab primaire puis { ( . : = -> ⋯ ↓. */
     private void buildSymbolBar() {
-        String[] symbols = {"{", "}", "(", ".", ":", "=", "->"};
-        for (int i = 0; i <= symbols.length; i++) {
+        String[] symbols = {"Tab", "{", "}", "(", ")", ";", "\"", "=", "<", ">", "/", "."};
+        for (String symbol : symbols) {
             TextView key = new TextView(requireContext());
             key.setGravity(android.view.Gravity.CENTER);
-            key.setTypeface(android.graphics.Typeface.MONOSPACE);
-            key.setTextSize(13f);
+            key.setTypeface(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD);
+            key.setTextSize(14f);
+            key.setText(symbol);
+            key.setTextColor(getResources().getColor(R.color.sur));
+            key.setBackground(getResources().getDrawable(R.drawable.fond_kbd_key));
+            key.setMinWidth(dip(34));
+            key.setPadding(dip(8), 0, dip(8), 0);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                    i == 0 ? dip(44) : dip(38), dip(36));
-            params.rightMargin = dip(4);
+                    ViewGroup.LayoutParams.WRAP_CONTENT, dip(30));
+            params.rightMargin = dip(5);
             key.setLayoutParams(params);
-            if (i == 0) {
-                key.setText(getString(R.string.atelier_touche_tab));
-                key.setBackground(getResources().getDrawable(R.drawable.fond_kbd_tab));
-                key.setTextColor(getResources().getColor(R.color.sur_primaire));
-                key.setTypeface(key.getTypeface(), android.graphics.Typeface.BOLD);
-            } else {
-                key.setText(symbols[i - 1]);
-                key.setBackground(getResources().getDrawable(R.drawable.fond_kbd_key));
-                key.setTextColor(getResources().getColor(R.color.sur));
-            }
             binding.symbolBar.addView(key);
         }
     }
