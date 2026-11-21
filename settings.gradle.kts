@@ -54,6 +54,7 @@ include(":ai")
 include(":workbench-spi")
 include(":build-forge")
 include(":build-gradle-core")
+include(":core-git")
 if (sdkDetecte && !refusAndroid) {
     include(":app-android")
 } else {

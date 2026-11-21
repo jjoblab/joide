@@ -18,9 +18,13 @@ import java.util.ArrayList;
 import java.util.List;
 import jo.joide.app.databinding.WorkbenchFragmentBinding;
 import jo.joide.app.databinding.FileListItemBinding;
+import jo.joide.corestore.ModePreferences;
+import jo.joide.app.ModeSetupFragment;
 import jo.joide.buildforge.ForgeBackend;
+import jo.joide.buildgradle.GradleBackend;
 import jo.joide.workbench.BuildEvent;
 import jo.joide.workbench.BuildRequest;
+import jo.joide.workbench.WorkMode;
 
 /**
  * Atelier (fiche ecrans/atelier.md) : barre, zone éditeur (brique céleris),
@@ -63,16 +67,19 @@ public class WorkbenchFragment extends Fragment {
         if (projectPath != null) {
             setupFilesList();
             setupSections();
+            setupModeVisibility();
             // J2 : construire — le build Forge alimente la Console (journal,
             // progression) et la section Problèmes (diagnostics avec position).
-            binding.buildButton.setOnClickListener(v -> runForgeBuild());
-            // J3 : terminal intégré (mode Gradle, lot L6).
-            binding.terminalButton.setOnClickListener(v ->
+            binding.buildButton.setOnClickListener(v -> runBuild());
+            // Écran git du projet (studio HTML, onglet Git) : statut, diff,
+            // historique, commit, clonage.
+            binding.gitButton.setOnClickListener(v ->
                     getParentFragmentManager().beginTransaction()
                             .replace(((ViewGroup) requireView().getParent()).getId(),
-                                    new jo.joide.app.terminal.TerminalFragment())
+                                    jo.joide.app.git.GitFragment.forProject(projectPath))
                             .addToBackStack(null)
                             .commit());
+            // J3 : terminal intégré (mode Gradle) — câblé par setupModeVisibility().
             // L7 : tiroir IA de l'atelier (module ai, conception §8).
             binding.aiButton.setOnClickListener(v -> {
                 jo.joide.app.ai.AiPanelFragment panel =
@@ -92,6 +99,42 @@ public class WorkbenchFragment extends Fragment {
     // ---- Build (J2 : le projet se construit en mode Forge) ------------------
 
     private ForgeBackend forgeBackend;
+    private GradleBackend gradleBackend;
+
+    /** Mode actif (conception §4 : capacités honnêtes, jamais de bouton que le mode ne satisfait pas). */
+    private WorkMode activeMode() {
+        ModePreferences preferences = new ModePreferences(
+                ModeSetupFragment.preferencesFile(requireContext()));
+        jo.joide.corestore.ModeChoice choice = preferences.read();
+        return choice != null && choice.chosenMode() != null
+                ? choice.chosenMode() : WorkMode.FORGE;
+    }
+
+    /** Le build suit le mode actif : Forge par le moteur, Gradle dans le terminal. */
+    private void runBuild() {
+        if (activeMode() == WorkMode.GRADLE) {
+            runGradleBuild();
+        } else {
+            runForgeBuild();
+        }
+    }
+
+    private void runGradleBuild() {
+        if (gradleBackend == null) {
+            gradleBackend = new GradleBackend();
+        }
+        String buildId = "joide-" + System.currentTimeMillis();
+        appendToConsole(getString(R.string.atelier_build_gradle));
+        gradleBackend.build(new BuildRequest(buildId, projectPath, false))
+                .whenComplete((session, failure) -> {
+                    if (failure != null) {
+                        appendToConsole(failure.getMessage() != null
+                                ? failure.getMessage() : String.valueOf(failure));
+                    } else if (session != null) {
+                        session.subscribe(this::onBuildEvent);
+                    }
+                });
+    }
 
     private void runForgeBuild() {
         if (forgeBackend == null) {
@@ -139,6 +182,33 @@ public class WorkbenchFragment extends Fragment {
         return diagnostic.severity() + " · " + diagnostic.file()
                 + (diagnostic.line() > 0 ? ":" + diagnostic.line() : "")
                 + " · " + diagnostic.message();
+    }
+
+    // ---- Mode actif : notice, chip, visibilité (studio HTML, onglet Éditeur mode) --
+
+    /** Notice + chip + terminal selon le mode : Forge grise le terminal, Gradle ouvre l'onglet. */
+    private void setupModeVisibility() {
+        WorkMode mode = activeMode();
+        binding.modeChip.setText(mode.name());
+        binding.modeNotice.setVisibility(View.VISIBLE);
+        binding.modeNotice.setText(mode == WorkMode.GRADLE
+                ? getString(R.string.atelier_notice_gradle)
+                : getString(R.string.atelier_notice_forge));
+        // Capacités honnêtes : le terminal n'existe qu'en mode Gradle.
+        binding.terminalButton.setVisibility(
+                mode == WorkMode.GRADLE ? View.VISIBLE : View.GONE);
+        com.google.android.material.tabs.TabLayout.Tab terminalTab =
+                binding.sectionsTabs.getTabAt(4);
+        if (terminalTab != null) {
+            terminalTab.view.setVisibility(
+                    mode == WorkMode.GRADLE ? View.VISIBLE : View.GONE);
+        }
+        binding.terminalSectionButton.setOnClickListener(v ->
+                getParentFragmentManager().beginTransaction()
+                        .replace(((ViewGroup) requireView().getParent()).getId(),
+                                new jo.joide.app.terminal.TerminalFragment())
+                        .addToBackStack(null)
+                        .commit());
     }
 
     // ---- Fichiers (tiroir → onglet actif) -----------------------------------
@@ -233,6 +303,7 @@ public class WorkbenchFragment extends Fragment {
         binding.problemsList.setVisibility(position == 1 ? View.VISIBLE : View.GONE);
         binding.ideJournal.setVisibility(position == 2 ? View.VISIBLE : View.GONE);
         binding.logcatOutput.setVisibility(position == 3 ? View.VISIBLE : View.GONE);
+        binding.terminalSectionButton.setVisibility(position == 4 ? View.VISIBLE : View.GONE);
     }
 
     /** Ajoute une ligne au journal IDE (section Journal, jamais muet). */

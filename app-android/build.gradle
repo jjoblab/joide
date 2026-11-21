@@ -67,6 +67,8 @@ dependencies {
     implementation project(':build-forge')
     implementation project(':build-gradle-core')
     implementation project(':terminal-core')
+    // Écran git (studio HTML) : couche JGit JVM pure, testée.
+    implementation project(':core-git')
     implementation 'androidx.appcompat:appcompat:1.7.0'
     // Coffre IA : EncryptedSharedPreferences (clé Keystore) — conception §8, REF-123.
     implementation 'androidx.security:security-crypto:1.1.0-alpha06'

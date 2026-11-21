@@ -53,4 +53,72 @@
     <string name="ia_permission_refuser">Refuser</string>
     <string name="ia_permission_unefois">Permettre une fois</string>
     <string name="ia_permission_session">Permettre pour la session</string>
+    <string name="git_title">Git</string>
+    <string name="git_branch">Branche %1$s</string>
+    <string name="git_sync_hint">synchronisé il y a %1$s</string>
+    <string name="git_statut_titre">Statut</string>
+    <string name="git_modifies">%1$d modifiés</string>
+    <string name="git_nouveaux">%1$d nouveaux</string>
+    <string name="git_supprimes">%1$d supprimés</string>
+    <string name="git_section_modifications">Modifications</string>
+    <string name="git_section_historique">Historique</string>
+    <string name="git_commit_message_hint">Message de commit</string>
+    <string name="git_stage_button">Préparer %1$d fichiers</string>
+    <string name="git_commit_button">Commit</string>
+    <string name="git_clonage_titre">Cloner un dépôt</string>
+    <string name="git_clonage_url_hint">https://github.com/jjoblab/forge.git</string>
+    <string name="git_clonage_button">Cloner</string>
+    <string name="git_clonage_detection">détection du type (Forge / Gradle)</string>
+    <string name="git_rien_propre">Aucune modification — dépôt propre</string>
+    <string name="git_absent_titre">Ce projet n\'est pas un dépôt git</string>
+    <string name="git_absent_corps">Ouvrez-le dans un dépôt git (clonage depuis l\'accueil) pour voir le statut, le diff et l\'historique.</string>
+    <string name="git_commit_ok">Commit %1$s créé</string>
+    <string name="git_commit_vide">Le message de commit est vide</string>
+    <!-- Écran installation du mode (studio HTML, onglet Installation) -->
+    <string name="install_titre">Installer un mode</string>
+    <string name="install_canal_titre">Canal vérifié</string>
+    <string name="install_canal_sous">manifeste signé · clé épinglée</string>
+    <string name="install_canal_sig">✓ SIG</string>
+    <string name="install_section_composants">Composants</string>
+    <string name="install_espace_libre">Espace libre requis</string>
+    <string name="install_espace_apres">après installation</string>
+    <string name="install_espace_ok">SUFFISANT</string>
+    <string name="install_mobiles">Le téléchargement consomme des données mobiles (≈ %1$s). L\'installation n\'est pas démarrée sans votre accord explicite.</string>
+    <string name="install_bouton">Installer ce mode</string>
+    <string name="install_reparer">Réinstaller (réparation)</string>
+    <string name="install_desinstaller">Désinstaller</string>
+    <string name="install_etape">Téléchargement — %1$s</string>
+    <string name="install_etape_verification">Vérification de l\'installation…</string>
+    <string name="install_verification_sous">installé = vérifié : exécution réelle avant succès</string>
+    <string name="install_annuler">Annuler — les octets déjà téléchargés sont conservés</string>
+    <string name="install_section_phases">Phases vérifiées — « installé = vérifié »</string>
+    <string name="install_uninstall_titre">Désinstaller le moteur ?</string>
+    <string name="install_uninstall_corps">Le moteur installé et ses composants seront supprimés de l\'appareil. Les projets et réglages sont conservés.</string>
+    <string name="install_uninstall_action">Désinstaller</string>
+    <string name="install_desinstalle">Mode désinstallé</string>
+    <string name="install_termine">%1$s installé.</string>
+    <string name="install_telecharge">%1$s sur %2$s</string>
+    <!-- Atelier : mode actif (chip, notice, visibilité selon le mode) -->
+    <string name="atelier_notice_gradle">Mode Gradle actif · ce projet Forge s\'ouvre en lecture seule (capacités honnêtes du BuildBackend)</string>
+    <string name="atelier_notice_forge">Mode Forge actif · le terminal n\'est pas fourni par ce mode (capacités honnêtes du BuildBackend)</string>
+    <string name="atelier_build_gradle">— build Gradle (terminal) —</string>
+    <string name="atelier_terminal_grise">Terminal indisponible en mode Forge</string>
+    <!-- Tiroir IA : états de conversation (studio HTML, onglet Chat IA) -->
+    <string name="ia_etat_reflexion">En réflexion…</string>
+    <string name="ia_outil_en_cours">en cours…</string>
+    <string name="ia_outil_fait">✓ %1$s · %2$s</string>
+    <string name="ia_question_titre">Fichier cible ?</string>
+    <string name="ia_erreur_titre">Clé API rejetée</string>
+    <string name="ia_erreur_401">Le fournisseur répond 401 · vérifiez la clé dans Paramètres → IA (jamais affichée dans les journaux).</string>
+    <string name="ia_erreur_reessayer">Réessayer</string>
+    <string name="ia_erreur_parametres">Ouvrir Paramètres</string>
+    <string name="ia_envoyer">Envoyer</string>
+    <string name="ia_hint_demande">Demander un changement…</string>
+    <string name="accueil_filtre_tous">Tous (%1$d)</string>
+    <string name="git_clonage_ok">%1$s cloné — projet détecté</string>
+    <!-- Création de projet (studio HTML, onglet Création) -->
+    <string name="creation_titre">Créer un projet</string>
+    <string name="creation_modele_hint">Nom du projet</string>
+    <string name="creation_depuis_modele">Depuis le modèle %1$s</string>
+    <string name="creation_ok">Créer</string>
 </resources>

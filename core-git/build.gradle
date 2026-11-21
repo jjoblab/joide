@@ -1,0 +1,16 @@
+// Module JVM pur : couche git du dépôt (JGit, Apache-2.0 / EDL — aucune
+// dépendance Android). Écran git (studio HTML, onglet « Git ») : statut,
+// diff, historique, commit, clonage — même contrat côté app-android.
+plugins { id "java-library" }
+group = "jo.joide"
+version = "0.1.0"
+java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
+
+tasks.withType(JavaCompile).configureEach { options.encoding = "UTF-8"; options.release = 17 }
+tasks.withType(Test).configureEach { useJUnitPlatform() }
+dependencies {
+    api "org.eclipse.jgit:org.eclipse.jgit:6.10.0.202406032230-r"
+    testImplementation platform("org.junit:junit-bom:5.11.4")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}

@@ -81,7 +81,7 @@ public class TerminalFragment extends Fragment {
         requireActivity().runOnUiThread(() -> {
             List<TerminalSessionRegistry.SessionSummary> summaries = registry.summaries();
             drawerTitles.clear();
-            summaries.forEach(s -> drawerTitles.add(s.title() + (s.alive() ? "" : " (finie)")));
+            summaries.forEach(s -> drawerTitles.add(s.title()));
             binding.sessionsRecycler.setAdapter(new RecyclerView.Adapter<SessionRow>() {
                 @NonNull @Override public SessionRow onCreateViewHolder(
                         @NonNull ViewGroup parent, int viewType) {
@@ -90,8 +90,15 @@ public class TerminalFragment extends Fragment {
                     return new SessionRow(view);
                 }
                 @Override public void onBindViewHolder(@NonNull SessionRow holder, int position) {
-                    holder.text.setText(drawerTitles.get(position));
-                    String id = summaries.get(position).id();
+                    TerminalSessionRegistry.SessionSummary summary =
+                            summaries.get(position);
+                    // Pastille vivante (studio HTML : vert = vivante, gris = finie).
+                    boolean alive = summary.alive();
+                    holder.text.setText((alive ? "\u25CF " : "\u25CB ")
+                            + summary.title());
+                    holder.text.setTextColor(alive
+                            ? 0xFF2E7D32 : 0xFF9E9E9E);
+                    String id = summary.id();
                     holder.text.setOnClickListener(v -> {
                         activeSessionId = id;
                         // Rebranchage de la vue unique sur la session choisie.

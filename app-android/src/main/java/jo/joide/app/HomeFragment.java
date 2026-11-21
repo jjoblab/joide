@@ -32,6 +32,7 @@ public class HomeFragment extends Fragment {
     private HomeFragmentBinding binding;
     private ProjectStore store;
     private ProjectStore.ProjectCard[] cards = new ProjectStore.ProjectCard[0];
+    private WorkMode filter; // null : tous les projets (studio HTML, chips d'accueil).
 
     /** Racine du stockage des projets (filesDir/projects, ADR-010). */
     static Path projectsRoot(android.content.Context context) {
@@ -62,24 +63,110 @@ public class HomeFragment extends Fragment {
             return false;
         });
 
-        binding.newProjectButton.setOnClickListener(v -> createFromTemplate("forge-java"));
-        binding.fabNewProject.setOnClickListener(v -> createFromTemplate("forge-java"));
+        binding.newProjectButton.setOnClickListener(v -> showCreateDialog());
+        binding.fabNewProject.setOnClickListener(v -> showCreateDialog());
         binding.importProjectButton.setOnClickListener(v -> {
             // Import SAF (fiche accueil) : câblé avec les permissions en L8 ; le
             // bouton reste honnête (action annoncée non câblée, jamais un échec muet).
             showTransientNotice(getString(R.string.import_non_cable_encore));
         });
+        setupFilters();
+        setupCloneCard();
         return binding.getRoot();
     }
 
-    /** Recharge la liste (après création, suppression, retour à l'accueil). */
-    private void refresh() {
+    // ---- Filtres par mode (studio HTML : Tous / Forge / Gradle) ----------------
+
+    private void setupFilters() {
+        binding.filterRow.setVisibility(
+                store.list().isEmpty() ? View.GONE : View.VISIBLE);
+        binding.filterAll.setText(getString(R.string.accueil_filtre_tous,
+                store.list().size()));
+        binding.filterForge.setText(getString(R.string.mode_forge_nom));
+        binding.filterGradle.setText(getString(R.string.mode_gradle_nom));
+        binding.filterAll.setOnClickListener(v -> applyFilter(null));
+        binding.filterForge.setOnClickListener(v -> applyFilter(WorkMode.FORGE));
+        binding.filterGradle.setOnClickListener(v -> applyFilter(WorkMode.GRADLE));
+        applyFilter(null);
+    }
+
+    private void applyFilter(WorkMode mode) {
+        filter = mode;
         List<ProjectStore.ProjectCard> list = store.list();
-        cards = list.toArray(new ProjectStore.ProjectCard[0]);
+        cards = list.stream()
+                .filter(c -> mode == null || c.compatibleModes().contains(mode))
+                .toArray(ProjectStore.ProjectCard[]::new);
+        binding.filterAll.setSelected(mode == null);
+        binding.filterForge.setSelected(mode == WorkMode.FORGE);
+        binding.filterGradle.setSelected(mode == WorkMode.GRADLE);
         binding.projectsRecycler.setAdapter(new CardsAdapter());
         boolean empty = cards.length == 0;
         binding.emptyStateView.setVisibility(empty ? View.VISIBLE : View.GONE);
         binding.projectsRecycler.setVisibility(empty ? View.GONE : View.VISIBLE);
+    }
+
+    // ---- Clonage git (popup ancrée de l'accueil → carte dépliable) ------------
+
+    private void setupCloneCard() {
+        // Le clonage se déplie depuis la carte (l'import garde sa place) : la
+        // brique JGit vit dans core-git (testée JVM).
+        binding.cloneCard.setVisibility(View.VISIBLE);
+        binding.cloneButton.setOnClickListener(v -> {
+            String url = binding.cloneUrlField.getText().toString().trim();
+            if (url.isEmpty()) {
+                return;
+            }
+            new Thread(() -> {
+                try {
+                    java.nio.file.Path target = projectsRoot(requireContext())
+                            .resolve(url.replaceAll(".*/", "").replace(".git", ""));
+                    jo.joide.coregit.GitService.cloneInto(url, target);
+                    requireActivity().runOnUiThread(() -> {
+                        showTransientNotice(getString(R.string.git_clonage_ok,
+                                target.getFileName().toString()));
+                        refresh();
+                    });
+                } catch (IOException e) {
+                    requireActivity().runOnUiThread(
+                            () -> showTransientNotice(e.getMessage()));
+                }
+            }, "clone-accueil").start();
+        });
+    }
+
+    /** Recharge la liste (le filtre courant s'applique de nouveau). */
+    private void refresh() {
+        applyFilter(filter);
+    }
+
+    /** Dialog de création (studio HTML, onglet Création) : nom + modèles réels. */
+    private void showCreateDialog() {
+        java.util.List<String> names = ProjectTemplates.standard().names();
+        CharSequence[] items = names.toArray(new CharSequence[0]);
+        android.app.AlertDialog.Builder builder =
+                new android.app.AlertDialog.Builder(requireContext());
+        builder.setTitle(getString(R.string.creation_titre));
+        final android.widget.EditText nameField = new android.widget.EditText(requireContext());
+        nameField.setHint(getString(R.string.creation_modele_hint));
+        builder.setView(nameField);
+        builder.setItems(items, (d, which) ->
+                createFrom(names.get(which), nameField.getText().toString()));
+        builder.show();
+    }
+
+    /** Crée le projet depuis le modèle et nom choisis, ouvre l'atelier. */
+    private void createFrom(String template, String name) {
+        if (name == null || name.isBlank()) {
+            name = String.format(Locale.getDefault(), "projet-%d",
+                    System.currentTimeMillis() % 100000);
+        }
+        try {
+            Path project = ProjectTemplates.standard()
+                    .instantiate(store, template, name);
+            openWorkbench(project.toAbsolutePath().toString());
+        } catch (IOException | IllegalArgumentException e) {
+            showTransientNotice(getString(R.string.creation_echec, e.getMessage()));
+        }
     }
 
     /** Crée le projet depuis le modèle et ouvre l'atelier dessus. */

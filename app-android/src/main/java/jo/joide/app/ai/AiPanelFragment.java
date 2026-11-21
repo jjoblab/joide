@@ -32,8 +32,10 @@ import jo.joide.ai.PermissionGate;
  */
 public final class AiPanelFragment extends Fragment {
 
-    private TextView conversationView;
-    private StringBuilder transcript = new StringBuilder();
+    private LinearLayout conversationList;
+    private ScrollView conversationScroll;
+    private android.widget.EditText input;
+    private Button sendButton;
     private PermissionGate gate;
 
     @Nullable
@@ -43,41 +45,47 @@ public final class AiPanelFragment extends Fragment {
         LinearLayout root = new LinearLayout(requireContext());
         root.setOrientation(LinearLayout.VERTICAL);
 
-        conversationView = new TextView(requireContext());
-        conversationView.setPadding(24, 16, 24, 16);
-        conversationView.setTextIsSelectable(true);
-        ScrollView scroll = new ScrollView(requireContext());
-        scroll.addView(conversationView);
-        LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
-        root.addView(scroll, scrollParams);
+        // Conversation à bulles (studio HTML, onglet Chat IA) : question de
+        // l'utilisateur, réponse en cours (réflexion), cartes d'outils, erreur.
+        conversationList = new LinearLayout(requireContext());
+        conversationList.setOrientation(LinearLayout.VERTICAL);
+        int pad = (int) (12 * getResources().getDisplayMetrics().density);
+        conversationList.setPadding(pad, pad, pad, pad);
+        conversationScroll = new ScrollView(requireContext());
+        conversationScroll.addView(conversationList);
+        root.addView(conversationScroll, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
-        android.widget.EditText input = new android.widget.EditText(requireContext());
-        input.setHint("demander à l'IA…");
+        input = new android.widget.EditText(requireContext());
+        input.setHint(getString(R.string.ia_hint_demande));
         root.addView(input, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        Button send = new Button(requireContext());
-        send.setText("Envoyer");
-        send.setOnClickListener(v -> ask(input.getText().toString()));
-        root.addView(send, new LinearLayout.LayoutParams(
+        sendButton = new Button(requireContext());
+        sendButton.setText(getString(R.string.ia_envoyer));
+        sendButton.setOnClickListener(v -> ask(input.getText().toString()));
+        root.addView(sendButton, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         // État honnête : sans clé au coffre, le tiroir le dit au lieu d'échouer
         // en silence (le réglage des fournisseurs est au lot paramètres L8).
         EncryptedKeyVault vault = new EncryptedKeyVault(requireContext());
         if (vault.apiKey("laboratoire") == null && vault.apiKey("passerelle") == null) {
-            appendToTranscript(getString(R.string.ia_sans_cle));
+            appendBubble(getString(R.string.ia_sans_cle), BubbleKind.ERROR);
         }
         return root;
     }
+
+    /** Nature d'une bulle (styles du studio : utilisateur, réflexion, outil, erreur). */
+    enum BubbleKind { USER, THINKING, TOOL, ERROR }
 
     /** Demande de l'utilisateur : un tour de la boucle d'agent. */
     private void ask(String message) {
         if (message.isBlank()) {
             return;
         }
-        appendToTranscript("\n> " + message);
+        appendBubble(message, BubbleKind.USER);
+        thinkingBubble();
 
         // Porte interactive partagée avec les paramètres (porte unique, REF-117) :
         // le décideur affiche le dialogue AVEC le diff dans l'invite, et rend
@@ -110,19 +118,22 @@ public final class AiPanelFragment extends Fragment {
         }, "agent-ia").start();
     }
 
-    /** Rendu d'un événement de boucle dans le tiroir (deltas, outils, refus). */
+    /** Rendu d'un événement de boucle : bulles typées (studio Chat IA). */
     private void render(AgentLoop.LoopEvent event) {
         if (event instanceof AgentLoop.LoopEvent.Delta delta) {
-            appendToTranscript(delta.text());
+            appendBubble(delta.text(), BubbleKind.THINKING);
         } else if (event instanceof AgentLoop.LoopEvent.ToolStarted started) {
-            appendToTranscript("\n[outil " + started.name() + "]");
+            appendBubble(getString(R.string.ia_outil_en_cours) + " · " + started.name(),
+                    BubbleKind.TOOL);
         } else if (event instanceof AgentLoop.LoopEvent.ToolResult result) {
-            appendToTranscript(result.isError()
-                    ? " (refusé/informé)" : " (" + result.summary() + ")");
+            appendBubble(getString(R.string.ia_outil_fait,
+                    result.isError() ? "refusé" : "fait", result.summary()),
+                    BubbleKind.TOOL);
         } else if (event instanceof AgentLoop.LoopEvent.TurnCompleted completed) {
-            appendToTranscript("\n[tour terminé, " + completed.iterations() + " itération(s)]");
+            endThinking();
         } else if (event instanceof AgentLoop.LoopEvent.TurnFailed failure) {
-            appendToTranscript("\n[échec : " + failure.message() + "]");
+            endThinking();
+            appendBubble(failure.message(), BubbleKind.ERROR);
         }
     }
 
@@ -153,8 +164,45 @@ public final class AiPanelFragment extends Fragment {
         builder.show();
     }
 
-    private void appendToTranscript(String line) {
-        transcript.append(line);
-        conversationView.setText(transcript.toString());
+    /** Pose une bulle dans la conversation (l'utilisateur à droite, le reste à gauche). */
+    private void appendBubble(String text, BubbleKind kind) {
+        endThinking();
+        TextView bubble = new TextView(requireContext());
+        bubble.setText(text);
+        bubble.setTextAppearance(requireContext(),
+                com.google.android.material.R.style.TextAppearance_Material3_BodyMedium);
+        int pad = (int) (10 * getResources().getDisplayMetrics().density);
+        bubble.setPadding(pad * 2, pad, pad * 2, pad);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.topMargin = pad;
+        bubble.setLayoutParams(params);
+        if (kind == BubbleKind.USER) {
+            params.gravity = android.view.Gravity.END;
+        }
+        conversationList.addView(bubble);
+        conversationScroll.post(() -> conversationScroll.fullScroll(View.FOCUS_DOWN));
+    }
+
+    private TextView thinkingView;
+
+    /** État « réponse en cours » : bulle de réflexion, remplacée à chaque delta. */
+    private void thinkingBubble() {
+        endThinking();
+        thinkingView = new TextView(requireContext());
+        thinkingView.setText(getString(R.string.ia_etat_reflexion));
+        thinkingView.setTextAppearance(requireContext(),
+                com.google.android.material.R.style.TextAppearance_Material3_BodySmall);
+        int pad = (int) (10 * getResources().getDisplayMetrics().density);
+        thinkingView.setPadding(pad * 2, pad, pad * 2, pad);
+        conversationList.addView(thinkingView);
+    }
+
+    /** Ferme la bulle de réflexion (fin de tour ou nouvelle bulle). */
+    private void endThinking() {
+        if (thinkingView != null) {
+            conversationList.removeView(thinkingView);
+            thinkingView = null;
+        }
     }
 }

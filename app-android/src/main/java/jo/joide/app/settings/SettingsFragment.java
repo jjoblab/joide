@@ -161,16 +161,15 @@ public final class SettingsFragment extends Fragment {
 
             Button install = new Button(context);
             install.setText(context.getString(R.string.parametres_mode_installer));
-            install.setOnClickListener(v -> {
-                try {
-                    modes.modeDirectory(mode);
-                    modes.markInstalled(mode);
-                    Toast.makeText(context, R.string.parametres_mode_fait,
-                            Toast.LENGTH_SHORT).show();
-                } catch (IOException e) {
-                    Toast.makeText(context, e.getMessage(), Toast.LENGTH_LONG).show();
-                }
-            });
+            // L'installation vit désormais sur l'écran dédié (studio HTML :
+            // composants à tailles, progression, annulation, phases vérifiées).
+            install.setOnClickListener(v ->
+                    getParentFragmentManager().beginTransaction()
+                            .replace(((ViewGroup) requireView().getParent()).getId(),
+                                    jo.joide.app.install.InstallFragment
+                                            .forMode(mode))
+                            .addToBackStack(null)
+                            .commit());
             row.addView(install);
 
             Button use = new Button(context);

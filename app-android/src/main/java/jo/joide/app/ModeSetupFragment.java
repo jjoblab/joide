@@ -90,8 +90,11 @@ public class ModeSetupFragment extends Fragment {
             // silencieux §4.7) ; le journal d'incident est câblé en L8.
             return;
         }
+        // Studio HTML : la confirmation mène à l'écran d'installation du mode
+        // (composants à tailles, progression annulable, phases vérifiées).
         getParentFragmentManager().beginTransaction()
-                .replace(((ViewGroup) requireView().getParent()).getId(), new HomeFragment())
+                .replace(((ViewGroup) requireView().getParent()).getId(),
+                        jo.joide.app.install.InstallFragment.forMode(provisionalSelection))
                 .commit();
     }
 }
