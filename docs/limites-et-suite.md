@@ -156,23 +156,44 @@
   filtre rapide, saut à la ligne ; états honnêtes (rien d'ouvert,
   langage non pris en charge, plan indisponible).
 
-### Non fait (lots 6 à 8) — raisons
-- **Lot 6** (`core-git` robuste : statut exact indexé/non indexé/conflits,
-  diff indexé et non indexé, branches, fetch/pull/push authentifiés, stash,
-  historique + graphe, cherry-pick/revert/reset, résolution de conflits,
-  .gitignore, init) : non commencé — le budget de la session a servi les
-  lots 2-5 (chacun livré complet, testé, CI verte). Point d'entrée :
-  étendre `GitService` (JGit) en gardant pur JVM + tests, l'écran Git
-  actuel et le bus GitStateChanged existent déjà.
-- **Lot 7** (onglet Git **dans le tiroir** : Changements/Branches/
-  Historique/Plus, zone de commit collée en bas, visionneuse de diff
-  partagée) : dépend du Lot 6 ; l'écran Git plein écran reste en place
-  (chip Git du tiroir, comportement Lot 0).
-- **Lot 8** (réglages « Explorateur et Git » + matrice de câblage en CI,
-  accessibilité, performance 20 000 fichiers, robustesse) : dépend des
-  lots 6-7 ; le glisser-déposer natif (remplacé par « Déplacer vers… »)
-  s'y ajoute.
-- Comment continuer : `cd /home/z/my-project/joide && git pull` ; JDK 17
+- **Lot 6** (`2790bf0`) : module `GitOps` — moteur git robuste (17 tests
+  au module) : statut **exact par zone** (indexé/non indexé/non
+  suivi/conflits — un même fichier peut vivre dans deux zones), zone de
+  préparation (stage/unstage), diffs **indexé et non indexé** + diff par
+  commit, branches (basculer/créer/supprimer), réseau fetch/pull/push
+  (jeton passé par l'app, distant local bare dans les tests), stash,
+  historique **avec parents** (graphe), revert / cherry-pick / reset,
+  résolution de conflits (nôtre/leur/contenu), .gitignore sans doublon,
+  init.
+- **Lot 7** (`5041ade`) : **le client git vit dans le tiroir** — la chip
+  Git héberge GitTabFragment (4e onglet, l'écran plein écran reste en
+  Plus). En-tête (branche, suivi ↓↑, tirer/pousser avec **jeton au coffre
+  chiffré par hôte** — GitCredentialsStore, dialogue à la demande),
+  Changements (zones exactes, indexer/désindexer par rangée, visionneuse
+  de diff colorée, zone de commit, résolution de conflits), Branches,
+  Historique (badge fusion, diff par commit), Plus (stash, .gitignore,
+  revert, reset soft, oublier le jeton, écran complet). Tout hors fil UI,
+  publié sur le bus — un seul chemin de mise à jour.
+- **Lot 8** (`4c96e1f`) : **matrice de câblage du tiroir**
+  (docs/analyse-tiroir.md — chaque contrôle pointe son ancrage réel,
+  vérifié par tools/check-cablage-tiroir.sh **ajouté à la CI**),
+  réglages réels de l'explorateur (fichiers cachés, packages compacts,
+  badges, suivi — persistés et appliqués), garde-fous documentés (bornes
+  de listing/compte/recherche/diff, délais), accessibilité (descriptions,
+  confirmations destructrices, erreurs jamais muettes).
+
+### Écarts assumés (consignés) et suite possible
+- **Glisser-déposer natif** (Lot 3) : remplacé par « Déplacer vers… » —
+  l'appui long sert à la sélection multiple et au menu contextuel (choix
+  de la maquette) ; le geste natif reste possible en suite.
+- **Graphe dessiné** (Lot 7) : les parents sont exposés
+  (`GitOps.CommitNode.parents`, badge « fusion » à l'écran) ; le dessin
+  des lignes de graphe reste à venir.
+- **Plans de langages** (Lot 5) : Java/Kotlin, XML, JSON, Markdown — un
+  fournisseur LSP (brique code-lsp, demande B-02 ouverte) pourra remplir
+  les langages manquants en se branchant sur l'état honnête prévu.
+- Suite éventuelle : glisser natif, dessin du graphe, vue des diffs
+  dans la zone éditeur (onglets de diff), corbeille dans la vue Android.
   (`/home/z/my-project/tools/jdk17`), SDK Android
   (`/home/z/my-project/tools/android-sdk`), forge en mavenLocal
   (`tools/forge-mavenlocal.sh /home/z/my-project/forge 0.2.13`), tests
