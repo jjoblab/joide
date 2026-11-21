@@ -264,9 +264,10 @@ public final class AiPanelFragment extends Fragment {
                 : new AgentWorkspace.InMemory();
         return new AgentLoop(transport, spec.endpoint(baseUrl, vaultKey(provider), null),
                 persistedModel(provider), workspace,
-                jo.joide.app.settings.SettingsFragment.sharedGate(),
-                prefs.getInt("iterations_max", 16), null, root == null,
-                prefs.getInt("tokens_max", 4096), reasoningEffort, extras);
+                jo.joide.app.settings.SettingsFragment.sharedGate(), null,
+                prefs.getInt("iterations_max", 16), root == null,
+                prefs.getInt("tokens_max", 4096), reasoningEffort, extras,
+                null, null);
     }
 
     /** Ouvre la page Réglage IA (fournisseurs, clé, modèle) — plein écran. */
@@ -414,9 +415,30 @@ public final class AiPanelFragment extends Fragment {
         if (loop == null) {
             loop = buildLoop();
         }
-        loop.setProjectContext(isAssistant()
-                ? getString(R.string.chat_assistant_contexte)
-                : "Projet : " + projectRoot());
+        // Contexte volatil réel (Lot 3) : branche, fichier actif, problèmes —
+        // valeurs de l'atelier, jamais inventées ; AGENTS.md lu (borné, caché).
+        if (isAssistant()) {
+            loop.setProjectContext(getString(R.string.chat_assistant_contexte));
+        } else {
+            AgentContext context = agentContext();
+            StringBuilder realContext = new StringBuilder("Projet : ")
+                    .append(new File(projectRoot()).getName());
+            if (context != null) {
+                if (context.agentBranchName() != null) {
+                    realContext.append("\nBranche : ").append(context.agentBranchName());
+                }
+                if (context.agentActiveFileName() != null) {
+                    realContext.append("\nFichier actif : ")
+                            .append(context.agentActiveFileName());
+                }
+                List<String> problems = context.agentProblemLines();
+                if (problems != null && !problems.isEmpty()) {
+                    realContext.append("\nProblèmes du dernier build : ")
+                            .append(problems.size());
+                }
+            }
+            loop.setProjectContext(realContext.toString());
+        }
         binding.sendButton.setEnabled(false);
 
         // La boucle tourne hors fil UI ; chaque événement est rendu dès son
@@ -425,6 +447,11 @@ public final class AiPanelFragment extends Fragment {
         // vit ici : même si la vue est détruite en cours de tour (rotation,
         // tiroir recréé), le suivant redevient possible à la fin réelle.
         new Thread(() -> {
+            // AGENTS.md : lecture bornée et cachée, hors fil UI (Lot 3).
+            if (!isAssistant()) {
+                loop.setProjectInstructions(jo.joide.ai.ProjectInstructions.cached(
+                        Paths.get(projectRoot())));
+            }
             StringBuilder answer = new StringBuilder();
             try {
                 loop.turn(messageForModel, event -> {

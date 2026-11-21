@@ -83,18 +83,38 @@ public final class HttpLlmTransport implements LlmTransport {
             } catch (java.io.IOException e) {
                 // Annulation : la fermeture de la connexion interrompt la
                 // lecture — c'est une annulation, pas une panne réseau.
-                guard.flushFinish();
-                if (cancellation != null && cancellation.isCancelled()) {
-                    throw LlmError.of(LlmError.Kind.CANCELLED, null);
+                LlmError interruption = readInterruption(e, cancellation, guard, attempt);
+                if (interruption != null) {
+                    throw interruption;
                 }
-                if (guard.hasEmitted() || attempt == MAX_RETRIES) {
-                    throw LlmError.of(LlmError.Kind.NETWORK, Secrets.redact(
-                            e.getMessage() != null ? e.getMessage() : String.valueOf(e)));
+            } catch (RuntimeException e) {
+                // HttpURLConnection jette une RuntimeException interne quand
+                // disconnect() interrompt une lecture bloquante : même logique.
+                LlmError interruption = readInterruption(e, cancellation, guard, attempt);
+                if (interruption != null) {
+                    throw interruption;
                 }
-                sleepInterruptibly(backoffFor(
-                        LlmError.of(LlmError.Kind.NETWORK, null), attempt), cancellation);
             }
         }
+    }
+
+    /**
+     * Classe une interruption de lecture : annulation si le jeton est annulé,
+     * réseau sinon — avec reprise seulement avant la première sortie.
+     */
+    private LlmError readInterruption(Exception e, CancellationToken cancellation,
+            EmissionGuard guard, int attempt) throws LlmError {
+        guard.flushFinish();
+        if (cancellation != null && cancellation.isCancelled()) {
+            return LlmError.of(LlmError.Kind.CANCELLED, null);
+        }
+        if (guard.hasEmitted() || attempt >= MAX_RETRIES) {
+            return LlmError.of(LlmError.Kind.NETWORK, Secrets.redact(
+                    e.getMessage() != null ? e.getMessage() : String.valueOf(e)));
+        }
+        sleepInterruptibly(backoffFor(LlmError.of(LlmError.Kind.NETWORK, null), attempt),
+                cancellation);
+        return null; // reprise autorisée : la boucle exterre recommence
     }
 
     /** Une tentative complète de requête en flux. */

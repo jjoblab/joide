@@ -1,25 +1,38 @@
 package jo.joide.ai;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import jo.joide.ai.tools.AgentTool;
+import jo.joide.ai.tools.AgentTools;
+import jo.joide.ai.tools.ToolArgs;
 
 /**
- * Boucle d'agent (lot L7, conception §8) : requête → flux → outils →
+ * Boucle d'agent (lots L7→3, conception §8) : requête → flux → outils →
  * réinjection → recommence, avec **plafond d'itérations** et **tour de
  * clôture sans outils** au plafond (bilan au lieu d'un échec en pure perte,
- * REF-119). Les **lectures** d'un même tour s'exécutent en parallèle ; les
- * **mutations séquentiellement ensuite** (invites de permission jamais en
- * course, écritures ordonnées — REF-116). Tout outil mutant passe la **porte
- * unique** ; le refus renvoie au modèle un résultat d'erreur informatif.
+ * REF-119). Les **lectures** d'un même tour s'exécutent en parallèle avec
+ * résultats **insérés dans l'ordre des appels** ; les **mutations
+ * séquentiellement ensuite** (invites de permission jamais en course,
+ * écritures ordonnées — REF-116). Tout outil mutant passe la **porte unique**
+ * avec un **diff réel** ({@link DiffBuilder}) ; le refus renvoie au modèle un
+ * résultat d'erreur informatif.
  *
- * <p>Annulation par tour : l'enveloppe des points de contrôle annule
- * exactement créations et modifications, et **avoue honnêtement** ce qui est
- * irréversible (suppressions) au lieu de le prétendre annulable (REF-118) ;
- * une note est ensuite envoyée au modèle pour qu'il relise les fichiers.</p>
+ * <p>Lot 3 : les outils vivent dans {@code ai/tools/} (un fichier par outil,
+ * schémas complets, arguments analysés par {@link ToolArgs} — fini les
+ * indexOf qui coupaient au premier guillemet échappé) ; chaque tour a son
+ * **point de contrôle** ({@link TurnCheckpoint} — annulation avec aveu des
+ * suppressions irréversibles, REF-118) ; la **détection de boucle** arrête
+ * un modèle qui répète le même appel ; les outils d'interaction
+ * (questions à l'utilisateur, plan) suspendent ou rythment le tour.</p>
  */
 public final class AgentLoop {
+
+    /** Seuil de répétition d'un appel identique : le tour s'arrête en bilan. */
+    private static final int LOOP_CALL_LIMIT = 3;
 
     /** Événement de boucle consommé par le tiroir IA (UI). */
     public sealed interface LoopEvent {
@@ -40,8 +53,14 @@ public final class AgentLoop {
         record ToolResult(String toolCallId, String summary, boolean isError)
                 implements LoopEvent {}
 
-        /** Demande d'approbation en attente (diff dans l'invite). */
+        /** Demande d'approbation en attente (diff réel dans l'invite). */
         record PermissionPrompt(String tool, String path, String preview) implements LoopEvent {}
+
+        /** Le modèle pose ses questions à l'utilisateur (la réponse suspend le tour). */
+        record AwaitingUserInput(String summary) implements LoopEvent {}
+
+        /** Le modèle publie son plan (étapes visibles dans l'UI). */
+        record PlanUpdate(List<String> steps) implements LoopEvent {}
 
         /** Fin normale d'un tour (bilan, usage réel signalé par le fournisseur). */
         record TurnCompleted(int iterations, Usage usage) implements LoopEvent {}
@@ -50,31 +69,18 @@ public final class AgentLoop {
         record TurnFailed(String message, LlmError error) implements LoopEvent {}
     }
 
-    /** Outil de l'agent (roster figé par tour, injecté par l'hôte). */
-    public interface Tool {
-
-        /** Nom exposé au modèle (unique). */
-        String name();
-
-        /** Description (moitié stable du prompt). */
-        String description();
-
-        /** Schéma JSON des paramètres (Lot 1 : exposé au modèle avec l'outil). */
-        default String schema() {
-            return "{\"type\":\"object\",\"properties\":{}}";
-        }
-
-        /** Lecture seule ? (les lectures sont parallèles, les mutations séquentielles). */
-        boolean readOnly();
+    /** Fournisseur de réponses aux questions du modèle (l'hôte branché ou null). */
+    public interface QuestionGate {
 
         /**
-         * Exécute l'outil sur l'espace de travail.
-         *
-         * @param workspace port étroit du projet.
-         * @param argumentsJson arguments bruts du modèle (minimaux : chemin, requête…).
-         * @return résultat borné à l'arrivée (contenu envoyé au modèle).
+         * Pose les questions à l'utilisateur et rend sa réponse (texte) —
+         * appelé sur le fil de la boucle, l'hôte déroute vers l'UI et attend.
+         * Retour null = pas de réponse disponible.
          */
-        String run(AgentWorkspace workspace, String argumentsJson) throws Exception;
+        String ask(List<Question> questions);
+
+        /** Une question du modèle (texte + options suggérées). */
+        record Question(String text, List<String> options) {}
     }
 
     private final LlmTransport transport;
@@ -84,56 +90,96 @@ public final class AgentLoop {
     private final PermissionGate gate;
     private final ConversationHistory history = new ConversationHistory();
     private final int maxIterations;
-    private final BuildRunner buildRunner;
     private final boolean toolsEnabled;
     private final int maxTokens;
     private final String reasoningEffort;
-    private final java.util.Map<String, Object> extras;
+    private final Map<String, Object> extras;
+    private final List<AgentTool> roster;
+    private final QuestionGate questionGate;
 
-    /** Boucle standard : plafond d'itérations par tour (défaut 16), sans build. */
+    /** Instructions du projet (AGENTS.md borné) ; posées par l'hôte. */
+    private volatile String projectInstructions;
+
+    /** Contexte projet vivant (branche, fichier actif, problèmes) ; posé par l'hôte. */
+    private volatile String projectContext = "";
+
+    /** Point de contrôle du tour courant (annulation « Annuler ce tour »). */
+    private TurnCheckpoint checkpoint;
+
+    /** Consommateur d'événements du tour courant (les outils d'interaction y publient). */
+    private volatile Consumer<LoopEvent> currentSink;
+
     public AgentLoop(LlmTransport transport, LlmTransport.Endpoint endpoint, String model,
             AgentWorkspace workspace, PermissionGate gate) {
-        this(transport, endpoint, model, workspace, gate, 16, null, true);
+        this(transport, endpoint, model, workspace, gate, null, 16, true, 4096,
+                null, null, null, null);
     }
 
-    /** Boucle avec plafond d'itérations explicite. */
+    /** Boucle avec plafond d'itérations explicite (roster par défaut). */
     public AgentLoop(LlmTransport transport, LlmTransport.Endpoint endpoint, String model,
             AgentWorkspace workspace, PermissionGate gate, int maxIterations) {
-        this(transport, endpoint, model, workspace, gate, maxIterations, null, true);
-    }
-
-    public AgentLoop(LlmTransport transport, LlmTransport.Endpoint endpoint, String model,
-            AgentWorkspace workspace, PermissionGate gate, int maxIterations,
-            BuildRunner buildRunner, boolean toolsEnabled) {
-        this(transport, endpoint, model, workspace, gate, maxIterations, buildRunner,
-                toolsEnabled, 4096, null, null);
+        this(transport, endpoint, model, workspace, gate, null, maxIterations, true,
+                4096, null, null, null, null);
     }
 
     /**
-     * Boucle complète (Lots 1-2) : point de terminaison du fournisseur (urls,
-     * clé, en-têtes — voir {@code ProviderSpec.endpoint}), plafond de tokens
-     * de sortie et effort de raisonnement enfin paramétrés.
+     * Boucle complète (Lots 1-3) : roster injecté par l'hôte (les outils
+     * d'interaction — questions, plan — sont ajoutés par la boucle elle-même),
+     * plafond d'itérations, plafond de tokens, effort, extras fournisseur.
      */
     public AgentLoop(LlmTransport transport, LlmTransport.Endpoint endpoint, String model,
-            AgentWorkspace workspace, PermissionGate gate, int maxIterations,
-            BuildRunner buildRunner, boolean toolsEnabled, int maxTokens,
-            String reasoningEffort, java.util.Map<String, Object> extras) {
+            AgentWorkspace workspace, PermissionGate gate, List<AgentTool> roster,
+            int maxIterations, boolean toolsEnabled, int maxTokens,
+            String reasoningEffort, Map<String, Object> extras, BuildRunner buildRunner,
+            QuestionGate questionGate) {
         this.transport = transport;
         this.endpoint = endpoint;
         this.model = model;
         this.workspace = workspace;
         this.gate = gate;
         this.maxIterations = maxIterations;
-        this.buildRunner = buildRunner;
         this.toolsEnabled = toolsEnabled;
         this.maxTokens = maxTokens;
         this.reasoningEffort = reasoningEffort;
         this.extras = extras == null ? java.util.Collections.emptyMap() : extras;
+        this.questionGate = questionGate;
+        // Sans outils (assistant général), le roster reste vide : l'assistant
+        // ne peut ni lire ni modifier un projet, par construction.
+        if (toolsEnabled) {
+            List<AgentTool> composed = roster != null
+                    ? new ArrayList<>(roster)
+                    : new ArrayList<>(AgentTools.defaultRoster(null, buildRunner));
+            composed.add(new AgentTools.AskUserTool(questionGate));
+            composed.add(new AgentTools.PlanTool(steps -> {
+                Consumer<LoopEvent> sink = currentSink;
+                if (sink != null) {
+                    sink.accept(new LoopEvent.PlanUpdate(steps));
+                }
+            }));
+            this.roster = composed;
+        } else {
+            this.roster = java.util.Collections.emptyList();
+        }
     }
 
     /** Historique complet (transcript persisté par l'hôte si besoin). */
     public ConversationHistory history() {
         return history;
+    }
+
+    /** Point de contrôle du dernier tour (annulation côté hôte). */
+    public TurnCheckpoint checkpoint() {
+        return checkpoint;
+    }
+
+    /** Instructions du projet (AGENTS.md borné) ; posées par l'hôte. */
+    public void setProjectInstructions(String instructions) {
+        this.projectInstructions = instructions;
+    }
+
+    /** Contexte projet vivant (valeurs réelles de l'hôte) ; rafraîchi chaque tour. */
+    public void setProjectContext(String context) {
+        this.projectContext = context == null ? "" : context;
     }
 
     /**
@@ -148,16 +194,19 @@ public final class AgentLoop {
     /** Tour avec annulation (Lot 1) : Stop interrompt la requête et les outils. */
     public void turn(String userMessage, Consumer<LoopEvent> sink,
             CancellationToken cancellation) {
+        currentSink = sink;
         history.add(new ConversationHistory.Entry("user", userMessage, null, null));
         sink.accept(new LoopEvent.TurnStarted(userMessage));
+        checkpoint = new TurnCheckpoint(workspace);
 
         List<LlmTransport.ToolSpec> specs = new ArrayList<>();
-        for (Tool tool : tools()) {
+        for (AgentTool tool : tools()) {
             specs.add(new LlmTransport.ToolSpec(tool.name(), tool.description(),
                     tool.schema()));
         }
-        String grounding = SystemPrompt.grounding(specs, projectInstructions());
+        String grounding = SystemPrompt.grounding(specs, projectInstructions);
 
+        Map<String, Integer> callCounts = new HashMap<>();
         int iteration = 0;
         while (iteration < maxIterations) {
             if (cancellation != null && cancellation.isCancelled()) {
@@ -211,14 +260,38 @@ public final class AgentLoop {
                 sink.accept(new LoopEvent.TurnCompleted(iteration, usage[0]));
                 return; // réponse finale du modèle
             }
+            String loopStop = detectLoop(calls, callCounts);
+            if (loopStop != null) {
+                history.add(new ConversationHistory.Entry("system", loopStop, null, null));
+                break; // le tour de clôture fait le bilan
+            }
             executeCalls(calls, sink, cancellation);
             if (cancellation != null && cancellation.isCancelled()) {
                 fail(sink, LlmError.of(LlmError.Kind.CANCELLED, null));
                 return;
             }
         }
-        // Plafond atteint : tour de clôture SANS outils (bilan, pas un échec muet).
+        // Plafond atteint ou boucle détectée : tour de clôture SANS outils.
         closeOut(grounding, sink, cancellation);
+    }
+
+    /**
+     * Détection de boucle (Lot 3) : le même appel (nom + arguments) répété
+     * {@value LOOP_CALL_LIMIT} fois arrête le tour — le bilan se fait sans
+     * outils. Retourne la note système à injecter, ou null.
+     */
+    private static String detectLoop(List<LlmTransport.ToolCall> calls,
+            Map<String, Integer> callCounts) {
+        for (LlmTransport.ToolCall call : calls) {
+            String key = call.name() + "|" + call.argumentsJson();
+            int count = callCounts.merge(key, 1, Integer::sum);
+            if (count >= LOOP_CALL_LIMIT) {
+                return "L'appel « " + call.name() + " » avec les mêmes arguments a été "
+                        + "répété " + count + " fois : ce tour est le dernier, fais le "
+                        + "bilan de ce qui a été fait et de ce qui bloque.";
+            }
+        }
+        return null;
     }
 
     /** Échec du tour : message rédigé + cause typée (jamais la clé). */
@@ -235,7 +308,7 @@ public final class AgentLoop {
         try {
             transport.chat(endpoint,
                     new LlmTransport.ChatRequest(model, messages, java.util.List.of(),
-                            Math.min(1024, maxTokens), null, cancellation),
+                            Math.min(1024, maxTokens), null, cancellation, extras),
                     event -> {
                         if (event instanceof LlmTransport.StreamEvent.Text t) {
                             text.append(t.delta());
@@ -263,8 +336,8 @@ public final class AgentLoop {
         // Sans outils (assistant général) : aucune porte à mentionner — le
         // contexte volatile dit simplement au modèle de répondre directement.
         messages.add(LlmTransport.ChatMessage.system(toolsEnabled
-                ? SystemPrompt.sessionContext(gateMode(), projectContext())
-                : SystemPrompt.sessionContext(projectContext())));
+                ? SystemPrompt.sessionContext(gateMode(), projectContext)
+                : SystemPrompt.sessionContext(projectContext)));
         return messages;
     }
 
@@ -274,31 +347,30 @@ public final class AgentLoop {
 
     /**
      * Exécute les appels d'un tour : lectures en parallèle, **résultats
-     * insérés dans l'ordre des appels** (plus de parallelStream sur
-     * l'historique — l'appariement appels/résultats doit rester déterministe),
-     * mutations séquentiellement ensuite derrière la porte unique.
+     * insérés dans l'ordre des appels**, mutations séquentiellement ensuite
+     * derrière la porte unique (avec diff réel et point de contrôle).
      * Une annulation interrompt : les appels non exécutés reçoivent un
      * résultat « interrompu » pour que la conversation reste envoyable.
      */
     private void executeCalls(List<LlmTransport.ToolCall> calls, Consumer<LoopEvent> sink,
             CancellationToken cancellation) {
-        Map<String, Tool> roster = new java.util.LinkedHashMap<>();
-        for (Tool tool : tools()) {
-            roster.put(tool.name(), tool);
+        Map<String, AgentTool> rosterByName = new LinkedHashMap<>();
+        for (AgentTool tool : tools()) {
+            rosterByName.put(tool.name(), tool);
         }
         // Lectures d'abord, en parallèle, résultats dans l'ordre des appels.
         List<LlmTransport.ToolCall> reads = new ArrayList<>();
         for (LlmTransport.ToolCall call : calls) {
-            Tool tool = roster.get(call.name());
+            AgentTool tool = rosterByName.get(call.name());
             if (tool != null && tool.readOnly()) {
                 reads.add(call);
             }
         }
         if (!reads.isEmpty()) {
-            java.util.List<java.util.concurrent.Callable<ConversationHistory.Entry>> tasks =
+            List<java.util.concurrent.Callable<ConversationHistory.Entry>> tasks =
                     new ArrayList<>();
             for (LlmTransport.ToolCall call : reads) {
-                tasks.add(() -> runTool(roster.get(call.name()), call, sink, false));
+                tasks.add(() -> runTool(rosterByName.get(call.name()), call, sink, false));
             }
             try {
                 java.util.concurrent.ExecutorService pool =
@@ -306,7 +378,7 @@ public final class AgentLoop {
                                 Math.min(4, tasks.size()));
                 try {
                     // invokeAll : l'ordre des futurs = l'ordre des tâches.
-                    java.util.List<java.util.concurrent.Future<ConversationHistory.Entry>> futures =
+                    List<java.util.concurrent.Future<ConversationHistory.Entry>> futures =
                             pool.invokeAll(tasks);
                     for (java.util.concurrent.Future<ConversationHistory.Entry> future : futures) {
                         history.add(future.get());
@@ -317,14 +389,13 @@ public final class AgentLoop {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             } catch (java.util.concurrent.ExecutionException e) {
-                // Un outil qui jette hors de runTool : résultat d'erreur borné.
                 history.add(new ConversationHistory.Entry("tool",
                         "Erreur de l'outil : " + e.getCause(), null, null));
             }
         }
         // Mutations ensuite, séquentiellement et derrière la porte.
         for (LlmTransport.ToolCall call : calls) {
-            Tool tool = roster.get(call.name());
+            AgentTool tool = rosterByName.get(call.name());
             if (tool == null || tool.readOnly()) {
                 continue;
             }
@@ -342,17 +413,27 @@ public final class AgentLoop {
                 SystemPrompt.INTERRUPTED_TOOL_RESULT, null, call.id());
     }
 
-    /** Exécute un appel : porte (mutations) → outil → résultat borné dans l'historique. */
-    private ConversationHistory.Entry runTool(Tool tool, LlmTransport.ToolCall call,
+    /**
+     * Exécute un appel : arguments typés (les erreurs d'argument partent au
+     * modèle avec le motif), porte avec **diff réel** pour les mutations,
+     * point de contrôle avant/après, résultat borné dans l'historique.
+     */
+    private ConversationHistory.Entry runTool(AgentTool tool, LlmTransport.ToolCall call,
             Consumer<LoopEvent> sink, boolean mutation) {
         sink.accept(new LoopEvent.ToolStarted(call.name(), call.argumentsJson()));
+        ToolArgs args;
+        try {
+            args = ToolArgs.of(call.argumentsJson());
+        } catch (ToolArgs.BadArguments bad) {
+            sink.accept(new LoopEvent.ToolResult(call.id(), "arguments invalides", true));
+            return toolError(call, bad.getMessage());
+        }
         if (mutation) {
             PermissionGate.PermissionRequest request = new PermissionGate.PermissionRequest(
-                    tool.name(), firstPathOf(call.argumentsJson()),
-                    previewFor(tool, call.argumentsJson()));
+                    tool.name(), pathOf(args), diffPreview(tool, args));
             boolean allowed = gate.authorize(request);
-            sink.accept(new LoopEvent.ToolResult(call.id(), allowed ? "autorisé" : "refusé", !allowed));
             if (!allowed) {
+                sink.accept(new LoopEvent.ToolResult(call.id(), "refusé", true));
                 return new ConversationHistory.Entry("tool",
                         "Refusé par l'utilisateur (mode de permission) : la mutation « "
                                 + tool.name() + " » n'a pas été exécutée. Continue en "
@@ -362,276 +443,102 @@ public final class AgentLoop {
         }
         String result;
         try {
-            result = tool.run(workspace, call.argumentsJson());
+            result = tool.run(workspace, args);
+            recordCheckpoint(tool, args);
+        } catch (ToolArgs.BadArguments bad) {
+            sink.accept(new LoopEvent.ToolResult(call.id(), "arguments invalides", true));
+            return toolError(call, bad.getMessage());
         } catch (Exception e) {
-            return new ConversationHistory.Entry("tool",
-                    "Erreur de l'outil « " + tool.name() + " » : "
-                            + (e.getMessage() != null ? e.getMessage() : String.valueOf(e)),
-                    null, call.id());
+            sink.accept(new LoopEvent.ToolResult(call.id(), "erreur", true));
+            return toolError(call, "Erreur de l'outil « " + tool.name() + " » : "
+                    + (e.getMessage() != null ? e.getMessage() : String.valueOf(e)));
         }
         sink.accept(new LoopEvent.ToolResult(call.id(),
                 result.length() > 120 ? result.substring(0, 120) + "…" : result, false));
         return new ConversationHistory.Entry("tool", result, null, call.id());
     }
 
-    /** Aperçu avant/après (diff dans l'invite d'approbation — REF-117). */
-    private String previewFor(Tool tool, String argumentsJson) {
-        String path = firstPathOf(argumentsJson);
-        if (path == null) {
-            return null;
-        }
+    /** Erreur rendue au modèle (argument invalide ou échec d'outil) : informative. */
+    private static ConversationHistory.Entry toolError(LlmTransport.ToolCall call,
+            String message) {
+        return new ConversationHistory.Entry("tool", message, null, call.id());
+    }
+
+    /** Chemin visé par un appel (affichage de l'invite de permission). */
+    private static String pathOf(ToolArgs args) {
+        return args.stringOr("chemin", args.stringOr("requete", "sans chemin"));
+    }
+
+    /**
+     * Aperçu **diff réel** avant/après (REF-117, Lot 3) : pour une écriture,
+     * le contenu après vient des arguments ; pour un remplacement ciblé, la
+     * simulation du remplacement ; pour renommage/suppression, la description
+     * honnête du changement. Borné (la visionneuse complète vient au Lot 5).
+     */
+    private String diffPreview(AgentTool tool, ToolArgs args) {
         try {
+            String path = args.stringOr("chemin", null);
+            if (path == null) {
+                return tool.name();
+            }
             String before = workspace.fileBefore(path);
-            return before.isEmpty() ? "(fichier absent — création)"
-                    : before.length() > 400 ? before.substring(0, 400) + "…" : before;
+            String after = afterContentOf(tool, args, before);
+            if (after == null) {
+                // Renommage / suppression : pas de contenu comparable.
+                return tool.name() + " : " + path;
+            }
+            if (after.equals(before)) {
+                return tool.name() + " : " + path + " (aucun changement net)";
+            }
+            DiffBuilder.Diff diff = DiffBuilder.unified(before, after);
+            if (diff == null) {
+                return tool.name() + " : " + path + " (fichier trop grand pour un diff)";
+            }
+            String unified = diff.unified();
+            return path + " " + diff.counters() + "\n"
+                    + (unified.length() > 2_000
+                            ? unified.substring(0, 2_000) + "\n… (diff tronqué dans l'invite)"
+                            : unified);
         } catch (Exception e) {
-            return null;
+            return tool.name() + " : aperçu indisponible";
         }
     }
 
-    /** Chemin relatif dans les arguments JSON (analyse minimale : "path": "…"). */
-    static String firstPathOf(String argumentsJson) {
-        if (argumentsJson == null) {
-            return null;
+    /** Contenu après la mutation, pour le diff d'approbation. */
+    private static String afterContentOf(AgentTool tool, ToolArgs args, String before) {
+        switch (tool.name()) {
+            case "ecrire_fichier", "creer_fichier":
+                return args.stringOr("contenu", "");
+            case "modifier_fichier": {
+                String oldText = args.stringOr("ancien_texte", null);
+                String newText = args.stringOr("nouveau_texte", "");
+                if (oldText == null || !before.contains(oldText)) {
+                    return null; // l'outil échouera de toute façon : pas de diff trompeur
+                }
+                return before.replace(oldText, newText);
+            }
+            default:
+                return null;
         }
-        int at = argumentsJson.indexOf("\"");
-        // "path":"valeur" ou {"path": "valeur"}
-        int key = argumentsJson.indexOf("path");
-        if (key < 0) {
-            return null;
-        }
-        int start = argumentsJson.indexOf('"', key);
-        if (start < 0) {
-            return null;
-        }
-        int value = argumentsJson.indexOf('"', start + 1);
-        // Le guillemet ouvrant de la valeur suit les deux-points.
-        int colon = argumentsJson.indexOf(':', start);
-        int open = argumentsJson.indexOf('"', colon);
-        int close = argumentsJson.indexOf('"', open + 1);
-        return (open >= 0 && close > open)
-                ? argumentsJson.substring(open + 1, close) : null;
     }
 
-    // ---- Outils du roster (lecture : jamais gated ; écriture : gated) -------
+    /** Point de contrôle : retient l'état avant/après de chaque mutation. */
+    private void recordCheckpoint(AgentTool tool, ToolArgs args) {
+        if (checkpoint == null) {
+            return;
+        }
+        String path = args.stringOr("chemin", null);
+        if (path == null) {
+            return;
+        }
+        checkpoint.beforeChange(path);
+        checkpoint.afterChange(path, "supprimer_fichier".equals(tool.name()));
+    }
+
+    // ---- Roster ---------------------------------------------------------------
 
     /** Roster d'outils du tour (figé par instance de boucle ; vide sans outils). */
-    List<Tool> tools() {
-        if (!toolsEnabled) {
-            return java.util.Collections.emptyList();
-        }
-        java.util.List<Tool> roster = new java.util.ArrayList<>(java.util.List.of(
-                readFileTool(), listFilesTool(), searchTool(),
-                writeFileTool(), createFileTool(), deleteFileTool()));
-        if (buildRunner != null) {
-            roster.add(buildTool());
-        }
-        return java.util.List.copyOf(roster);
-    }
-
-    /** Outil de build : passe par le BuildRunner du mode actif (jamais un moteur concurrent). */
-    private Tool buildTool() {
-        return new Tool() {
-            @Override public String name() { return "construire_module"; }
-            @Override public String description() {
-                return "Compile le module du projet via le moteur du mode actif "
-                        + "(retourne le journal borné à la fin ; lecture seule pour la "
-                        + "permission : le build écrit dans les répertoires de sortie).";
-            }
-            @Override public boolean readOnly() { return true; }
-            @Override public String run(AgentWorkspace w, String args) throws Exception {
-                BuildRunner.BuildOutcome outcome = buildRunner.build(
-                        argumentsProjectRootOf(args));
-                return (outcome.success() ? "BUILD REUSSI" : "BUILD ECHOUE")
-                        + " (" + outcome.eventCount() + " evenements)\n"
-                        + outcome.tailLog();
-            }
-        };
-    }
-
-    /** Racine projet des arguments ({"project":"…"} — défaut : le contexte posé par l'hôte). */
-    private static String argumentsProjectRootOf(String args) {
-        if (args == null) {
-            return null;
-        }
-        int key = args.indexOf("project");
-        if (key < 0) {
-            return null;
-        }
-        int colon = args.indexOf(':', key);
-        int open = args.indexOf('"', colon);
-        int close = args.indexOf('"', open + 1);
-        return (open >= 0 && close > open) ? args.substring(open + 1, close) : null;
-    }
-
-    private Tool readFileTool() {
-        return new Tool() {
-            @Override public String name() { return "lire_fichier"; }
-            @Override public String description() {
-                return "Lit un fichier du projet dans une fenêtre de lignes (lecture seule).";
-            }
-            @Override public String schema() {
-                return "{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\","
-                        + "\"description\":\"chemin relatif du fichier\"},"
-                        + "\"premiere_ligne\":{\"type\":\"integer\",\"description\":"
-                        + "\"première ligne (défaut 1)\"},\"nb_lignes\":{\"type\":\"integer\","
-                        + "\"description\":\"nombre de lignes (défaut 200)\"}},"
-                        + "\"required\":[\"path\"]}";
-            }
-            @Override public boolean readOnly() { return true; }
-            @Override public String run(AgentWorkspace w, String args) throws Exception {
-                String path = firstPathOf(args);
-                AgentWorkspace.Bounded bounded = w.readFile(path, 1, 200);
-                return bounded.omitted() > 0
-                        ? bounded.content() + "\n(" + bounded.omitted()
-                                + " lignes non affichées — affinez la fenêtre)"
-                        : bounded.content();
-            }
-        };
-    }
-
-    private Tool listFilesTool() {
-        return new Tool() {
-            @Override public String name() { return "lister_fichiers"; }
-            @Override public String description() {
-                return "Liste les fichiers d'un dossier du projet (borné).";
-            }
-            @Override public String schema() {
-                return "{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\","
-                        + "\"description\":\"chemin relatif du dossier (« . » pour la racine)\"}},"
-                        + "\"required\":[\"path\"]}";
-            }
-            @Override public boolean readOnly() { return true; }
-            @Override public String run(AgentWorkspace w, String args) throws Exception {
-                String path = firstPathOf(args);
-                AgentWorkspace.Bounded bounded = w.listFiles(path, 100);
-                return bounded.omitted() > 0
-                        ? bounded.content() + "\n(" + bounded.omitted() + " entrées manquantes)"
-                        : bounded.content();
-            }
-        };
-    }
-
-    private Tool searchTool() {
-        return new Tool() {
-            @Override public String name() { return "chercher_texte"; }
-            @Override public String description() {
-                return "Cherche un texte dans les fichiers du projet (une occurrence par fichier).";
-            }
-            @Override public String schema() {
-                return "{\"type\":\"object\",\"properties\":{\"requete\":{\"type\":\"string\","
-                        + "\"description\":\"texte cherché\"},\"path\":{\"type\":\"string\","
-                        + "\"description\":\"dossier de recherche (défaut : tout le projet)\"}},"
-                        + "\"required\":[\"requete\"]}";
-            }
-            @Override public boolean readOnly() { return true; }
-            @Override public String run(AgentWorkspace w, String args) throws Exception {
-                String path = firstPathOf(args);
-                AgentWorkspace.Bounded bounded = w.searchText(path, 30);
-                return bounded.omitted() > 0
-                        ? bounded.content() + "\n(" + bounded.omitted()
-                                + " autres fichiers — affinez la requête)"
-                        : bounded.content();
-            }
-        };
-    }
-
-    private Tool writeFileTool() {
-        return new Tool() {
-            @Override public String name() { return "ecrire_fichier"; }
-            @Override public String description() {
-                return "Écrit le contenu d'un fichier du projet (mutation — permission requise).";
-            }
-            @Override public String schema() {
-                return "{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\","
-                        + "\"description\":\"chemin relatif du fichier\"},"
-                        + "\"content\":{\"type\":\"string\",\"description\":"
-                        + "\"contenu complet du fichier\"}},\"required\":[\"path\",\"content\"]}";
-            }
-            @Override public boolean readOnly() { return false; }
-            @Override public String run(AgentWorkspace w, String args) throws Exception {
-                String path = firstPathOf(args);
-                long written = w.writeFile(path, contentOf(args));
-                return "Écrit : " + path + " (" + written + " caractères)";
-            }
-        };
-    }
-
-    private Tool createFileTool() {
-        return new Tool() {
-            @Override public String name() { return "creer_fichier"; }
-            @Override public String description() {
-                return "Crée un fichier nouveau (échoue s'il existe — mutation, permission requise).";
-            }
-            @Override public String schema() {
-                return "{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\","
-                        + "\"description\":\"chemin relatif du fichier à créer\"},"
-                        + "\"content\":{\"type\":\"string\",\"description\":"
-                        + "\"contenu initial\"}},\"required\":[\"path\",\"content\"]}";
-            }
-            @Override public boolean readOnly() { return false; }
-            @Override public String run(AgentWorkspace w, String args) throws Exception {
-                String path = firstPathOf(args);
-                return w.createFile(path, contentOf(args))
-                        ? "Créé : " + path : "Échec : " + path + " existe déjà";
-            }
-        };
-    }
-
-    private Tool deleteFileTool() {
-        return new Tool() {
-            @Override public String name() { return "supprimer_fichier"; }
-            @Override public String description() {
-                return "Supprime un fichier du projet (IRRÉVERSIBLE — permission requise).";
-            }
-            @Override public String schema() {
-                return "{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\","
-                        + "\"description\":\"chemin relatif du fichier à supprimer\"}},"
-                        + "\"required\":[\"path\"]}";
-            }
-            @Override public boolean readOnly() { return false; }
-            @Override public String run(AgentWorkspace w, String args) throws Exception {
-                String path = firstPathOf(args);
-                return w.deleteFile(path) ? "Supprimé : " + path
-                        : "Introuvable : " + path;
-            }
-        };
-    }
-
-    /** Contenu "content" des arguments (analyse minimale). */
-    private static String contentOf(String argumentsJson) {
-        int content = argumentsJson.indexOf("\"content\"");
-        if (content < 0) {
-            return argumentsJson;
-        }
-        int colon = argumentsJson.indexOf(':', content);
-        int open = argumentsJson.indexOf('"', colon);
-        int close = argumentsJson.indexOf('"', open + 1);
-        return argumentsJson.substring(open + 1, close);
-    }
-
-    // ---- Contexte projet (l'hôte fournit la réalité vivante) ---------------
-
-    private String projectInstructions() {
-        // Instructions projet (AGENTS.md) : lues par l'hôte, bornées, mises en
-        // cache par (chemin, mtime) — REF-111. Fournies par le détenteur du projet.
-        return projectInstructionsCache;
-    }
-
-    private String projectInstructionsCache;
-    private String projectContextCache;
-
-    /** Instructions AGENTS.md du projet (moitié stable — posées par l'hôte). */
-    public void setProjectInstructions(String instructions) {
-        this.projectInstructionsCache = instructions;
-    }
-
-    /** Contexte projet vivant (moitié volatile — rafraîchi par l'hôte chaque tour). */
-    public void setProjectContext(String context) {
-        this.projectContextCache = context;
-    }
-
-    private String projectContext() {
-        return projectContextCache;
+    List<AgentTool> tools() {
+        return roster;
     }
 }

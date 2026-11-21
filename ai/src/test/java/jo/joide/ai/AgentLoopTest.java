@@ -121,7 +121,7 @@ class AgentLoopTest {
         workspace.put("Main.java", "public class Main {}\n");
         // 1re itération : un appel de lecture ; 2e : réponse finale.
         transport.respond(new MockTransport.Response(null, List.of(
-                new LlmTransport.ToolCall("a1", "lire_fichier", "{\"path\":\"Main.java\"}"))));
+                new LlmTransport.ToolCall("a1", "lire_fichier", "{\"chemin\":\"Main.java\"}"))));
         transport.respond(new MockTransport.Response("lu", List.of()));
         List<AgentLoop.LoopEvent> events = new CopyOnWriteArrayList<>();
         // Porte qui refuse TOUT : la lecture passe quand même (jamais gated).
@@ -141,7 +141,7 @@ class AgentLoopTest {
         workspace.put("Main.java", "avant");
         transport.respond(new MockTransport.Response(null, List.of(
                 new LlmTransport.ToolCall("m1", "ecrire_fichier",
-                        "{\"path\":\"Main.java\",\"content\":\"apres\"}"))));
+                        "{\"chemin\":\"Main.java\",\"contenu\":\"apres\"}"))));
         transport.respond(new MockTransport.Response("d'accord, je n'écris pas", List.of()));
         List<AgentLoop.LoopEvent> events = new CopyOnWriteArrayList<>();
         PermissionGate.Scripted gate = new PermissionGate.Scripted(PermissionGate.Mode.PLAN_ONLY);
@@ -164,7 +164,7 @@ class AgentLoopTest {
         AgentWorkspace.InMemory workspace = new AgentWorkspace.InMemory();
         transport.respond(new MockTransport.Response(null, List.of(
                 new LlmTransport.ToolCall("m1", "creer_fichier",
-                        "{\"path\":\"Nouveau.java\",\"content\":\"classe\"}"))));
+                        "{\"chemin\":\"Nouveau.java\",\"contenu\":\"classe\"}"))));
         transport.respond(new MockTransport.Response("créé", List.of()));
         List<AgentLoop.LoopEvent> events = new CopyOnWriteArrayList<>();
         PermissionGate.Scripted gate = new PermissionGate.Scripted(PermissionGate.Mode.AUTO_ACCEPT);
@@ -229,7 +229,7 @@ class AgentLoopTest {
                         "http://localhost:11434/v1/models", null),
                 "modele-mock", new AgentWorkspace.InMemory(),
                 new PermissionGate.Scripted(PermissionGate.Mode.AUTO_ACCEPT),
-                4, null, false);
+                null, 4, false, 1024, null, null, null, null);
         assistantLoop.setProjectContext("Aucun projet ouvert : conversation générale.");
 
         assistantLoop.turn("explique-moi les records", events::add);
@@ -270,7 +270,7 @@ class AgentLoopTest {
         MockTransport transport = new MockTransport();
         transport.respond(new MockTransport.Response("je m'y mets", List.of(
                 new LlmTransport.ToolCall("m1", "ecrire_fichier",
-                        "{\"path\":\"Main.java\",\"content\":\"x\"}"))));
+                        "{\"chemin\":\"Main.java\",\"contenu\":\"x\"}"))));
         AgentWorkspace.InMemory workspace = new AgentWorkspace.InMemory();
         workspace.put("Main.java", "avant");
         CancellationToken cancellation = new CancellationToken();

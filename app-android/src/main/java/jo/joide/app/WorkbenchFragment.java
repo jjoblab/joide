@@ -457,6 +457,12 @@ public class WorkbenchFragment extends Fragment
 
     @Nullable
     @Override
+    public String agentBranchName() {
+        return currentBranch();
+    }
+
+    @Nullable
+    @Override
     public String agentSelectionText() {
         if (editor == null || editor.session() == null) {
             return null;

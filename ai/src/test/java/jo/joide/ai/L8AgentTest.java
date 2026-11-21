@@ -121,8 +121,7 @@ class L8AgentTest {
             return new BuildRunner.BuildOutcome(true, "compileJava OK\ntâche terminée", 2);
         };
         transport.respond(new MockTransport.Response(null, List.of(
-                new LlmTransport.ToolCall("b1", "construire_module",
-                        "{\"project\":\"/proj/essai\"}"))));
+                new LlmTransport.ToolCall("b1", "construire_module", "{}"))));
         transport.respond(new MockTransport.Response("le build est bon", List.of()));
         AgentWorkspace.InMemory workspace = new AgentWorkspace.InMemory();
 
@@ -130,11 +129,12 @@ class L8AgentTest {
                 new LlmTransport.Endpoint("http://l/chat/completions",
                         "http://l/models", null),
                 "m", workspace, new PermissionGate.Scripted(PermissionGate.Mode.PLAN_ONLY),
-                16, runner, true)
+                null, 16, true, 4096, null, null, runner, null)
                 .turn("construis", e -> { });
 
-        assertEquals(List.of("/proj/essai"), builtRoots,
-                "l'agent construit via le port (BuildBackend du mode actif)");
+        assertEquals(1, builtRoots.size(),
+                "l'agent construit via le port (BuildBackend du mode actif, "
+                        + "l'adaptateur hôte connaît le projet)");
         // Le résultat du build est borné et rendu au modèle (2e requête le contient).
         boolean modelSawLog = transport.requests.get(1).messages().stream()
                 .anyMatch(m -> "tool".equals(m.role()) && m.content() != null

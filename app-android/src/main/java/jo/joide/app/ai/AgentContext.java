@@ -37,4 +37,8 @@ public interface AgentContext {
     /** Sélection courante de l'éditeur ; null si vide (curseur seul). */
     @Nullable
     String agentSelectionText();
+
+    /** Branche Git courante du projet ; null si pas de dépôt. */
+    @Nullable
+    String agentBranchName();
 }
