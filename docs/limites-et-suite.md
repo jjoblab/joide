@@ -93,16 +93,33 @@
   ignorés, tri dossiers d'abord insensible à la casse, chemins confinés,
   troncature dite) et `FileIcons` (extension → catégorie stable, secrets
   marqués). Fondation des lots 2-8.
+- **Lot 2** (`23c94a8`) : iconographie + guides + décorations, et l'onglet
+  Fichiers passe sur le **vrai moteur**. core-files : `FileKind`/`FileKinds`
+  — classification fine par chemin (racines src/test, packages, XML par
+  parent res/, manifest, secrets, README/LICENSE), affinage Java par en-tête
+  borné 8 Kio (13 tests). app-android : 24 icônes VectorDrawable
+  **originales** (ADR-019, jetons clair+sombre), `IndentGuidesView` (un
+  trait par niveau, guide du dossier actif en primaire), décorations **git
+  réelles** (point + couleur du nom, GitService hors fil UI) et
+  **diagnostics** (pastille héritée par les dossiers parents, via
+  `WorkbenchHost.diagnostics()` ; `DiagnosticsChanged` publié au build).
+  Arborescence paresseuse bornée annulable (génération par tâche), chevrons
+  animés, fichier actif en gras + suivi (filiation ouverte, défilement),
+  états honnêtes (chargement par dossier, erreur + Réessayer,
+  dossier/projet vide, troncature dite), secrets jamais ouverts, outils
+  replier/déplier/suivre/actualiser, état dans `WorkspaceViewModel` (survit
+  rotation + écran Git), bus `WorkspaceEvents` branché (mutations agent,
+  build, git). Fix au passage : `Path.of` → `Paths.get` (11 usages, API 28).
 
-### Non fait (lots 2 à 8) — raisons
-- Lots 2-8 non commencés dans cette session (icônes/guides, UI Fichiers
-  virtuelle sur core-files, recherche, structure, `core-git` robuste, onglet
-  Git dans le tiroir, réglages/robustesse) : la session a livré la refonte IA
-  complète (lots 0-9) puis le Lot 1 ; l'aperçu validé
-  (`docs/mockups/tiroir-gauche.html`) et ce fichier décrivent la suite.
-  Point d'entrée du Lot 2 : consommer `FileTree.list`/`FileIcons` dans
-  l'onglet Fichiers du tiroir (tâche de fond + résultats sur le fil UI,
-  annulables).
+### Non fait (lots 3 à 8) — raisons
+- **Lot 3** (interactions Fichiers) : menu contextuel (renommer, dupliquer,
+  copier/couper/coller, copier le chemin, .gitignore), sélection multiple,
+  glisser-déposer, corbeille réelle (FsOperations atomiques + restauration),
+  vues Projet/Android, filtre en direct, badges d'éléments des dossiers
+  repliés, RecyclerView + DiffUtil — non commencé, prochaine étape.
+- Lots 4-8 : recherche (`core-search`), structure (`core-outline`),
+  `core-git` robuste, onglet Git dans le tiroir, réglages/robustesse —
+  dans l'ordre après le Lot 3 (aperçu validé : `docs/mockups/tiroir-gauche.html`).
 
 ## Comment continuer
 1. `cd /home/z/my-project/joide && git pull` — tout est poussé sur `main`.
