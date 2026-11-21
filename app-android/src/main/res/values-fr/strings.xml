@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_nom">JoIDE</string>
-    <string name="accueil_titre">Projets</string>
+    <string name="accueil_titre">Mes projets</string>
     <string name="accueil_nouveau">Nouveau projet</string>
     <string name="accueil_importer">Importer un projet</string>
     <string name="accueil_vide_titre">Aucun projet pour l\'instant</string>
@@ -100,7 +100,7 @@
     <string name="install_telecharge">%1$s sur %2$s</string>
     <!-- Atelier : mode actif (chip, notice, visibilité selon le mode) -->
     <string name="atelier_notice_gradle">Mode Gradle actif · ce projet Forge s\'ouvre en lecture seule (capacités honnêtes du BuildBackend)</string>
-    <string name="atelier_notice_forge">Mode Forge actif · le terminal n\'est pas fourni par ce mode (capacités honnêtes du BuildBackend)</string>
+    <string name="atelier_notice_forge">Mode Forge actif · chaud-rechargement disponible · terminal non fourni par ce mode</string>
     <string name="atelier_build_gradle">— build Gradle (terminal) —</string>
     <string name="atelier_terminal_grise">Terminal indisponible en mode Forge</string>
     <!-- Tiroir IA : états de conversation (studio HTML, onglet Chat IA) -->
@@ -121,4 +121,25 @@
     <string name="creation_modele_hint">Nom du projet</string>
     <string name="creation_depuis_modele">Depuis le modèle %1$s</string>
     <string name="creation_ok">Créer</string>
+    <string name="git_remote">origin/%1$s · synchronisé il y a 12 min</string>
+    <string name="git_ahead_behind">↓%1$d ↑%2$d</string>
+    <string name="git_pull">Tirer (pull)</string>
+    <string name="git_push">Pousser (push)</string>
+    <string name="git_pull_absent">Aucun distant configuré — le projet local ne se pousse pas</string>
+    <string name="install_modele_total">%1$s téléchargés</string>
+    <string name="install_section_composants_total">Composants · %1$s</string>
+    <string name="install_wifi_detecte">Wi-Fi détecté</string>
+    <string name="terminal_titre_projet">Terminal · %1$s</string>
+    <string name="terminal_env_gradle">Gradle env</string>
+    <string name="terminal_envoyer">Envoyer</string>
+    <string name="terminal_commande_demo">gradle --offline assembleDebug</string>
+    <string name="accueil_nav_projets">Projets</string>
+    <string name="accueil_nav_ia">IA</string>
+    <string name="accueil_nav_apprendre">Apprendre</string>
+    <string name="accueil_nav_defis">Défis</string>
+    <string name="accueil_nav_bientot">Bientôt disponible (écran non livré dans ce lot)</string>
+    <string name="creation_paquet_hint">com.example.monapplication</string>
+    <string name="atelier_editeur_brique">Éditeur : commande portée par la brique céleris (câblage L5)</string>
+    <string name="atelier_annuler">Annuler la saisie</string>
+    <string name="atelier_refaire">Refaire</string>
 </resources>

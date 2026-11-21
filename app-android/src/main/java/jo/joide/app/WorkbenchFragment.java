@@ -71,6 +71,15 @@ public class WorkbenchFragment extends Fragment {
             // J2 : construire — le build Forge alimente la Console (journal,
             // progression) et la section Problèmes (diagnostics avec position).
             binding.buildButton.setOnClickListener(v -> runBuild());
+            // Studio : save/undo/redo — la brique céleris porte ces états (L5,
+            // câblage éditeur complet) ; les boutons disent honnêtement l'état.
+            String editorState = getString(R.string.atelier_editeur_brique);
+            binding.saveButton.setOnClickListener(v ->
+                    appendToConsole(editorState));
+            binding.undoButton.setOnClickListener(v ->
+                    appendToConsole(editorState));
+            binding.redoButton.setOnClickListener(v ->
+                    appendToConsole(editorState));
             // Écran git du projet (studio HTML, onglet Git) : statut, diff,
             // historique, commit, clonage.
             binding.gitButton.setOnClickListener(v ->
@@ -188,7 +197,19 @@ public class WorkbenchFragment extends Fragment {
 
     /** Notice + chip + terminal selon le mode : Forge grise le terminal, Gradle ouvre l'onglet. */
     private void setupModeVisibility() {
-        WorkMode mode = activeMode();
+        renderModeChrome(activeMode());
+        // Studio : le chip de mode bascule (démo des deux états de l'éditeur) —
+        // la bascule réelle vit dans les paramètres (ADR-002), le chip l'ouvre.
+        binding.modeChip.setOnClickListener(v ->
+                getParentFragmentManager().beginTransaction()
+                        .replace(((ViewGroup) requireView().getParent()).getId(),
+                                new jo.joide.app.settings.SettingsFragment())
+                        .addToBackStack(null)
+                        .commit());
+    }
+
+    /** Rendu chrome selon le mode : notice, chip, terminal, onglet (studio, modeEditor). */
+    private void renderModeChrome(WorkMode mode) {
         binding.modeChip.setText(mode.name());
         binding.modeNotice.setVisibility(View.VISIBLE);
         binding.modeNotice.setText(mode == WorkMode.GRADLE
@@ -210,6 +231,7 @@ public class WorkbenchFragment extends Fragment {
                         .addToBackStack(null)
                         .commit());
     }
+
 
     // ---- Fichiers (tiroir → onglet actif) -----------------------------------
 

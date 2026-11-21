@@ -35,6 +35,22 @@
             android:textAppearance="?attr/textAppearanceTitleMedium"
             android:maxLines="1"
             android:ellipsize="end" />
+
+        <ImageButton
+            android:id="@+id/git_pull_button"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/git_pull"
+            android:src="@drawable/ic_arrow_back" />
+
+        <ImageButton
+            android:id="@+id/git_push_button"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/git_push"
+            android:src="@drawable/ic_arrow_back" />
     </LinearLayout>
 
     <ScrollView
@@ -89,11 +105,38 @@
                     android:orientation="vertical"
                     android:padding="16dp">
 
-                    <TextView
-                        android:id="@+id/git_branch_text"
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textAppearance="?attr/textAppearanceTitleSmall" />
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:layout_weight="1">
+
+                            <TextView
+                                android:id="@+id/git_branch_text"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textAppearance="?attr/textAppearanceTitleSmall" />
+
+                            <TextView
+                                android:id="@+id/git_remote_text"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:textAppearance="?attr/textAppearanceBodySmall" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/git_ahead_behind_text"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textAppearance="?attr/textAppearanceLabelMedium" />
+                    </LinearLayout>
 
                     <TextView
                         android:id="@+id/git_sync_text"
@@ -156,14 +199,11 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
 
-                    <TextView
-                        android:id="@+id/git_changed_file"
+                    <LinearLayout
+                        android:id="@+id/git_files_list"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:padding="12dp"
-                        android:fontFamily="monospace"
-                        android:textSize="12sp"
-                        android:textAppearance="?attr/textAppearanceBodySmall" />
+                        android:orientation="vertical" />
 
                     <TextView
                         android:id="@+id/git_diff_view"

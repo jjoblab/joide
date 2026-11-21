@@ -102,8 +102,7 @@ public class InstallFragment extends Fragment {
             body.addView(title);
 
             TextView size = new TextView(requireContext());
-            size.setText(getString(R.string.install_telecharge, catalog.humanTotal(),
-                    catalog.humanTotal()));
+            size.setText(getString(R.string.install_modele_total, catalog.humanTotal()));
             size.setTextAppearance(requireContext(),
                     com.google.android.material.R.style.TextAppearance_Material3_BodySmall);
             body.addView(size);
@@ -135,7 +134,9 @@ public class InstallFragment extends Fragment {
         binding.installChannelUrl.setText(
                 "https://github.com/jjoblab/forge/releases/latest/download/manifest.json");
 
-        // Composants avec tailles + espace libre requis.
+        // Composants (total porté par l'entête, studio : « Composants · 102,4 Mo »).
+        binding.installComponentsHeader.setText(getString(
+                R.string.install_section_composants_total, catalog.humanTotal()));
         binding.installComponentsList.removeAllViews();
         for (ModeCatalog.Component component : catalog.components()) {
             binding.installComponentsList.addView(componentRow(component));
@@ -150,8 +151,11 @@ public class InstallFragment extends Fragment {
         binding.installPhasesCard.setVisibility(
                 phases.isEmpty() ? View.GONE : View.VISIBLE);
         binding.installPhasesList.removeAllViews();
-        for (ModeCatalog.Phase phase : phases) {
-            binding.installPhasesList.addView(phaseRow(phase));
+        // Studio : les phases cochent pendant l'installation (2 premières ✓ à 34 %).
+        int doneCount = running ? Math.min(phases.size(),
+                percent * phases.size() / 100 + 2) : 0;
+        for (int i = 0; i < phases.size(); i++) {
+            binding.installPhasesList.addView(phaseRow(phases.get(i), i < doneCount));
         }
     }
 
@@ -195,13 +199,13 @@ public class InstallFragment extends Fragment {
         return row;
     }
 
-    private View phaseRow(ModeCatalog.Phase phase) {
+    private View phaseRow(ModeCatalog.Phase phase, boolean done) {
         LinearLayout row = new LinearLayout(requireContext());
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(android.view.Gravity.CENTER_VERTICAL);
         row.setPadding(0, 7, 0, 7);
         TextView name = new TextView(requireContext());
-        name.setText((running ? "✓ " : "") + phase.name());
+        name.setText((done ? "✓ " : "") + phase.name());
         name.setTextAppearance(requireContext(),
                 com.google.android.material.R.style.TextAppearance_Material3_LabelMedium);
         row.addView(name, new LinearLayout.LayoutParams(0,
@@ -244,6 +248,7 @@ public class InstallFragment extends Fragment {
                                     current / 100.0
                                             * catalog.totalBytes() / 1024.0 / 1024.0),
                             catalog.humanTotal()));
+                    render();
                 });
                 try {
                     Thread.sleep(400);

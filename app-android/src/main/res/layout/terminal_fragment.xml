@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Terminal intégré (mode Gradle, J3) : vue unique + clavier étendu + tiroir sessions. -->
+<!-- Terminal intégré (mode Gradle, studio HTML) : barre + bandeau de sessions à
+     pastilles vivantes + sortie colorée + entrée avec invite + clavier étendu. -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -16,36 +17,108 @@
         android:textAppearance="?attr/textAppearanceBodyMedium"
         android:textColor="?attr/colorOnSurfaceVariant" />
 
-    <FrameLayout
-        android:id="@+id/terminal_area"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:background="#000000" />
-
-    <!-- Clavier étendu interne (Ctrl/Alt/Échap/Tab/flèches ; GPLv3 évité) -->
-    <jo.joide.app.terminal.ExtendedKeyboardRow
-        android:id="@+id/extended_keyboard"
-        android:layout_width="match_parent"
-        android:layout_height="44dp" />
-
+    <!-- Barre : retour, titre, pastille Gradle env, + session -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="52dp"
         android:orientation="horizontal"
-        android:padding="8dp">
+        android:gravity="center_vertical"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp">
+
+        <ImageButton
+            android:id="@+id/terminal_back_button"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/terminal_titre"
+            android:src="@drawable/ic_arrow_back" />
+
+        <TextView
+            android:id="@+id/terminal_title_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="@string/terminal_titre"
+            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/terminal_env_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceLabelMedium"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp" />
 
         <Button
             android:id="@+id/new_session_button"
             style="?attr/materialButtonOutlinedStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:minWidth="0dp"
+            android:layout_marginStart="8dp"
             android:text="@string/terminal_nouvelle_session" />
     </LinearLayout>
 
-    <!-- Tiroir sessions (vives et mortes jusqu'à fermeture) -->
+    <!-- Bandeau des sessions (pastilles vivantes, horizontal) -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/sessions_recycler"
         android:layout_width="match_parent"
-        android:layout_height="120dp" />
+        android:layout_height="wrap_content"
+        android:orientation="horizontal" />
+
+    <!-- Sortie colorée de la session active -->
+    <TextView
+        android:id="@+id/terminal_output"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fontFamily="monospace"
+        android:textSize="12sp"
+        android:padding="14dp"
+        android:background="#0B1008" />
+
+    <!-- Entrée : invite + champ + bouton envoyer -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="10dp">
+
+        <TextView
+            android:id="@+id/terminal_prompt"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:textSize="12sp"
+            android:textAppearance="?attr/textAppearanceBodySmall" />
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/terminal_input"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:fontFamily="monospace"
+            android:textSize="12.5sp"
+            android:maxLines="1"
+            android:importantForAutofill="no" />
+
+        <ImageButton
+            android:id="@+id/terminal_send_button"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/terminal_envoyer"
+            android:src="@drawable/ic_arrow_send" />
+    </LinearLayout>
+
+    <!-- Clavier étendu interne (Ctrl/Alt/Échap/Tab/flèches ; GPLv3 évité) -->
+    <jo.joide.app.terminal.ExtendedKeyboardRow
+        android:id="@+id/extended_keyboard"
+        android:layout_width="match_parent"
+        android:layout_height="44dp" />
 </LinearLayout>

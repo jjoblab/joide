@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -72,7 +73,29 @@ public class HomeFragment extends Fragment {
         });
         setupFilters();
         setupCloneCard();
+        setupBottomNav();
         return binding.getRoot();
+    }
+
+    /** Navbar du studio : Projets actif ; IA ouvre l'assistant ; Apprendre/Défis honnêtes. */
+    private void setupBottomNav() {
+        binding.bottomNav.setSelectedItemId(R.id.nav_projects);
+        binding.bottomNav.setOnItemSelectedListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.nav_ia) {
+                getParentFragmentManager().beginTransaction()
+                        .replace(((ViewGroup) requireView().getParent()).getId(),
+                                new jo.joide.app.ai.AiPanelFragment())
+                        .addToBackStack(null)
+                        .commit();
+                return true;
+            }
+            if (id == R.id.nav_apprendre || id == R.id.nav_defis) {
+                showTransientNotice(getString(R.string.accueil_nav_bientot));
+                return false; // la sélection ne s'installe pas (pas d'écran derrière).
+            }
+            return true;
+        });
     }
 
     // ---- Filtres par mode (studio HTML : Tous / Forge / Gradle) ----------------
@@ -139,16 +162,25 @@ public class HomeFragment extends Fragment {
         applyFilter(filter);
     }
 
-    /** Dialog de création (studio HTML, onglet Création) : nom + modèles réels. */
+    /** Dialog de création (studio HTML, onglet Création) : nom, paquet, modèles réels. */
     private void showCreateDialog() {
         java.util.List<String> names = ProjectTemplates.standard().names();
         CharSequence[] items = names.toArray(new CharSequence[0]);
         android.app.AlertDialog.Builder builder =
                 new android.app.AlertDialog.Builder(requireContext());
         builder.setTitle(getString(R.string.creation_titre));
+        LinearLayout body = new LinearLayout(requireContext());
+        body.setOrientation(LinearLayout.VERTICAL);
+        int pad = (int) (16 * getResources().getDisplayMetrics().density);
+        body.setPadding(pad, pad / 2, pad, 0);
         final android.widget.EditText nameField = new android.widget.EditText(requireContext());
         nameField.setHint(getString(R.string.creation_modele_hint));
-        builder.setView(nameField);
+        body.addView(nameField);
+        final android.widget.EditText packageField = new android.widget.EditText(requireContext());
+        packageField.setHint(getString(R.string.creation_paquet_hint));
+        packageField.setTypeface(android.graphics.Typeface.MONOSPACE);
+        body.addView(packageField);
+        builder.setView(body);
         builder.setItems(items, (d, which) ->
                 createFrom(names.get(which), nameField.getText().toString()));
         builder.show();

@@ -42,6 +42,16 @@ public class TerminalFragment extends Fragment {
         // La fabrique réelle (TerminalSession Termux) n'est disponible que si
         // l'environnement Gradle est installé (préfixe bootstrap) : sans lui, le
         // terminal affiche honnêtement l'état (jamais un écran vide muet).
+        binding.terminalBackButton.setOnClickListener(v ->
+                requireActivity().getSupportFragmentManager().popBackStack());
+        binding.terminalTitleText.setText(getString(R.string.terminal_titre_projet,
+                java.nio.file.Path.of(EnvironmentHolder.home()).getFileName().toString()));
+        binding.terminalEnvBadge.setText(getString(R.string.terminal_env_gradle));
+        binding.terminalPrompt.setText(EnvironmentHolder.home() + " $");
+        // Studio : champ prérempli de la commande de démonstration.
+        binding.terminalInput.setText(getString(R.string.terminal_commande_demo));
+        binding.terminalSendButton.setOnClickListener(v ->
+                sendCommand(binding.terminalInput.getText().toString()));
         if (EnvironmentHolder.installed()) {
             registry = EnvironmentHolder.registry();
             setupTerminalView();
@@ -54,6 +64,32 @@ public class TerminalFragment extends Fragment {
         return binding.getRoot();
     }
 
+    /** Envoie la commande tapée à la session active (invite du studio). */
+    private void sendCommand(String command) {
+        if (command == null || command.isBlank() || activeSessionId == null) {
+            return;
+        }
+        registry.write(activeSessionId, command + "\r");
+        appendOutput("in", command);
+        binding.terminalInput.setText("");
+    }
+
+    /** Sortie colorée : entrée (primaire), erreur (rouge), système (gris). */
+    private void appendOutput(String kind, String line) {
+        requireActivity().runOnUiThread(() -> {
+            android.text.SpannableStringBuilder span =
+                    new android.text.SpannableStringBuilder();
+            int start = span.length();
+            span.append(line).append('\n');
+            int color = "err".equals(kind) ? 0xFFEF5350
+                    : "in".equals(kind) ? 0xFF8BC34A
+                    : "sys".equals(kind) ? 0xFF9E9E9E : 0xFFE0E0E0;
+            span.setSpan(new android.text.style.ForegroundColorSpan(color),
+                    start, span.length(), android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            binding.terminalOutput.append(span);
+        });
+    }
+
     /** Monte la vue Termux : unique, rebranchée sur la session active. */
     private void setupTerminalView() {
         // La vue vient de la bibliothèque (com.termux.view.TerminalView) : le
@@ -64,7 +100,8 @@ public class TerminalFragment extends Fragment {
 
     /** Tiroir des sessions (vives ET mortes jusqu'à fermeture explicite). */
     private void setupDrawer() {
-        binding.sessionsRecycler.setLayoutManager(new LinearLayoutManager(getContext()));
+        binding.sessionsRecycler.setLayoutManager(
+                new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
         refreshDrawer();
         registry.addListener(this::refreshDrawer);
         binding.newSessionButton.setOnClickListener(v -> newSession());

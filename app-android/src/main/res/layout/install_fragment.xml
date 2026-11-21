@@ -175,6 +175,13 @@
                         android:layout_weight="1"
                         android:layout_marginStart="10dp"
                         android:textAppearance="?attr/textAppearanceBodySmall" />
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/install_wifi_switch"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        android:contentDescription="@string/install_wifi_detecte" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

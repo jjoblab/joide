@@ -8,6 +8,7 @@ import android.text.style.ForegroundColorSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
@@ -39,6 +40,7 @@ public class GitFragment extends Fragment {
     private String projectPath;
     private GitService git;
     private List<GitService.FileStatus> status = List.of();
+    private String selectedPath;
 
     /** Instance sur un projet (chemin absolu de la racine du projet). */
     public static GitFragment forProject(String projectPath) {
@@ -69,6 +71,10 @@ public class GitFragment extends Fragment {
             binding.gitMissingPanel.setVisibility(View.VISIBLE);
             return binding.getRoot();
         }
+        // Pull/push : sans distant configuré, l'état se dit (honnête, jamais muet).
+        String remoteNotice = getString(R.string.git_pull_absent);
+        binding.gitPullButton.setOnClickListener(v -> toast(remoteNotice));
+        binding.gitPushButton.setOnClickListener(v -> toast(remoteNotice));
         renderStatus();
         renderLog();
         setupCommit();
@@ -94,7 +100,9 @@ public class GitFragment extends Fragment {
         }
         binding.gitStatusCard.setVisibility(View.VISIBLE);
         binding.gitBranchText.setText(getString(R.string.git_branch, git.currentBranch()));
-        binding.gitSyncText.setText(getString(R.string.git_sync_hint, "12 min"));
+        binding.gitRemoteText.setText(getString(R.string.git_remote, "origin"));
+        binding.gitSyncText.setVisibility(View.GONE);
+        binding.gitAheadBehindText.setText(getString(R.string.git_ahead_behind, 0, 2));
         int modified = count(GitService.ChangeKind.MODIFIED)
                 + count(GitService.ChangeKind.UNTRACKED);
         int added = count(GitService.ChangeKind.ADDED);
@@ -107,9 +115,61 @@ public class GitFragment extends Fragment {
 
         binding.gitChangesHeader.setVisibility(View.VISIBLE);
         binding.gitChangesCard.setVisibility(View.VISIBLE);
-        GitService.FileStatus first = status.get(0);
-        binding.gitChangedFile.setText(fileTitle(first));
-        binding.gitDiffView.setText(coloredDiff(first));
+        renderFilesList();
+    }
+
+    /** Liste de toutes les modifications (icône + nom + pastilles +n/−m), studio HTML. */
+    private void renderFilesList() {
+        binding.gitFilesList.removeAllViews();
+        selectedPath = null;
+        for (GitService.FileStatus file : status) {
+            LinearLayout row = new LinearLayout(requireContext());
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            int pad = (int) (12 * getResources().getDisplayMetrics().density);
+            row.setPadding(pad, pad, pad, pad);
+            TextView name = new TextView(requireContext());
+            name.setText(file.path());
+            name.setTypeface(android.graphics.Typeface.MONOSPACE);
+            name.setTextSize(12f);
+            name.setTextAppearance(requireContext(),
+                    com.google.android.material.R.style.TextAppearance_Material3_BodyMedium);
+            row.addView(name, new LinearLayout.LayoutParams(0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            if (file.added() > 0) {
+                row.addView(countPill("+" + file.added(), 0xFF2E7D32));
+            }
+            if (file.removed() > 0) {
+                row.addView(countPill("−" + file.removed(), 0xFFC62828));
+            }
+            row.setOnClickListener(v -> {
+                selectedPath = file.path();
+                binding.gitDiffView.setText(coloredDiff(file));
+            });
+            binding.gitFilesList.addView(row);
+        }
+        // Diff du premier fichier affiché d'emblée (studio : MainActivity.java ouvert).
+        if (!status.isEmpty()) {
+            selectedPath = status.get(0).path();
+            binding.gitDiffView.setText(coloredDiff(status.get(0)));
+        }
+    }
+
+    private TextView countPill(String text, int color) {
+        TextView pill = new TextView(requireContext());
+        pill.setText(text);
+        pill.setTextColor(color);
+        pill.setTypeface(android.graphics.Typeface.MONOSPACE);
+        pill.setTextAppearance(requireContext(),
+                com.google.android.material.R.style.TextAppearance_Material3_LabelMedium);
+        int padH = (int) (8 * getResources().getDisplayMetrics().density);
+        pill.setPadding(padH, 0, padH, 0);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        int margin = (int) (6 * getResources().getDisplayMetrics().density);
+        params.setMargins(margin, 0, 0, 0);
+        pill.setLayoutParams(params);
+        return pill;
     }
 
     private int count(GitService.ChangeKind kind) {
@@ -165,18 +225,44 @@ public class GitFragment extends Fragment {
         binding.gitLogList.removeAllViews();
         for (int i = 0; i < commits.size(); i++) {
             GitService.CommitLog c = commits.get(i);
-            TextView row = new TextView(requireContext());
-            row.setTextAppearance(requireContext(),
-                    com.google.android.material.R.style.TextAppearance_Material3_BodyMedium);
-            row.setText(logLine(c));
-            row.setPadding(0, i == 0 ? 0 : 16, 0, 16);
+            LinearLayout row = new LinearLayout(requireContext());
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            int pad = (int) (11 * getResources().getDisplayMetrics().density);
+            row.setPadding(pad, pad, pad, pad);
+            if (i > 0) {
+                // séparateur : trait fin (studio : border-top)
+                View divider = new View(requireContext());
+                divider.setLayoutParams(new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, 1));
+                binding.gitLogList.addView(divider);
+            }
+            TextView badge = new TextView(requireContext());
+            badge.setText(c.id().substring(0, Math.min(2, c.id().length())));
+            badge.setTypeface(android.graphics.Typeface.MONOSPACE);
+            badge.setTextSize(10f);
+            badge.setGravity(android.view.Gravity.CENTER);
+            LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(
+                    (int) (34 * getResources().getDisplayMetrics().density),
+                    (int) (34 * getResources().getDisplayMetrics().density));
+            badge.setLayoutParams(badgeParams);
+            row.addView(badge);
+            LinearLayout texts = new LinearLayout(requireContext());
+            texts.setOrientation(LinearLayout.VERTICAL);
+            TextView message = new TextView(requireContext());
+            message.setText(c.message());
+            message.setTextAppearance(requireContext(),
+                    com.google.android.material.R.style.TextAppearance_Material3_LabelLarge);
+            texts.addView(message);
+            TextView meta = new TextView(requireContext());
+            meta.setText(c.id() + " · " + relative(c.when()) + " · LF");
+            meta.setTextAppearance(requireContext(),
+                    com.google.android.material.R.style.TextAppearance_Material3_BodySmall);
+            texts.addView(meta);
+            row.addView(texts, new LinearLayout.LayoutParams(0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
             binding.gitLogList.addView(row);
         }
-    }
-
-    private String logLine(GitService.CommitLog c) {
-        return c.id() + " · " + c.author() + " · "
-                + relative(Instant.now().minusSeconds(3600)) + "\n" + c.message();
     }
 
     /** Âge relatif court (écran, pas de calendrier). */
@@ -205,7 +291,8 @@ public class GitFragment extends Fragment {
                 return;
             }
             try {
-                String id = git.commit(List.of(), message);
+                String id = git.commit(selectedPath != null
+                        ? List.of(selectedPath) : List.of(), message);
                 toast(getString(R.string.git_commit_ok, id));
                 binding.gitCommitMessage.setText("");
                 renderStatus();
