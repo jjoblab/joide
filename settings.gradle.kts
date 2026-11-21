@@ -36,7 +36,22 @@ dependencyResolutionManagement {
             url = uri("https://jitpack.io")
             content {
                 includeGroup("com.github.termux.termux-app")
+                // celeris : JitPack publie en com.github.jjoblab.celeris:<module>:v<tag>
+                includeGroupByRegex("com\\.github\\.jjoblab(\\..*)?")
             }
+        }
+        // Forge : GitHub Packages (jeton read:packages requis, même en dépôt public).
+        // GITHUB_ACTOR / GITHUB_TOKEN en CI ; en local : gpr.user / gpr.key dans
+        // ~/.gradle/gradle.properties.
+        maven {
+            url = uri("https://maven.pkg.github.com/jjoblab/forge")
+            credentials {
+                username = providers.gradleProperty("gpr.user")
+                    .orElse(providers.environmentVariable("GITHUB_ACTOR")).orNull
+                password = providers.gradleProperty("gpr.key")
+                    .orElse(providers.environmentVariable("GITHUB_TOKEN")).orNull
+            }
+            content { includeGroup("jo.forge") }
         }
     }
 }

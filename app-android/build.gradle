@@ -26,8 +26,17 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
     signingConfigs {
-        // Keystore reconstitué par la CI avant le build ; absent en local debug
-        // (le debug standard garde la clé AOSP de développement).
+        // Clé de debug STABLE, versionnée dans le dépôt (mot de passe public « android »,
+        // usage debug uniquement) : même signature sur toutes les machines et toutes
+        // les exécutions CI, donc mise à jour par-dessus l'ancienne version sans
+        // désinstaller. Ne JAMAIS l'utiliser pour une publication.
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+        // Keystore de publication reconstitué par la CI avant le build (jamais versionné).
         ci {
             def keystoreFile = rootProject.file('app-android/joide-ci.keystore')
             storeFile keystoreFile
@@ -41,7 +50,9 @@ android {
         }
     }
     buildTypes {
-        debug { }
+        debug {
+            signingConfig signingConfigs.debug
+        }
         release {
             minifyEnabled false
             // Job apk-signe (étiquettes) : signature stable depuis les secrets.
@@ -55,13 +66,12 @@ android {
 
 dependencies {
     // Brique céleris (consigne du propriétaire, conception §6) : version épinglée
-    // 2.2.11 via mavenLocal du checkout cloné (ADR-001 bis : pas de tag JitPack —
-    // demande B-01). La CI publie celeris vers mavenLocal avant le build.
+    // v2.2.11, publiée par JitPack (tag git v2.2.11 de jjoblab/celeris).
     // 2.2.11 : la carte des usages sert le document ouvert sans serveur (2e725f4).
-    implementation 'jo.celeris:android-view:2.2.11'
-    implementation 'jo.celeris:android-widgets:2.2.11'
-    implementation 'jo.celeris:android-host:2.2.11'
-    implementation 'jo.celeris:core-syntax-grammars:2.2.11'
+    implementation 'com.github.jjoblab.celeris:android-view:v2.2.11'
+    implementation 'com.github.jjoblab.celeris:android-widgets:v2.2.11'
+    implementation 'com.github.jjoblab.celeris:android-host:v2.2.11'
+    implementation 'com.github.jjoblab.celeris:core-syntax-grammars:v2.2.11'
     implementation project(':core-model')
     implementation project(':core-store')
     implementation project(':workbench-spi')

@@ -42,7 +42,7 @@
     <string name="diagnostic_version_bricks">Briques</string>
     <string name="diagnostic_version_bricks_value">céleris · code-lsp · LayoutLib</string>
     <string name="diagnostic_version_app_value">0.1.0 (102)</string>
-    <string name="diagnostic_version_forge_value">0.2.6</string>
+    <string name="diagnostic_version_forge_value">0.2.13</string>
     <string name="diagnostic_version_gradle_value">8.11.1</string>
     <string name="diagnostic_modes_section">Installation des modes</string>
     <string name="diagnostic_mode_installed">INSTALLÉ</string>

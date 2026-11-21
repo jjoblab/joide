@@ -1,5 +1,5 @@
 // Module JVM pur : constructible et testable sans SDK Android.
-// Consomme Forge comme bibliothèque versionnée (ADR-001) : artefacts jo.forge 0.2.6
+// Consomme Forge comme bibliothèque versionnée (ADR-001) : artefacts jo.forge 0.2.13
 // publiés en local (tools/forge-mavenlocal.sh) tant que Forge ne publie pas (F-01).
 plugins { id "java-library" }
 group = "jo.joide"
@@ -11,10 +11,10 @@ tasks.withType(Test).configureEach { useJUnitPlatform() }
 dependencies {
     api project(":workbench-spi")
     api project(":core-model")
-    api "jo.forge:api:0.2.6"
-    api "jo.forge:client:0.2.6"
-    api "jo.forge:setup:0.2.6"
-    testImplementation "jo.forge:engine:0.2.6" // moteur factice (--fake) : intégration JVM
+    api "jo.forge:api:0.2.13"
+    api "jo.forge:client:0.2.13"
+    api "jo.forge:setup:0.2.13"
+    testImplementation "jo.forge:engine:0.2.13" // moteur factice (--fake) : intégration JVM
     testImplementation platform("org.junit:junit-bom:5.11.4")
     testImplementation "org.junit.jupiter:junit-jupiter"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"

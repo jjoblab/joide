@@ -18,7 +18,7 @@ final class ModeCatalogTest {
         assertEquals(6, catalog.components().size());
         assertTrue(catalog.components().stream()
                 .allMatch(c -> c.bytes() > 0));
-        assertEquals("moteur-0.2.6", catalog.components().get(0).id());
+        assertEquals("moteur-0.2.13", catalog.components().get(0).id());
         // Le total ~100 Mo (docs/distribution du dépôt Forge).
         assertTrue(catalog.totalBytes() > 90_000_000L,
                 "total Forge ~100 Mo : " + catalog.humanTotal());

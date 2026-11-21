@@ -40,7 +40,7 @@ public final class ModeCatalog {
     public static ModeCatalog forge() {
         return new ModeCatalog(
                 List.of(
-                        new Component("moteur-0.2.6",
+                        new Component("moteur-0.2.13",
                                 "Cœur du moteur + journal", 39_953_000L),
                         new Component("jre-21",
                                 "Runtime Java (temurin aarch64)", 43_716_000L),

@@ -208,7 +208,7 @@ public class DiagnosticFragment extends Fragment {
                 requireContext().getFilesDir().toPath().resolve("journal/ecroulements.txt"));
         DiagnosticReport diagnostic = new DiagnosticReport(
                 new DiagnosticReport.Versions(
-                        BuildConfig.VERSION_NAME, "0.2.6", "8.11.1",
+                        BuildConfig.VERSION_NAME, "0.2.13", "8.11.1",
                         "céleris, code-lsp, LayoutLib"),
                 List.of(
                         new DiagnosticReport.ModeState("FORGE",
