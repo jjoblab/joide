@@ -228,4 +228,10 @@
     <string name="option_atelier_construire">Construire</string>
     <string name="option_atelier_terminal">Terminal</string>
     <string name="option_atelier_recherche">Rechercher</string>
+    <string name="option_atelier_refaire">Rétablir</string>
+    <string name="option_atelier_symboles">Clavier de symboles</string>
+    <string name="option_atelier_console">Console et problèmes</string>
+    <string name="option_atelier_mode">Changer de mode</string>
+    <string name="option_atelier_masquer_notice">Masquer la notice</string>
+    <string name="dock_etat_pret">Prêt</string>
 </resources>

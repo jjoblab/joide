@@ -46,6 +46,7 @@ public class WorkbenchFragment extends Fragment {
     private static final String ARG_PROJECT = "project";
 
     private WorkbenchFragmentBinding binding;
+    private boolean noticeDismissed;
     private String projectPath;
 
     /** Instance sur un projet (chemin absolu du dossier racine du projet). */
@@ -72,6 +73,7 @@ public class WorkbenchFragment extends Fragment {
 
         if (projectPath != null) {
             setupDrawers();
+            setupDrawerTabs();
             setupTopBar();
             setupFilesTree();
             setupTabs();
@@ -87,6 +89,11 @@ public class WorkbenchFragment extends Fragment {
 
     private void setupTopBar() {
         binding.projectTitle.setText(Path.of(projectPath).getFileName().toString());
+        String branch = currentBranch();
+        if (branch != null) {
+            binding.projectSubtitle.setText(branch);
+            binding.projectSubtitle.setVisibility(View.VISIBLE);
+        }
         binding.menuButton.setOnClickListener(v ->
                 binding.drawerLayout.openDrawer(androidx.core.view.GravityCompat.START));
         binding.closeLeft.setOnClickListener(v ->
@@ -98,6 +105,52 @@ public class WorkbenchFragment extends Fragment {
         binding.saveButton.setOnClickListener(v -> toast(editorState));
         binding.undoButton.setOnClickListener(v -> toast(editorState));
         binding.redoButton.setOnClickListener(v -> toast(editorState));
+    }
+
+    /** Bascule la barre de symboles sous l'éditeur (v2 : via le menu ⋯ ou le ⋯ du dock). */
+    private void toggleSymbolBar() {
+        binding.symbolBar.setVisibility(binding.symbolBar.getVisibility()
+                == View.VISIBLE ? View.GONE : View.VISIBLE);
+        if (binding.symbolBar.getChildCount() == 0) {
+            buildSymbolBar();
+        }
+    }
+
+    /** Branche courante lue dans .git/HEAD ; null si le projet n'est pas un dépôt. */
+    private String currentBranch() {
+        try {
+            Path head = Path.of(projectPath, ".git", "HEAD");
+            if (!java.nio.file.Files.isRegularFile(head)) {
+                return null;
+            }
+            String line = java.nio.file.Files.readString(head).trim();
+            String prefix = "ref: refs/heads/";
+            if (line.startsWith(prefix)) {
+                return line.substring(prefix.length());
+            }
+            return line.length() >= 7 ? line.substring(0, 7) : line;
+        } catch (java.io.IOException | RuntimeException e) {
+            return null;
+        }
+    }
+
+    /** Puces du tiroir gauche : Chercher (recherche du dock), Git (écran git). */
+    private void setupDrawerTabs() {
+        binding.drawerTabSearch.setOnClickListener(v -> {
+            binding.drawerLayout.closeDrawer(androidx.core.view.GravityCompat.START);
+            binding.dockSearch.performClick();
+        });
+        binding.drawerTabGit.setOnClickListener(v -> {
+            binding.drawerLayout.closeDrawer(androidx.core.view.GravityCompat.START);
+            jo.joide.app.git.GitFragment git = new jo.joide.app.git.GitFragment();
+            Bundle args = new Bundle();
+            args.putString("project", projectPath);
+            git.setArguments(args);
+            getParentFragmentManager().beginTransaction()
+                    .replace(((ViewGroup) requireView().getParent()).getId(), git)
+                    .addToBackStack(null)
+                    .commit();
+        });
     }
 
     // ---- Tiroirs (gauche : fichiers · droite : agent IA) — ils POUSSENT le contenu --
@@ -112,7 +165,7 @@ public class WorkbenchFragment extends Fragment {
         right.width = Math.min(dip(420), screenWidth - dip(56));
         binding.rightDrawer.setLayoutParams(right);
         ViewGroup.LayoutParams left = binding.leftDrawerPanel.getLayoutParams();
-        left.width = Math.min(dip(320), screenWidth - dip(56));
+        left.width = Math.min(dip(300), screenWidth - dip(56));
         binding.leftDrawerPanel.setLayoutParams(left);
 
         androidx.activity.OnBackPressedCallback closeOnBack =
@@ -179,6 +232,15 @@ public class WorkbenchFragment extends Fragment {
                 binding.terminalButton.performClick();
             } else if (id == R.id.option_recherche) {
                 binding.dockSearch.performClick();
+            } else if (id == R.id.option_console) {
+                dockBehavior.setState(com.google.android.material.bottomsheet
+                        .BottomSheetBehavior.STATE_HALF_EXPANDED);
+            } else if (id == R.id.option_symboles) {
+                toggleSymbolBar();
+            } else if (id == R.id.option_mode) {
+                binding.modeChip.performClick();
+            } else if (id == R.id.option_refaire) {
+                binding.redoButton.performClick();
             }
             return true;
         });
@@ -398,7 +460,7 @@ public class WorkbenchFragment extends Fragment {
         // Problèmes·Journal·Logcat ; Gradle Console·Problèmes·Étapes·Terminal).
         dockBehavior.setState(
                 com.google.android.material.bottomsheet.BottomSheetBehavior
-                        .STATE_HALF_EXPANDED);
+                        .STATE_COLLAPSED);
         dockBehavior.addBottomSheetCallback(new com.google.android.material
                 .bottomsheet.BottomSheetBehavior.BottomSheetCallback() {
             @Override
@@ -437,15 +499,7 @@ public class WorkbenchFragment extends Fragment {
         binding.dockCopy.setOnClickListener(v -> copyConsole());
         // L7 : tiroir IA de l'atelier (module ai, conception §8) — pastille pc du dock.
         binding.aiButton.setOnClickListener(v -> openAiDrawer());
-        binding.dotsButtonDock.setOnClickListener(v -> {
-            // Studio : « clavier : toggle par un bouton ⋯ du dock » — la barre
-            // de symboles beige apparaît/disparaît sous l'éditeur.
-            binding.symbolBar.setVisibility(binding.symbolBar.getVisibility()
-                    == View.VISIBLE ? View.GONE : View.VISIBLE);
-            if (binding.symbolBar.getChildCount() == 0) {
-                buildSymbolBar();
-            }
-        });
+        binding.dotsButtonDock.setOnClickListener(v -> toggleSymbolBar());
         // Onglets du mode actif, Console active (studio : modeEditor, 1er chip ON).
         rebuildDockTabs();
         showDockSection(1);
@@ -756,7 +810,11 @@ public class WorkbenchFragment extends Fragment {
     private void renderModeChrome(WorkMode mode) {
         binding.modeChip.setText(mode == WorkMode.GRADLE
                 ? getString(R.string.mode_gradle_nom) : getString(R.string.mode_forge_nom));
-        binding.modeNotice.setVisibility(View.VISIBLE);
+        binding.modeNoticeBar.setVisibility(noticeDismissed ? View.GONE : View.VISIBLE);
+        binding.noticeClose.setOnClickListener(v -> {
+            noticeDismissed = true;
+            binding.modeNoticeBar.setVisibility(View.GONE);
+        });
         binding.modeNotice.setText(mode == WorkMode.GRADLE
                 ? getString(R.string.atelier_notice_gradle)
                 : getString(R.string.atelier_notice_forge));

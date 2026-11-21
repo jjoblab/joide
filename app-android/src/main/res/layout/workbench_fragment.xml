@@ -48,16 +48,34 @@
                 android:scaleType="centerInside"
                 app:tint="@color/sur_var" />
 
-            <TextView
-                android:id="@+id/project_title"
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:layout_marginStart="6dp"
-                android:singleLine="true"
-                android:ellipsize="end"
-                android:textColor="@color/sur"
-                style="@style/Txt.Sm" />
+                android:layout_marginEnd="6dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/project_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:singleLine="true"
+                    android:ellipsize="end"
+                    android:textColor="@color/sur"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/project_subtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:singleLine="true"
+                    android:ellipsize="end"
+                    android:textColor="@color/sur_var"
+                    android:textSize="11sp"
+                    android:visibility="gone" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/mode_chip"
@@ -94,6 +112,7 @@
             <ImageButton
                 android:id="@+id/redo_button"
                 style="@style/IconBtn"
+                android:visibility="gone"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:contentDescription="@string/atelier_refaire"
@@ -106,10 +125,12 @@
                 style="@style/IconBtn"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
+                android:layout_marginStart="4dp"
+                android:background="@drawable/fond_run_bouton"
                 android:contentDescription="@string/atelier_construire"
                 android:src="@drawable/ic_play"
                 android:scaleType="centerInside"
-                app:tint="@color/sur_var" />
+                app:tint="@color/sur_conteneur_primaire" />
 
             <ImageButton
                 android:id="@+id/dots_button"
@@ -122,25 +143,46 @@
                 app:tint="@color/sur_var" />
         </LinearLayout>
 
-        <!-- Notice de mode (studio : bandeau sous la barre en mode Gradle) -->
-        <TextView
-            android:id="@+id/mode_notice"
+        <!-- Notice de mode (v2 : bandeau sc2 masquable) -->
+        <LinearLayout
+            android:id="@+id/mode_notice_bar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/sc_low"
+            android:orientation="horizontal"
+            android:gravity="top"
+            android:background="@color/sc2"
             android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp"
-            android:visibility="gone"
-            style="@style/Txt.BodyS" />
+            android:paddingEnd="8dp"
+            android:paddingTop="9dp"
+            android:paddingBottom="9dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/mode_notice"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="@color/sur_sc2"
+                android:textSize="12.5sp"
+                android:lineSpacingMultiplier="1.1" />
+
+            <ImageButton
+                android:id="@+id/notice_close"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:background="@null"
+                android:contentDescription="@string/option_atelier_masquer_notice"
+                android:src="@drawable/ic_x"
+                android:scaleType="centerInside"
+                app:tint="@color/sur_sc2" />
+        </LinearLayout>
 
         <!-- Onglets de fichiers 40dp (studio : 32dp sc2 + point alerte + x) -->
         <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="40dp"
             android:scrollbars="none"
-            android:background="@color/sc"
+            android:background="@color/fond"
             android:fillViewport="true">
 
             <LinearLayout
@@ -161,7 +203,7 @@
             android:gravity="center_vertical"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
-            android:background="@color/sc"
+            android:background="@color/fond"
             android:baselineAligned="false">
 
             <ImageButton
@@ -222,6 +264,11 @@
                     android:scaleType="centerInside"
                     app:tint="@color/sur_var" />
             </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/contour_var" />
         </LinearLayout>
 
         <!-- Zone code (studio : sc_lowest, mono 12.5, lignes numérotées ; céleris L5) -->
@@ -271,18 +318,17 @@
                 android:layout_height="5dp"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="8dp"
-                android:layout_marginBottom="2dp"
+                android:layout_marginBottom="7dp"
                 android:background="@drawable/fond_handle" />
 
             <!-- Barre du dock 52dp (studio : recherche, terminal, spark pc, dots badge 3, check ok) -->
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="52dp"
+                android:layout_height="40dp"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
-                android:paddingBottom="6dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
                 android:baselineAligned="false">
 
                 <ImageButton
@@ -309,6 +355,22 @@
                     android:layout_width="0dp"
                     android:layout_height="1dp"
                     android:layout_weight="1" />
+
+                <TextView
+                    android:id="@+id/dock_build_state"
+                    android:layout_width="wrap_content"
+                    android:layout_height="30dp"
+                    android:gravity="center"
+                    android:background="@drawable/fond_pill_ok"
+                    android:drawableStart="@drawable/ic_check"
+                    android:drawablePadding="6dp"
+                    android:drawableTint="@color/ok"
+                    android:paddingStart="9dp"
+                    android:paddingEnd="12dp"
+                    android:text="@string/dock_etat_pret"
+                    android:textColor="@color/ok"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
 
                 <ImageButton
                     android:id="@+id/ai_button"
@@ -347,16 +409,6 @@
                         android:textSize="9.5sp"
                         android:textStyle="bold" />
                 </FrameLayout>
-
-                <ImageButton
-                    android:id="@+id/dock_build_state"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:background="@drawable/fond_pill_ok"
-                    android:contentDescription="@string/atelier_construire"
-                    android:src="@drawable/ic_check"
-                    android:scaleType="centerInside"
-                    app:tint="@color/ok" />
             </LinearLayout>
 
             <!-- Corps du dock (sections : pills d'état + onglets du mode + contenus) -->
@@ -595,6 +647,18 @@
                 android:layout_marginStart="6dp"
                 android:gravity="center"
                 android:text="@string/atelier_structure"
+                android:textColor="@color/sur"
+                android:textSize="@dimen/chip_txt"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/drawer_tab_git"
+                style="@style/Chip"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_marginStart="6dp"
+                android:gravity="center"
+                android:text="@string/git_title"
                 android:textColor="@color/sur"
                 android:textSize="@dimen/chip_txt"
                 android:textStyle="bold" />
