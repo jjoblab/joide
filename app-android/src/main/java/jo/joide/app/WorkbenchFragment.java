@@ -123,7 +123,8 @@ public class WorkbenchFragment extends Fragment {
             if (!java.nio.file.Files.isRegularFile(head)) {
                 return null;
             }
-            String line = java.nio.file.Files.readString(head).trim();
+            String line = new String(java.nio.file.Files.readAllBytes(head),
+                    java.nio.charset.StandardCharsets.UTF_8).trim();
             String prefix = "ref: refs/heads/";
             if (line.startsWith(prefix)) {
                 return line.substring(prefix.length());
