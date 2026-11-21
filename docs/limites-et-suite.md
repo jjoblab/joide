@@ -135,13 +135,49 @@
   sélection multiple (maquette), le geste de glisser natif reste possible
   en suite (Lot 8).
 
-### Non fait (lots 4 à 8) — raisons
-- **Lot 4** (onglet Chercher) : `core-search` (regex, mot entier, portée,
-  globs, flux annulable), remplacement avec aperçu et annulation,
-  « aller au fichier » flou — non commencé, prochaine étape.
-- Lots 5-8 : structure (`core-outline`), `core-git` robuste, onglet Git
-  dans le tiroir, réglages/robustesse — dans l'ordre après le Lot 4
-  (aperçu validé : `docs/mockups/tiroir-gauche.html`).
+- **Lot 4** (`2ba6c9a` + `2818a63`) : module `core-search` (11 tests) —
+  `ProjectSearch` (littéral protégé ou regex, casse, mot entier, portée,
+  globs, borné, annulable, binaires sautés, flux poussé au fur et à
+  mesure), `Replacer` (aperçu cochable, groupes $0-$9, application atomique
+  bas vers haut, instantané d'annulation), `FileFinder` (flou « mjav » →
+  Main.java, récents d'abord). UI : modes Chercher · Aller au fichier,
+  bascules Aa · W · .*, portée réelle en menu, compteur en direct + Stop
+  (génération par frappe), résultats groupés repliables, appui →
+  **openFileAt** (occurrence sélectionnée dans la brique éditeur) ;
+  remplacement : aperçu cochable → confirmation aux nombres exacts →
+  application + Snackbar « Annuler » ; le bouton de recherche du dock
+  ouvre l'onglet (finis les toasts).
+- **Lot 5** (`0a2b40d`) : module `core-outline` (4 tests) — plans Java
+  (types, membres, visibilité, imports repliés, tolérant au code
+  incomplet), XML (éléments + android:id), Markdown (titres), JSON
+  (clés). UI : plan du fichier **actif** reconstruit au changement de
+  tampon (suivi local 700 ms, hors fil UI), **suivi du curseur** (symbole
+  courant en évidence via WorkbenchHost.cursorOffset), tri Position/A→Z,
+  filtre rapide, saut à la ligne ; états honnêtes (rien d'ouvert,
+  langage non pris en charge, plan indisponible).
+
+### Non fait (lots 6 à 8) — raisons
+- **Lot 6** (`core-git` robuste : statut exact indexé/non indexé/conflits,
+  diff indexé et non indexé, branches, fetch/pull/push authentifiés, stash,
+  historique + graphe, cherry-pick/revert/reset, résolution de conflits,
+  .gitignore, init) : non commencé — le budget de la session a servi les
+  lots 2-5 (chacun livré complet, testé, CI verte). Point d'entrée :
+  étendre `GitService` (JGit) en gardant pur JVM + tests, l'écran Git
+  actuel et le bus GitStateChanged existent déjà.
+- **Lot 7** (onglet Git **dans le tiroir** : Changements/Branches/
+  Historique/Plus, zone de commit collée en bas, visionneuse de diff
+  partagée) : dépend du Lot 6 ; l'écran Git plein écran reste en place
+  (chip Git du tiroir, comportement Lot 0).
+- **Lot 8** (réglages « Explorateur et Git » + matrice de câblage en CI,
+  accessibilité, performance 20 000 fichiers, robustesse) : dépend des
+  lots 6-7 ; le glisser-déposer natif (remplacé par « Déplacer vers… »)
+  s'y ajoute.
+- Comment continuer : `cd /home/z/my-project/joide && git pull` ; JDK 17
+  (`/home/z/my-project/tools/jdk17`), SDK Android
+  (`/home/z/my-project/tools/android-sdk`), forge en mavenLocal
+  (`tools/forge-mavenlocal.sh /home/z/my-project/forge 0.2.13`), tests
+  locaux `JOIDE_SKIP_ANDROID=1 ./gradlew test` + `:app-android:assembleDebug`.
+  L'aperçu validé reste `docs/mockups/tiroir-gauche.html`.
 
 ## Comment continuer
 1. `cd /home/z/my-project/joide && git pull` — tout est poussé sur `main`.
