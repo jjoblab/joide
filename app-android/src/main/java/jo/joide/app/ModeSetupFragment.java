@@ -28,7 +28,8 @@ public class ModeSetupFragment extends Fragment {
     private WorkMode provisionalSelection;
 
     /** Fichier du choix de mode propre à ce contexte (stockage privé de l'application). */
-    static Path preferencesFile(Context context) {
+    /** Fichier des préférences de mode (partagé avec les paramètres L8 : ModeManager). */
+    public static Path preferencesFile(Context context) {
         return context.getFilesDir().toPath().resolve("modes.properties");
     }
 
