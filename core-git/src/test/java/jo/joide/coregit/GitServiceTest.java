@@ -19,7 +19,8 @@ final class GitServiceTest {
 
     @Test
     void unDepotNeufEstOuvertEtVide(@TempDir Path dir) throws IOException, GitAPIException {
-        try (var git = org.eclipse.jgit.api.Git.init().setDirectory(dir.toFile()).call()) {
+        try (var git = org.eclipse.jgit.api.Git.init().setDirectory(dir.toFile())
+                .setInitialBranch("main").call()) {
             GitService service = new GitService(dir);
             assertTrue(service.isOpen());
             assertTrue(service.status().isEmpty(), "aucun changement au départ");
@@ -29,7 +30,8 @@ final class GitServiceTest {
 
     @Test
     void modificationVueAuStatutAvecComptes(@TempDir Path dir) throws IOException, GitAPIException {
-        try (var git = org.eclipse.jgit.api.Git.init().setDirectory(dir.toFile()).call()) {
+        try (var git = org.eclipse.jgit.api.Git.init().setDirectory(dir.toFile())
+                .setInitialBranch("main").call()) {
             Path file = dir.resolve("Main.java");
             Files.writeString(file, "class Main {}\n");
             git.add().addFilepattern(".").call();
@@ -48,7 +50,8 @@ final class GitServiceTest {
 
     @Test
     void leDiffColoreLesLignes(@TempDir Path dir) throws IOException, GitAPIException {
-        try (var git = org.eclipse.jgit.api.Git.init().setDirectory(dir.toFile()).call()) {
+        try (var git = org.eclipse.jgit.api.Git.init().setDirectory(dir.toFile())
+                .setInitialBranch("main").call()) {
             Path file = dir.resolve("Main.java");
             Files.writeString(file, "a\n");
             git.add().addFilepattern(".").call();
@@ -63,7 +66,8 @@ final class GitServiceTest {
 
     @Test
     void historiqueEtCommitRoulent(@TempDir Path dir) throws IOException, GitAPIException {
-        try (var git = org.eclipse.jgit.api.Git.init().setDirectory(dir.toFile()).call()) {
+        try (var git = org.eclipse.jgit.api.Git.init().setDirectory(dir.toFile())
+                .setInitialBranch("main").call()) {
             Files.writeString(dir.resolve("a.txt"), "a\n");
             GitService service = new GitService(dir);
             String id = service.commit(List.of(), "premier");
