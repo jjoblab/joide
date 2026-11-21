@@ -59,6 +59,7 @@ include(":build-forge")
 include(":build-gradle-core")
 include(":core-git")
 include(":core-files")
+include(":core-search")
 if (sdkDetecte && !refusAndroid) {
     include(":app-android")
 } else {

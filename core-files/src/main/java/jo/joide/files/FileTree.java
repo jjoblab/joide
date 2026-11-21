@@ -24,7 +24,7 @@ public final class FileTree {
     public static final int DEFAULT_MAX_ENTRIES = 500;
 
     /** Dossiers jamais montrés ni parcourus (générés, VCS, secrets). */
-    static boolean isIgnoredDir(String name) {
+    public static boolean isIgnoredDir(String name) {
         return name.equals(".git") || name.equals(".gradle")
                 || name.equals("build") || name.equals(".idea")
                 || name.equals(".joide") || name.equals("node_modules")
