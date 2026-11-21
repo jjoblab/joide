@@ -57,4 +57,7 @@
     <color name="surface">@color/fond</color>
     <color name="sur_surface">@color/sur</color>
     <color name="sur_surface_attenue">@color/sur_var</color>
+    <!-- Décorations git (Lot 2 tiroir) : modifié = bleu, les autres
+         états réutilisent ok / info / erreur. -->
+    <color name="git_modifie">#FF3B82C4</color>
 </resources>

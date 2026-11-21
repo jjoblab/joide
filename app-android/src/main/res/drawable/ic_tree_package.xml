@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icône arborescence « package » (Lot 2 tiroir, dessin original). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="18dp" android:height="18dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:pathData="M12,2 a10,10 0 1 0 0.01,0 z" android:fillColor="@color/conteneur_tertiaire" />
+    <path android:pathData="M12,7.4 a4.6,4.6 0 1 0 0.01,0 z M12,10.8 a1.2,1.2 0 1 1 -0.01,0 z" android:fillColor="@color/sur_conteneur_tertiaire" android:fillType="evenOdd" />
+    <path android:pathData="M12,10.9 a1.1,1.1 0 1 0 0.01,0 z" android:fillColor="@color/sur_conteneur_tertiaire" />
+</vector>

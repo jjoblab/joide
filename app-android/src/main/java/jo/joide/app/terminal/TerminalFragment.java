@@ -51,7 +51,7 @@ public class TerminalFragment extends Fragment {
         binding.terminalBackButton.setOnClickListener(v ->
                 requireActivity().getSupportFragmentManager().popBackStack());
         binding.terminalTitleText.setText(getString(R.string.terminal_titre_projet,
-                java.nio.file.Path.of(EnvironmentHolder.home()).getFileName().toString()));
+                java.nio.file.Paths.get(EnvironmentHolder.home()).getFileName().toString()));
         binding.terminalPrompt.setText(getString(R.string.terminal_prompt_demo));
 
         if (EnvironmentHolder.installed()) {

@@ -56,4 +56,7 @@
     <dimen name="dockbar_hauteur">52dp</dimen>
     <dimen name="kbd_touche_h">36dp</dimen>
     <dimen name="kbd_pleine_h">258dp</dimen>
+    <!-- Arborescence du tiroir (Lot 2) -->
+    <dimen name="tree_indent">16dp</dimen>
+    <dimen name="tree_row_hauteur">40dp</dimen>
 </resources>

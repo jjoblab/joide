@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Rangée d'arborescence du tiroir (Lot 2) : guides d'indentation, chevron
+     animé (dossiers), icône par type (dessins originaux), nom, décorations
+     git (point) et diagnostic (pastille). Fichier actif = fond sc_highest
+     via fond_row_arbre (state_activated). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/tree_row_hauteur"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="6dp"
+    android:paddingEnd="6dp"
+    android:background="@drawable/fond_row_arbre"
+    android:foreground="?android:attr/selectableItemBackground">
+
+    <jo.joide.app.drawer.IndentGuidesView
+        android:id="@+id/tree_guides"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent" />
+
+    <ImageView
+        android:id="@+id/tree_chevron"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:contentDescription="@null"
+        android:src="@drawable/ic_chevd"
+        app:tint="@color/sur_var"
+        android:scaleType="centerInside" />
+
+    <ImageView
+        android:id="@+id/tree_icon"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_marginStart="6dp"
+        android:contentDescription="@null"
+        android:scaleType="fitCenter" />
+
+    <TextView
+        android:id="@+id/tree_name"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="8dp"
+        android:singleLine="true"
+        android:ellipsize="middle"
+        android:textColor="@color/sur"
+        android:textSize="13sp" />
+
+    <ImageView
+        android:id="@+id/tree_git_dot"
+        android:layout_width="8dp"
+        android:layout_height="8dp"
+        android:layout_marginStart="6dp"
+        android:contentDescription="@null"
+        android:scaleType="fitCenter"
+        android:visibility="gone" />
+
+    <ImageView
+        android:id="@+id/tree_problem_dot"
+        android:layout_width="10dp"
+        android:layout_height="10dp"
+        android:layout_marginStart="6dp"
+        android:contentDescription="@null"
+        android:scaleType="fitCenter"
+        android:visibility="gone" />
+</LinearLayout>

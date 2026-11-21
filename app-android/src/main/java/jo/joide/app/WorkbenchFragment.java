@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import jo.joide.app.R;
@@ -100,7 +101,7 @@ public class WorkbenchFragment extends Fragment
     // ---- Top bar (studio : menu ouvre le tiroir gauche, ⋯ honnête) ----------
 
     private void setupTopBar() {
-        binding.projectTitle.setText(Path.of(projectPath).getFileName().toString());
+        binding.projectTitle.setText(Paths.get(projectPath).getFileName().toString());
         String branch = currentBranch();
         if (branch != null) {
             binding.projectSubtitle.setText(branch);
@@ -155,7 +156,7 @@ public class WorkbenchFragment extends Fragment
     /** Branche courante lue dans .git/HEAD ; null si le projet n'est pas un dépôt. */
     private String currentBranch() {
         try {
-            Path head = Path.of(projectPath, ".git", "HEAD");
+            Path head = Paths.get(projectPath, ".git", "HEAD");
             if (!java.nio.file.Files.isRegularFile(head)) {
                 return null;
             }
@@ -234,6 +235,12 @@ public class WorkbenchFragment extends Fragment
     @Override
     public Path activeFile() {
         return activeFile;
+    }
+
+    @NonNull
+    @Override
+    public List<jo.joide.workbench.Diagnostic> diagnostics() {
+        return new ArrayList<>(lastStructuredDiagnostics);
     }
 
     @Override
@@ -411,9 +418,14 @@ public class WorkbenchFragment extends Fragment
     /** Diagnostics du dernier build (« fichier:ligne: message » — Lot 0). */
     private final List<String> lastDiagnostics = new ArrayList<>();
 
+    /** Diagnostics structurés du dernier build (Lot 2 tiroir : décorations
+     *  d'arborescence — pastille erreur/avertissement par fichier). */
+    private final List<jo.joide.workbench.Diagnostic> lastStructuredDiagnostics =
+            new ArrayList<>();
+
     private void setupTabs() {
         // Premier fichier ouvert d'emblée (studio : MainActivity.java actif).
-        try (var stream = Files.walk(Path.of(projectPath))) {
+        try (var stream = Files.walk(Paths.get(projectPath))) {
             stream.filter(Files::isRegularFile)
                     .filter(p -> p.getFileName().toString().endsWith(".java"))
                     .filter(p -> !p.getFileName().toString().startsWith("."))
@@ -425,7 +437,7 @@ public class WorkbenchFragment extends Fragment
                     e.getMessage() != null ? e.getMessage() : ""));
         }
         if (openTabs.isEmpty()) {
-            try (var stream = Files.walk(Path.of(projectPath))) {
+            try (var stream = Files.walk(Paths.get(projectPath))) {
                 stream.filter(Files::isRegularFile).limit(3).forEach(openTabs::add);
             } catch (IOException e) {
                 // arborescence vide : onglets vides, journal honnête déjà écrit.
@@ -440,7 +452,7 @@ public class WorkbenchFragment extends Fragment
         }
         // Fil d'Ariane : chemin relatif du fichier actif (studio : app › src › …).
         binding.breadcrumb.setText(relativize(
-                openTabs.isEmpty() ? Path.of(projectPath) : openTabs.get(0))
+                openTabs.isEmpty() ? Paths.get(projectPath) : openTabs.get(0))
                 .replace('/', '›') + getString(R.string.atelier_fil_point));
     }
 
@@ -809,6 +821,7 @@ public class WorkbenchFragment extends Fragment
     private void runBuild() {
         // Nouveau build : les diagnostics rendus à l'agent repartent de zéro.
         lastDiagnostics.clear();
+        lastStructuredDiagnostics.clear();
         if (activeMode() == WorkMode.GRADLE) {
             runGradleBuild();
         } else {
@@ -866,6 +879,8 @@ public class WorkbenchFragment extends Fragment
                         + (diagnostic.diagnostic().line() > 0
                                 ? ":" + diagnostic.diagnostic().line() : "")
                         + ": " + diagnostic.diagnostic().message());
+                // Lot 2 tiroir : la forme structurée nourrit les décorations.
+                lastStructuredDiagnostics.add(diagnostic.diagnostic());
             } else if (event instanceof BuildEvent.TaskState task) {
                 appendToConsole(task.task() + " : " + task.status());
                 binding.stepsList.addView(stepRow(
@@ -880,6 +895,10 @@ public class WorkbenchFragment extends Fragment
                         : getString(R.string.atelier_build_echoue,
                                 finished.failedTask() != null ? finished.failedTask() : "?"));
                 renderBuildPills(finished);
+                // Lot 2 tiroir : les décorations de l'arbre relisent les
+                // diagnostics (un seul événement par build, pas par diagnostic).
+                workspaceEvents.publish(
+                        new jo.joide.workbench.WorkspaceEvents.DiagnosticsChanged());
                 // Le build achevé pose le dock en half-expanded (studio : le
                 // contenu du dock répond, detent 60%).
                 dockBehavior.setState(com.google.android.material.bottomsheet
@@ -962,7 +981,7 @@ public class WorkbenchFragment extends Fragment
 
         // Saut au fichier depuis la section Problèmes (fiche atelier J2).
         row.setOnClickListener(v -> {
-            Path target = Path.of(projectPath).resolve(diagnostic.file());
+            Path target = Paths.get(projectPath).resolve(diagnostic.file());
             if (Files.isRegularFile(target)) {
                 openFile(target);
             }
@@ -1034,7 +1053,7 @@ public class WorkbenchFragment extends Fragment
 
     private String relativize(Path file) {
         try {
-            return Path.of(projectPath).relativize(file).toString();
+            return Paths.get(projectPath).relativize(file).toString();
         } catch (IllegalArgumentException e) {
             return file.getFileName().toString();
         }

@@ -241,4 +241,20 @@
     <string name="dock_etat_pret">Prêt</string>
     <string name="git_sans_suivi">Aucune branche distante suivie</string>
     <string name="git_sync_bientot">Synchronisation distante : bientôt disponible</string>
+    <!-- Tiroir gauche : arborescence (Lot 2) -->
+    <string name="tiroir_replier_tout">Tout replier</string>
+    <string name="tiroir_deplier_tout">Tout déplier</string>
+    <string name="tiroir_suivre">Suivre le fichier actif</string>
+    <string name="tiroir_actualiser">Actualiser</string>
+    <string name="tiroir_lecture">Lecture de %1$s…</string>
+    <string name="tiroir_lecture_detail">listage paresseux, annulable, hors fil UI</string>
+    <string name="tiroir_erreur_lecture">Lecture impossible : %1$s</string>
+    <string name="tiroir_reessayer">Réessayer</string>
+    <string name="tiroir_dossier_vide">Dossier vide</string>
+    <string name="tiroir_dossier_vide_conseil">créez un premier fichier (＋ Nouveau)</string>
+    <string name="tiroir_projet_vide">Projet vide</string>
+    <string name="tiroir_projet_vide_conseil">créez un premier fichier (＋ Nouveau)</string>
+    <string name="tiroir_listing_tronque">Listing tronqué : plafond de %1$d entrées atteint</string>
+    <string name="tiroir_fichier_secret">Fichier secret : le contenu n\'est jamais affiché</string>
+    <string name="tiroir_actions_lot_suivant">Création de fichiers et corbeille : livrées au Lot 3 de la refonte du tiroir</string>
 </resources>

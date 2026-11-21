@@ -2,6 +2,8 @@ package jo.joide.app.drawer;
 
 import androidx.annotation.Nullable;
 import java.nio.file.Path;
+import java.util.List;
+import jo.joide.workbench.Diagnostic;
 
 /**
  * Contrat tiroir gauche ↔ atelier (Lot 0) : le tiroir ne manipule **jamais**
@@ -20,6 +22,13 @@ public interface WorkbenchHost {
     /** Fichier actif de l'éditeur ; null si aucun. */
     @Nullable
     Path activeFile();
+
+    /**
+     * Diagnostics structurés du dernier build (Lot 2 : décorations de
+     * l'arborescence — pastille erreur/avertissement, héritée par les
+     * dossiers parents).
+     */
+    List<Diagnostic> diagnostics();
 
     /** Ferme le tiroir gauche (contenu poussé : rien n'est perdu). */
     void closeLeftDrawer();

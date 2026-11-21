@@ -63,8 +63,8 @@ public class GitFragment extends Fragment {
             return binding.getRoot();
         }
         binding.gitTitleText.setText(getString(R.string.git_titre_projet,
-                java.nio.file.Path.of(projectPath).getFileName().toString()));
-        git = new GitService(java.nio.file.Path.of(projectPath));
+                java.nio.file.Paths.get(projectPath).getFileName().toString()));
+        git = new GitService(java.nio.file.Paths.get(projectPath));
         if (!git.isOpen()) {
             binding.gitMissingPanel.setVisibility(View.VISIBLE);
             return binding.getRoot();

@@ -42,4 +42,5 @@
     <color name="scrim">#73000000</color>
     <color name="clavier">#232519</color>
     <color name="clavier_touche">#2F3124</color>
+    <color name="git_modifie">#FF3B82C4</color>
 </resources>

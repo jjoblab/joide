@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pastille de diagnostic (Lot 2 tiroir) : erreur/avertissement. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="oval">
+            <size android:width="9dp" android:height="9dp" />
+            <solid android:color="@color/alerte" />
+            <stroke android:width="1.5dp" android:color="@color/sc" />
+        </shape>
+    </item>
+</layer-list>

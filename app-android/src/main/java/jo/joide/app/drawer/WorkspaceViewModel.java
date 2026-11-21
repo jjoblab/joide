@@ -1,18 +1,35 @@
 package jo.joide.app.drawer;
 
 import androidx.lifecycle.ViewModel;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+import jo.joide.files.FileKind;
+import jo.joide.files.FileTree;
 import jo.joide.workbench.WorkspaceEvents;
 
 /**
- * État partagé du tiroir gauche (Lot 0) : chemin du projet — source unique
- * pour les onglets — et bus d'événements de l'espace de travail. Portée :
- * tiroir (survit aux changements d'onglet et à la rotation ; le fragment
- * tiroir vit aussi longtemps que l'atelier qui l'héberge).
+ * État partagé du tiroir gauche : chemin du projet — source unique pour les
+ * onglets — bus d'événements de l'espace de travail, et depuis le Lot 2
+ * l'état de l'arborescence (dossiers ouverts, listings, types affinés).
+ * Portée : tiroir — survit aux changements d'onglet, à la rotation et au
+ * va-et-vient vers l'écran Git (le fragment tiroir vit aussi longtemps que
+ * l'atelier qui l'héberge).
  */
 public class WorkspaceViewModel extends ViewModel {
 
     private String projectPath;
     private WorkspaceEvents events = new WorkspaceEvents();
+
+    /** Dossiers ouverts de l'arbre (chemins relatifs ; « . » = racine). */
+    private final Set<String> expandedDirs = new LinkedHashSet<>();
+
+    /** Listings mis en cache par dossier relatif (invalidés par les événements). */
+    private final Map<String, FileTree.Listing> listingCache = new HashMap<>();
+
+    /** Types affinés par chemin relatif (l'affinage Java lit un en-tête). */
+    private final Map<String, FileKind> kindCache = new HashMap<>();
 
     /** Attache le bus partagé de l'atelier (Lot 8) : un seul chemin de mise à jour. */
     public void attachEvents(WorkspaceEvents shared) {
@@ -36,5 +53,27 @@ public class WorkspaceViewModel extends ViewModel {
     /** Bus d'événements de l'espace de travail (un seul chemin de mise à jour). */
     public WorkspaceEvents events() {
         return events;
+    }
+
+    /** Dossiers ouverts (copie défensive : l'UI écrit via les mutateurs). */
+    public Set<String> expandedDirs() {
+        return expandedDirs;
+    }
+
+    /** Listings en cache (clé : dossier relatif). */
+    public Map<String, FileTree.Listing> listingCache() {
+        return listingCache;
+    }
+
+    /** Types affinés en cache (clé : chemin relatif). */
+    public Map<String, FileKind> kindCache() {
+        return kindCache;
+    }
+
+    /** Oublie tout l'état d'arbre (actualisation complète demandée). */
+    public void resetTreeState() {
+        expandedDirs.clear();
+        listingCache.clear();
+        kindCache.clear();
     }
 }
