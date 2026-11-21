@@ -314,4 +314,35 @@
     <string name="tiroir_module_suffixe">%1$s (%2$s)</string>
     <string name="tiroir_vue_android_scan">Regroupement des modules…</string>
     <string name="tiroir_vue_android_vide">Aucune structure Android (module Gradle) dans ce projet — revenez à la vue Projet</string>
+    <!-- Tiroir gauche : onglet Chercher (Lot 4) -->
+    <string name="tiroir_chercher_mode">Chercher</string>
+    <string name="tiroir_fichier_mode">Aller au fichier</string>
+    <string name="tiroir_rech_indice">Rechercher dans le projet</string>
+    <string name="tiroir_rech_indice_fichier">Aller au fichier</string>
+    <string name="tiroir_rech_casse">Respecter la casse</string>
+    <string name="tiroir_rech_mot">Mot entier</string>
+    <string name="tiroir_rech_regex">Expression régulière</string>
+    <string name="tiroir_rech_portee">Portée : %1$s</string>
+    <string name="tiroir_rech_portee_projet">tout le projet</string>
+    <string name="tiroir_rech_portee_active">dossier du fichier actif</string>
+    <string name="tiroir_rech_stop">Arrêter la recherche</string>
+    <string name="tiroir_rech_en_cours">%1$d · recherche…</string>
+    <string name="tiroir_rech_resultats">%1$d résultats dans %2$d fichiers</string>
+    <string name="tiroir_rech_plafond">Plafond de %1$d résultats atteint — précisez la requête</string>
+    <string name="tiroir_rech_aucun">Aucun résultat</string>
+    <string name="tiroir_rech_initial">Tapez pour chercher dans le projet.</string>
+    <string name="tiroir_rech_initial_detail">Texte, expressions régulières, mot entier ; exclut .git/, build/, les binaires.</string>
+    <string name="tiroir_rech_regex_invalide">Expression régulière invalide</string>
+    <string name="tiroir_rech_remplacer">Remplacer</string>
+    <string name="tiroir_rech_remplacer_indice">Remplacer par…</string>
+    <string name="tiroir_rech_tout_remplacer">Tout remplacer…</string>
+    <string name="tiroir_rech_remplacement_apercu">Aperçu du remplacement</string>
+    <string name="tiroir_rech_remplacer_confirmer">Remplacer %1$d occurrences dans %2$d fichiers ?</string>
+    <string name="tiroir_rech_remplaces">Remplacé : %1$d occurrences dans %2$d fichiers</string>
+    <string name="tiroir_rech_occurrences">%1$d occurrences</string>
+    <string name="tiroir_goto_resultats">%1$d fichiers</string>
+    <string name="tiroir_goto_indice">Correspondance floue, instantanée ; ouverts récents d\'abord.</string>
+    <string name="tiroir_rech_casse_label">Aa</string>
+    <string name="tiroir_rech_mot_label">W</string>
+    <string name="tiroir_rech_regex_label">.*</string>
 </resources>

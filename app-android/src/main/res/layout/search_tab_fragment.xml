@@ -1,36 +1,214 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Onglet Chercher du tiroir gauche (Lot 0) : état « à venir » honnête. -->
+<!-- Onglet Chercher du tiroir gauche (Lot 4) : modes Chercher · Aller au
+     fichier, champ (focus à l'ouverture), bascules Aa (casse) · W (mot
+     entier) · .* (regex), portée en menu, compteur en direct + Stop, ligne
+     Remplacer repliable, résultats groupés par fichier (RecyclerView). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:gravity="center"
-    android:paddingHorizontal="24dp">
+    android:orientation="vertical">
 
-    <ImageView
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:src="@drawable/ic_search"
-        android:importantForAccessibility="no"
-        android:alpha="0.6"
-        app:tint="@color/sur_var" />
-
-    <TextView
-        android:layout_width="wrap_content"
+    <!-- Modes (studio : chips) -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="@string/tiroir_search_a_venir_title"
-        android:textColor="@color/sur"
-        android:textSize="@dimen/txt_med"
-        android:textStyle="bold" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="4dp">
 
-    <TextView
-        android:layout_width="wrap_content"
+        <TextView
+            android:id="@+id/search_mode_text"
+            style="@style/Chip"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:gravity="center"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:text="@string/tiroir_chercher_mode"
+            android:textColor="@color/sur_sc2"
+            android:textSize="11.5sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/search_mode_file"
+            style="@style/Chip"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:layout_marginStart="6dp"
+            android:gravity="center"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:text="@string/tiroir_fichier_mode"
+            android:textColor="@color/sur"
+            android:textSize="11.5sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Champ de recherche + compteur/Stop -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:gravity="center"
-        android:text="@string/tiroir_search_a_venir_body"
-        android:textColor="@color/sur_var"
-        android:textSize="@dimen/txt_body_s" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="10dp"
+        android:paddingStart="10dp"
+        android:paddingEnd="6dp"
+        android:background="@drawable/fond_field">
+
+        <EditText
+            android:id="@+id/search_field"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:inputType="text"
+            android:imeOptions="actionSearch"
+            android:singleLine="true"
+            android:background="@null"
+            android:textColor="@color/sur"
+            android:textColorHint="@color/contour"
+            android:textSize="12.5sp" />
+
+        <TextView
+            android:id="@+id/search_counter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:textColor="@color/primaire"
+            android:textSize="11.5sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <ImageButton
+            android:id="@+id/search_stop"
+            style="@style/IconBtn"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:contentDescription="@string/tiroir_rech_stop"
+            android:src="@drawable/ic_stop"
+            android:scaleType="centerInside"
+            android:visibility="gone"
+            app:tint="@color/erreur" />
+    </LinearLayout>
+
+    <!-- Bascules : Aa · W · .* + portée (menu ancré) -->
+    <LinearLayout
+        android:id="@+id/search_toggles"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="6dp">
+
+        <TextView
+            android:id="@+id/search_case"
+            android:layout_width="30dp"
+            android:layout_height="28dp"
+            android:gravity="center"
+            android:background="@drawable/fond_chip"
+            android:text="@string/tiroir_rech_casse_label"
+            android:textColor="@color/sur"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:contentDescription="@string/tiroir_rech_casse" />
+
+        <TextView
+            android:id="@+id/search_word"
+            android:layout_width="30dp"
+            android:layout_height="28dp"
+            android:layout_marginStart="6dp"
+            android:gravity="center"
+            android:background="@drawable/fond_chip"
+            android:text="@string/tiroir_rech_mot_label"
+            android:textColor="@color/sur"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:contentDescription="@string/tiroir_rech_mot" />
+
+        <TextView
+            android:id="@+id/search_regex"
+            android:layout_width="30dp"
+            android:layout_height="28dp"
+            android:layout_marginStart="6dp"
+            android:gravity="center"
+            android:background="@drawable/fond_chip"
+            android:text="@string/tiroir_rech_regex_label"
+            android:textColor="@color/sur"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:contentDescription="@string/tiroir_rech_regex" />
+
+        <TextView
+            android:id="@+id/search_scope"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:layout_marginStart="6dp"
+            android:gravity="center"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:background="@drawable/fond_chip"
+            android:textColor="@color/sur"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Ligne Remplacer (repliable, mode Chercher seulement) -->
+    <LinearLayout
+        android:id="@+id/search_replace_box"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="10dp"
+        android:layout_marginBottom="6dp"
+        android:paddingStart="10dp"
+        android:paddingEnd="6dp"
+        android:background="@drawable/fond_field"
+        android:visibility="gone">
+
+        <EditText
+            android:id="@+id/search_replace_field"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_weight="1"
+            android:inputType="text"
+            android:singleLine="true"
+            android:background="@null"
+            android:hint="@string/tiroir_rech_remplacer_indice"
+            android:textColor="@color/sur"
+            android:textColorHint="@color/contour"
+            android:textSize="12.5sp" />
+
+        <TextView
+            android:id="@+id/search_replace_go"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:gravity="center"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:background="@drawable/fond_cta"
+            android:text="@string/tiroir_rech_tout_remplacer"
+            android:textColor="@color/sur_primaire"
+            android:textSize="10.5sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Résultats groupés par fichier -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/search_results"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingBottom="10dp"
+        android:clipToPadding="false" />
 </LinearLayout>

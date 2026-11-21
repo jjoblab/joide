@@ -19,6 +19,18 @@ public interface WorkbenchHost {
     /** Ouvre un fichier dans l'éditeur (onglet actif). */
     void openFile(Path file);
 
+    /**
+     * Ouvre un fichier et **sélectionne une occurrence** (Lot 4 : résultat
+     * de recherche). Ligne et colonne 1-based, longueur de la sélection.
+     */
+    void openFileAt(Path file, int line, int column, int length);
+
+    /**
+     * Fichiers récemment ouverts (du plus récent au plus ancien) — Lot 4 :
+     * classement de « aller au fichier ».
+     */
+    List<Path> recentFiles();
+
     /** Fichier actif de l'éditeur ; null si aucun. */
     @Nullable
     Path activeFile();

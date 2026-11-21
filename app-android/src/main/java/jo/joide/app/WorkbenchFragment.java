@@ -250,6 +250,49 @@ public class WorkbenchFragment extends Fragment
         return activeFile;
     }
 
+    @Override
+    public void openFileAt(Path file, int line, int column, int length) {
+        openFile(file);
+        // Sélection de l'occurrence (Lot 4 tiroir : résultats de recherche).
+        // La brique éditeur suit la sélection posée sur la session.
+        if (editor == null || editor.session() == null) {
+            return;
+        }
+        String text = editor.session().text();
+        int offset = offsetOf(text, line, column);
+        int end = Math.min(text.length(),
+                Math.max(offset, offset + Math.max(0, length)));
+        editor.session().setSelection(jo.celeris.core.text.MultiSelection.of(
+                new jo.celeris.core.text.SelRange(offset, end)));
+    }
+
+    /** Décalage absolu d'une position 1-based (borné au texte). */
+    private static int offsetOf(String text, int line, int column) {
+        int offset = 0;
+        int current = 1;
+        while (current < line) {
+            int breakIndex = text.indexOf('\n', offset);
+            if (breakIndex < 0) {
+                return text.length();
+            }
+            offset = breakIndex + 1;
+            current++;
+        }
+        return Math.min(text.length(),
+                offset + Math.max(0, column - 1));
+    }
+
+    @NonNull
+    @Override
+    public List<Path> recentFiles() {
+        // Onglets ouverts, l'actif d'abord (classement « aller au fichier »).
+        List<Path> recents = new ArrayList<>(openTabs);
+        if (activeFile != null && recents.remove(activeFile)) {
+            recents.add(0, activeFile);
+        }
+        return recents;
+    }
+
     @NonNull
     @Override
     public List<jo.joide.workbench.Diagnostic> diagnostics() {
@@ -678,8 +721,15 @@ public class WorkbenchFragment extends Fragment
         binding.dockHandle.setOnClickListener(expand);
         binding.dockBuildState.setOnClickListener(expand);
 
-        binding.dockSearch.setOnClickListener(v ->
-                toast(getString(R.string.atelier_recherche_bientot)));
+        binding.dockSearch.setOnClickListener(v -> {
+            // Lot 4 tiroir : le bouton de recherche ouvre l'onglet Chercher.
+            binding.drawerLayout.openDrawer(androidx.core.view.GravityCompat.START);
+            androidx.fragment.app.Fragment drawer = getChildFragmentManager()
+                    .findFragmentById(R.id.left_drawer_container);
+            if (drawer instanceof jo.joide.app.drawer.LeftDrawerFragment leftDrawer) {
+                leftDrawer.openTab(R.id.drawer_tab_search);
+            }
+        });
         binding.dockCopy.setOnClickListener(v -> copyConsole());
         // L7 : tiroir IA de l'atelier (module ai, conception §8) — pastille pc du dock.
         binding.aiButton.setOnClickListener(v -> openAiDrawer());

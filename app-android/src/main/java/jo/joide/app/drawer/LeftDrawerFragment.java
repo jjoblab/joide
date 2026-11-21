@@ -105,6 +105,17 @@ public final class LeftDrawerFragment extends Fragment {
         transaction.commitNow();
     }
 
+    /**
+     * Ouvre un onglet précis depuis l'atelier (Lot 4 : le bouton de
+     * recherche du dock ouvre « Chercher » — finis les toasts).
+     */
+    public void openTab(int tabId) {
+        if (tabId == R.id.drawer_tab_search || tabId == R.id.drawer_tab_structure
+                || tabId == R.id.drawer_tab_files) {
+            selectTab(tabId);
+        }
+    }
+
     /** Fabrique l'onglet hébergé (Git n'est jamais hébergé au Lot 0). */
     private Fragment fragmentFor(int tabId) {
         if (tabId == R.id.drawer_tab_search) {
