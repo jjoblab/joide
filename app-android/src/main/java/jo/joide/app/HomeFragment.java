@@ -173,6 +173,30 @@ public class HomeFragment extends Fragment {
         body.setOrientation(LinearLayout.VERTICAL);
         int pad = (int) (16 * getResources().getDisplayMetrics().density);
         body.setPadding(pad, pad / 2, pad, 0);
+        // Studio : chips de catégorie au-dessus des champs (Tous/Forge/Gradle/Bibliothèque).
+        LinearLayout chips = new LinearLayout(requireContext());
+        chips.setOrientation(LinearLayout.HORIZONTAL);
+        int[] categories = {R.string.creation_categorie_tous,
+                R.string.creation_categorie_forge,
+                R.string.creation_categorie_gradle,
+                R.string.creation_categorie_bibliotheque};
+        for (int i = 0; i < categories.length; i++) {
+            TextView chip = new TextView(requireContext());
+            chip.setText(getString(categories[i]));
+            chip.setTextAppearance(requireContext(),
+                    com.google.android.material.R.style.TextAppearance_Material3_LabelLarge);
+            int chipPad = (int) (10 * getResources().getDisplayMetrics().density);
+            chip.setPadding(chipPad, chipPad / 3, chipPad, chipPad / 3);
+            if (i == 0) {
+                chip.setBackgroundColor(0xFFE8DEF8); // conteneur tonal (sélection).
+            }
+            chips.addView(chip, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT));
+            ((LinearLayout.LayoutParams) chip.getLayoutParams())
+                    .setMargins(0, 0, chipPad, 0);
+        }
+        body.addView(chips);
         final android.widget.EditText nameField = new android.widget.EditText(requireContext());
         nameField.setHint(getString(R.string.creation_modele_hint));
         body.addView(nameField);

@@ -142,4 +142,8 @@
     <string name="atelier_editeur_brique">Éditeur : commande portée par la brique céleris (câblage L5)</string>
     <string name="atelier_annuler">Annuler la saisie</string>
     <string name="atelier_refaire">Refaire</string>
+    <string name="creation_categorie_tous">Tous</string>
+    <string name="creation_categorie_forge">Forge</string>
+    <string name="creation_categorie_gradle">Gradle</string>
+    <string name="creation_categorie_bibliotheque">Bibliothèque</string>
 </resources>

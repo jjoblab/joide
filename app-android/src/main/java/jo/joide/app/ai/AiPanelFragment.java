@@ -36,6 +36,7 @@ public final class AiPanelFragment extends Fragment {
     private ScrollView conversationScroll;
     private android.widget.EditText input;
     private Button sendButton;
+    private String lastQuestion;
     private PermissionGate gate;
 
     @Nullable
@@ -84,6 +85,7 @@ public final class AiPanelFragment extends Fragment {
         if (message.isBlank()) {
             return;
         }
+        lastQuestion = message;
         appendBubble(message, BubbleKind.USER);
         thinkingBubble();
 
@@ -133,7 +135,10 @@ public final class AiPanelFragment extends Fragment {
             endThinking();
         } else if (event instanceof AgentLoop.LoopEvent.TurnFailed failure) {
             endThinking();
-            appendBubble(failure.message(), BubbleKind.ERROR);
+            // Studio : l'échec de tour rend la carte 401 (clé rejetée, actions).
+            String reason = failure.message() != null && failure.message().contains("401")
+                    ? failure.message() : getString(R.string.ia_erreur_401);
+            appendBubble(reason, BubbleKind.ERROR);
         }
     }
 
@@ -167,11 +172,51 @@ public final class AiPanelFragment extends Fragment {
     /** Pose une bulle dans la conversation (l'utilisateur à droite, le reste à gauche). */
     private void appendBubble(String text, BubbleKind kind) {
         endThinking();
+        int pad = (int) (10 * getResources().getDisplayMetrics().density);
+        if (kind == BubbleKind.ERROR) {
+            // Studio : carte d'erreur avec titre + actions Réessayer / Ouvrir Paramètres.
+            LinearLayout card = new LinearLayout(requireContext());
+            card.setOrientation(LinearLayout.VERTICAL);
+            card.setPadding(pad * 2, pad, pad * 2, pad);
+            TextView title = new TextView(requireContext());
+            title.setText(getString(R.string.ia_erreur_titre));
+            title.setTextAppearance(requireContext(),
+                    com.google.android.material.R.style.TextAppearance_Material3_TitleSmall);
+            card.addView(title);
+            TextView detail = new TextView(requireContext());
+            detail.setText(text);
+            detail.setTextAppearance(requireContext(),
+                    com.google.android.material.R.style.TextAppearance_Material3_BodySmall);
+            card.addView(detail);
+            LinearLayout actions = new LinearLayout(requireContext());
+            actions.setOrientation(LinearLayout.HORIZONTAL);
+            Button retry = new Button(requireContext());
+            retry.setText(getString(R.string.ia_erreur_reessayer));
+            retry.setOnClickListener(v -> {
+                conversationList.removeView(card);
+                ask(lastQuestion);
+            });
+            actions.addView(retry, new LinearLayout.LayoutParams(0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            Button open = new Button(requireContext());
+            open.setText(getString(R.string.ia_erreur_parametres));
+            open.setOnClickListener(v ->
+                    getParentFragmentManager().beginTransaction()
+                            .replace(((ViewGroup) requireView().getParent()).getId(),
+                                    new jo.joide.app.settings.SettingsFragment())
+                            .addToBackStack(null)
+                            .commit());
+            actions.addView(open, new LinearLayout.LayoutParams(0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            card.addView(actions);
+            conversationList.addView(card);
+            conversationScroll.post(() -> conversationScroll.fullScroll(View.FOCUS_DOWN));
+            return;
+        }
         TextView bubble = new TextView(requireContext());
         bubble.setText(text);
         bubble.setTextAppearance(requireContext(),
                 com.google.android.material.R.style.TextAppearance_Material3_BodyMedium);
-        int pad = (int) (10 * getResources().getDisplayMetrics().density);
         bubble.setPadding(pad * 2, pad, pad * 2, pad);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
