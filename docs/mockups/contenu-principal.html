@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JoIDE — aperçu du contenu principal (zone éditeur)</title>
+<!--
+  Aperçu autonome du contenu principal de l'atelier (zone éditeur), avec les
+  VRAIS jetons de colors.xml (clair + sombre), même esprit que
+  mockups/tiroir-gauche.html. Les contenus (code, onglets, console) sont des
+  EXEMPLES D'ILLUSTRATION : aucune donnée d'exemple ne réapparaîtra dans
+  l'application. Structure réelle du WorkbenchFragment : barre d'outils,
+  onglets de fichiers, fil d'Ariane + segments Code/Aperçu, zone d'édition,
+  barre de symboles, dock en feuille du bas (voir bottom-sheet.html).
+  Icônes et dessins originaux uniquement.
+-->
+<style>
+:root{
+  --fond:#FBFAED; --sc-lowest:#FFFFFF; --sc-low:#F5F4E7; --sc:#EFEEE2;
+  --sc-high:#EAE9DC; --sc-highest:#E4E3D7;
+  --sur:#1B1C15; --sur-var:#45483A; --contour:#767966; --contour-var:#C6C9B2;
+  --primaire:#465700; --sur-primaire:#FFFFFF; --conteneur-primaire:#C7EE45; --sur-conteneur-primaire:#273300;
+  --sc2:#DEE5C3; --sur-sc2:#2A3119;
+  --tertiaire:#6C3E85; --conteneur-tertiaire:#F2D9FF; --sur-conteneur-tertiaire:#3E2457;
+  --erreur:#8F4C38; --conteneur-erreur:#FFDBD1; --sur-conteneur-erreur:#5B1A0B;
+  --ok:#29A847; --alerte:#D98300; --info:#2399B8;
+  --ok-soft:rgba(41,168,71,.16); --err-soft:rgba(143,76,56,.14); --warn-soft:rgba(217,131,0,.15); --info-soft:rgba(35,153,184,.14);
+  --code-bg:#14160E; --code-sur:#E7E7DA; --code-ligne:#23261A;
+  --mot-cle:#CDF14A; --chaine:#7ED99A; --comment:#90937E; --nombre:#DEB8F5; --type:#5AC8E0;
+}
+[data-theme="dark"]{
+  --fond:#12140C; --sc-lowest:#0C0F07; --sc-low:#1A1C14; --sc:#1F2118;
+  --sc-high:#292B22; --sc-highest:#34362C;
+  --sur:#E3E3D6; --sur-var:#BDC2A9; --contour:#90937E; --contour-var:#42453A;
+  --primaire:#CDF14A; --sur-primaire:#1B2400; --conteneur-primaire:#344200; --sur-conteneur-primaire:#E4FF74;
+  --sc2:#424937; --sur-sc2:#D8E0BE;
+  --tertiaire:#DEB8F5; --conteneur-tertiaire:#4B2B64; --sur-conteneur-tertiaire:#F2D9FF;
+  --erreur:#FFB4A2; --conteneur-erreur:#723523; --sur-conteneur-erreur:#FFDBD1;
+  --ok:#34D058; --alerte:#FFB340; --info:#5AC8E0;
+  --ok-soft:rgba(52,208,88,.16); --err-soft:rgba(255,180,162,.13); --warn-soft:rgba(255,179,64,.14); --info-soft:rgba(90,200,224,.13);
+  --code-bg:#0C0F07; --code-sur:#E3E3D6; --code-ligne:#1A1C14;
+  --mot-cle:#CDF14A; --chaine:#7ED99A; --comment:#6C6F5C; --nombre:#DEB8F5; --type:#5AC8E0;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,segoe ui,sans-serif;background:var(--fond);color:var(--sur);font-size:14px}
+h1{font-size:22px;margin:0}
+h2{font-size:17px;margin:28px 0 4px}
+h3{font-size:14px;margin:18px 0 6px}
+.sous{color:var(--sur-var);font-size:12.5px;margin:0 0 14px;max-width:880px;line-height:1.55}
+.entete{position:sticky;top:0;z-index:9;display:flex;align-items:center;gap:12px;padding:12px 20px;background:var(--fond);border-bottom:1px solid var(--contour-var)}
+.entete .pastille{width:30px;height:30px;border-radius:50%;background:var(--conteneur-primaire);color:var(--sur-conteneur-primaire);display:flex;align-items:center;justify-content:center;font-weight:700}
+.bascul{margin-left:auto;border:1px solid var(--contour);background:var(--sc);color:var(--sur);border-radius:20px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer}
+.notice{margin:14px 20px;padding:10px 14px;border-radius:12px;background:var(--warn-soft);font-size:12.5px;line-height:1.5}
+main{padding:0 20px 60px}
+.galerie{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:22px;align-items:start}
+figure{margin:0}
+.cadre{display:flex;flex-direction:column;gap:8px}
+figcaption{font-size:12px;color:var(--sur-var);line-height:1.5}
+figcaption b{color:var(--sur)}
+/* ===== Atelier (zone principale) ===== */
+.atelier{width:100%;max-width:380px;border:1px solid var(--contour-var);border-radius:18px;overflow:hidden;background:var(--sc-lowest);display:flex;flex-direction:column}
+/* barre d'outils 52 dp */
+.barre-outils{display:flex;align-items:center;gap:8px;height:52px;padding:0 10px;background:var(--sc);border-bottom:1px solid var(--contour-var)}
+.ibtn{width:34px;height:34px;display:flex;align-items:center;justify-content:center;border:none;background:none;color:var(--sur-var);font-size:15px;cursor:pointer;flex:none}
+.ibtn.plein{color:var(--sur)}
+.titre-projet{min-width:0;flex:1}
+.titre-projet b{font-size:13.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.titre-projet small{color:var(--sur-var);font-size:10.5px;display:block}
+.chip-mode{display:inline-flex;align-items:center;height:26px;padding:0 11px;border-radius:13px;background:var(--sc2);color:var(--sur-sc2);font-size:11px;font-weight:700;white-space:nowrap}
+/* onglets de fichiers 40 dp */
+.onglets{display:flex;align-items:stretch;height:40px;background:var(--sc);border-bottom:1px solid var(--contour-var);overflow-x:auto}
+.onglet{display:flex;align-items:center;gap:7px;padding:0 12px;font-size:12px;color:var(--sur-var);border-right:1px solid var(--contour-var);white-space:nowrap;cursor:pointer}
+.onglet.actif{background:var(--sc-lowest);color:var(--sur);font-weight:700;box-shadow:inset 0 -2px 0 var(--primaire)}
+.onglet .fermer{color:var(--contour);font-size:11px}
+.onglet .modifie{color:var(--alerte);font-weight:800}
+.onglet-plus{display:flex;align-items:center;padding:0 10px;color:var(--sur-var)}
+/* fil d'Ariane + segments */
+.filariane{display:flex;align-items:center;gap:8px;height:34px;padding:0 12px;background:var(--sc-lowest);border-bottom:1px solid var(--contour-var);font-size:11px;color:var(--sur-var)}
+.filariane .sep{color:var(--contour)}
+.segments2{margin-left:auto;display:flex;background:var(--sc-high);border-radius:14px;padding:2px}
+.segments2 span{font-size:10.5px;font-weight:700;color:var(--sur-var);padding:4px 11px;border-radius:12px}
+.segments2 span.on{background:var(--sc2);color:var(--sur-sc2)}
+/* zone d'édition */
+.editeur{flex:1;min-height:250px;background:var(--code-bg);color:var(--code-sur);font-family:ui-monospace,monospace;font-size:11.5px;line-height:1.75;overflow:hidden;display:flex}
+.gouttiere{padding:10px 0;text-align:right;color:var(--comment);user-select:none;min-width:38px;padding-right:10px;border-right:1px solid #26291D}
+.code{padding:10px 12px;flex:1;white-space:pre;overflow:auto}
+.ligne-courante{background:var(--code-ligne);display:inline-block;width:100%}
+.curseur{display:inline-block;width:1.5px;height:1.1em;vertical-align:text-bottom;background:var(--mot-cle);animation:clignote 1.1s steps(1) infinite}
+@keyframes clignote{50%{opacity:0}}
+.mc{color:var(--mot-cle)} .ch{color:var(--chaine)} .cm{color:var(--comment);font-style:italic}
+.nb{color:var(--nombre)} .tp{color:var(--type)}
+.soul-err{border-bottom:1.5px wavy var(--erreur)}
+/* barre de symboles */
+.barre-symboles{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--sc);border-top:1px solid var(--contour-var);font-size:11px;overflow-x:auto}
+.barre-symboles .symb{display:inline-flex;align-items:center;height:24px;padding:0 9px;border-radius:12px;background:var(--sc-high);color:var(--sur);white-space:nowrap}
+.barre-symboles .symb.on{background:var(--sc2);color:var(--sur-sc2);font-weight:700}
+.barre-symboles .chevron{color:var(--contour)}
+/* dock (feuille du bas, état réduit — détail dans bottom-sheet.html) */
+.dock{background:var(--sc);border-top:1px solid var(--contour-var)}
+.poignee{display:flex;justify-content:center;padding:5px 0 2px}
+.poignée-barre{width:34px;height:4px;border-radius:2px;background:var(--contour-var)}
+.dock-barre{display:flex;align-items:center;gap:10px;padding:2px 12px 8px;font-size:12px;color:var(--sur-var)}
+.dock-barre .ibtn{width:28px;height:28px;font-size:13px}
+.dock-barre .état{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--ok)}
+.dock-barre .pastille-ia{margin-left:auto;position:relative}
+.badge{position:absolute;top:-2px;right:-4px;min-width:14px;height:14px;border-radius:7px;background:var(--erreur);color:#fff;font-size:8.5px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 3px}
+/* états honnêtes */
+.vide{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--sur-var);text-align:center;padding:26px 16px;font-size:12px;line-height:1.6;min-height:170px}
+.apercu-cadre{flex:1;background:var(--sc-low);padding:12px;display:flex;align-items:center;justify-content:center}
+.fil{width:82%;border:1.5px dashed var(--contour);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.fil .élément{border:1.5px solid var(--contour-var);border-radius:7px;height:22px;display:flex;align-items:center;justify-content:center;font-size:9.5px;color:var(--sur-var)}
+@media(max-width:420px){.atelier{border-radius:0;border-left:none;border-right:none;max-width:none}}
+</style>
+</head>
+<body>
+<div class="entete">
+  <span class="pastille">▤</span>
+  <h1>Contenu principal — aperçu de la zone éditeur</h1>
+  <button class="bascul" onclick="basculerTheme()" id="bascul">☾ Sombre</button>
+</div>
+<p class="notice">⚠ <b>Aperçu d'illustration</b> — code, onglets et messages sont des <b>exemples de maquette</b> ; dans l'application, tout sera réel (fichiers ouverts, tampons modifiés, console de build). Structure conforme au <code>WorkbenchFragment</code> réel : barre d'outils 52 dp, onglets 40 dp, fil d'Ariane + segments Code/Aperçu, zone d'édition, barre de symboles, dock en feuille du bas (comportement détaillé dans <code>mockups/bottom-sheet.html</code>). Jetons : <code>colors.xml</code> clair + sombre, zone de code sur <code>code_bg</code>. Icônes et dessins originaux.</p>
+
+<main>
+<section>
+  <h2>Plan de la zone (résumé)</h2>
+  <p class="sous">Le contenu principal vit entre le tiroir gauche (voir <code>mockups/tiroir-gauche.html</code>) et le dock du bas. <b>Barre d'outils</b> : menu (ouvre le tiroir), titre du projet + sous-titre, chip de mode (Éditer/Agent), enregistrer · annuler · rétablir · construire · options. <b>Onglets</b> : un par fichier ouvert, actif souligné primaire, point <b>modifié</b> en alerte, fermeture au ✕ (confirmation si modifié). <b>Fil d'Ariane</b> + segments <b>Code / Aperçu</b> (rendu pour XML). <b>Zone d'édition</b> : gouttière de numéros, ligne courante en surbrillance, curseur clignotant, coloration sobre (mots-clés, chaînes, commentaires, nombres, types). <b>Barre de symboles</b> (repliable) : le chemin du symbole courant. États honnêtes : vide, binaire, volumineux.</p>
+  <div class="galerie">
+
+    <figure class="cadre">
+      <div class="atelier">
+        <div class="barre-outils">
+          <button class="ibtn" aria-label="Menu">☰</button>
+          <span class="titre-projet"><b>MonApplication</b><small>main · MainActivity.java</small></span>
+          <span class="chip-mode">✎ Éditer</span>
+          <button class="ibtn" aria-label="Enregistrer">💾</button>
+          <button class="ibtn" aria-label="Annuler">↶</button>
+          <button class="ibtn" aria-label="Rétablir">↷</button>
+          <button class="ibtn plein" aria-label="Construire">▶</button>
+          <button class="ibtn" aria-label="Options">⋮</button>
+        </div>
+        <div class="onglets">
+          <span class="onglet actif">MainActivity.java <span class="modifie">✱</span> <span class="fermer">✕</span></span>
+          <span class="onglet">MainViewModel.java <span class="fermer">✕</span></span>
+          <span class="onglet">strings.xml <span class="fermer">✕</span></span>
+          <span class="onglet-plus">＋</span>
+        </div>
+        <div class="filariane">
+          <span>app</span><span class="sep">‣</span><span>src</span><span class="sep">‣</span><span>main</span><span class="sep">‣</span><span>…</span><span class="sep">‣</span><span>ui</span>
+          <span class="segments2"><span class="on">Code</span><span>Aperçu</span></span>
+        </div>
+        <div class="editeur">
+          <div class="gouttiere">41<br>42<br>43<br>44<br>45<br>46<br>47<br>48<br>49</div>
+          <div class="code"><span class="cm">// Lie les données à la vue — jamais de réflexion.</span>
+<span class="mc">public void</span> <span class="ligne-courante">bind(<span class="tp">Item</span> item) {<span class="curseur"></span></span>
+    label.setText(<span class="tp">Objects</span>.<span class="soul-err">requireNonNull</span>(item.label));
+    badge.setVisibility(item.fait ? <span class="tp">View</span>.<span class="nb">VISIBLE</span>
+                                   : <span class="tp">View</span>.<span class="nb">GONE</span>);
+    racine.setOnClickListener(v -&gt; {
+        <span class="tp">Intent</span> ouvrir = <span class="mc">new</span> <span class="tp">Intent</span>(<span class="ch">"joide.ouvrir"</span>);
+        ouvrir.putExtra(<span class="ch">"id"</span>, item.id);
+        <span class="tp">Toast</span>.makeText(v.getContext(), <span class="ch">"ouvert"</span>);</div>
+        </div>
+        <div class="barre-symboles">
+          <span class="symb">MainActivity</span><span class="chevron">‣</span>
+          <span class="symb on">bind(Item)</span><span class="chevron">›</span>
+          <span class="symb">item</span>
+        </div>
+        <div class="dock">
+          <div class="poignee"><span class="poignée-barre"></span></div>
+          <div class="dock-barre">
+            <button class="ibtn" aria-label="Chercher">⌕</button>
+            <span class="ibtn" aria-label="Terminal">&gt;_</span>
+            <span class="état">▶ build ok · il y a 3 min</span>
+            <span class="pastille-ia"><button class="ibtn" aria-label="Agent IA">✦</button><span class="badge">2</span></span>
+            <button class="ibtn" aria-label="Symboles">⋮</button>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Vue complète</b> — barre d'outils (menu, projet, chip de mode, enregistrer/annuler/rétablir/construire), onglets (actif souligné primaire, ✱ modifié), fil d'Ariane + segments Code/Aperçu, éditeur (gouttière, ligne courante, curseur, coloration sobre, soulignement d'erreur), barre de symboles, dock réduit (voir <b>bottom-sheet.html</b>).</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="atelier">
+        <div class="barre-outils">
+          <button class="ibtn" aria-label="Menu">☰</button>
+          <span class="titre-projet"><b>MonApplication</b><small>main · activity_main.xml</small></span>
+          <span class="chip-mode">✎ Éditer</span>
+          <button class="ibtn" aria-label="Options">⋮</button>
+        </div>
+        <div class="onglets">
+          <span class="onglet">MainActivity.java <span class="fermer">✕</span></span>
+          <span class="onglet actif">activity_main.xml <span class="fermer">✕</span></span>
+        </div>
+        <div class="filariane">
+          <span>res</span><span class="sep">‣</span><span>layout</span>
+          <span class="segments2"><span>Code</span><span class="on">Aperçu</span></span>
+        </div>
+        <div class="apercu-cadre">
+          <div class="fil">
+            <span style="font-size:9.5px;color:var(--sur-var)">LinearLayout · vertical</span>
+            <span class="élément">TextView · @id/titre</span>
+            <span class="élément" style="height:34px">EditText · @id/champ</span>
+            <span class="élément" style="border-color:var(--primaire);color:var(--primaire);font-weight:700">Button · @id/envoyer</span>
+            <span style="font-size:9px;color:var(--contour)">sélection : Button · 22 dp</span>
+          </div>
+        </div>
+        <div class="dock">
+          <div class="poignee"><span class="poignée-barre"></span></div>
+          <div class="dock-barre"><span class="ibtn">&gt;_</span><span class="état" style="color:var(--sur-var)">forge console</span><button class="ibtn" style="margin-left:auto">✦</button></div>
+        </div>
+      </div>
+      <figcaption><b>Segment Aperçu (XML)</b> — les layouts se rendent en filaire : éléments avec <code>android:id</code>, sélection synchronisée avec le code (appui → retourne au Code, curseur sur la ligne de l'élément). Les autres types de fichier gardent l'Aperçu discret (« pas d'aperçu pour ce type »), jamais un panneau figé.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="atelier">
+        <div class="barre-outils">
+          <button class="ibtn">☰</button>
+          <span class="titre-projet"><b>MonApplication</b><small>main</small></span>
+          <span class="chip-mode">✎ Éditer</span>
+        </div>
+        <div class="onglets">
+          <span class="onglet actif">icône.png <span class="fermer">✕</span></span>
+          <span class="onglet">MainViewModel.java <span class="fermer">✕</span></span>
+        </div>
+        <div class="filariane"><span>res</span><span class="sep">‣</span><span>drawable</span><span class="segments2"><span class="on">Code</span><span>Aperçu</span></span></div>
+        <div class="vide">
+          <span style="font-size:22px">▯</span><b>Fichier binaire — non textuel.</b>
+          <small>icône.png · 4,2 Kio · PNG 48×48. L'édition se fait via l'onglet Aperçu (image), pas en texte.</small>
+        </div>
+        <div class="dock">
+          <div class="poignee"><span class="poignée-barre"></span></div>
+          <div class="dock-barre"><span class="ibtn">&gt;_</span><span class="état" style="color:var(--sur-var)">forge console</span></div>
+        </div>
+      </div>
+      <figcaption><b>États honnêtes</b> — binaire (dit le type et la taille, propose l'Aperçu), fichier vide (« ouvrez-en un depuis l'arbre »), fichier volumineux (lecture bornée, le compte annoncé). Jamais de panneau blanc muet.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="atelier">
+        <div class="barre-outils">
+          <button class="ibtn">☰</button>
+          <span class="titre-projet"><b>MonApplication</b><small>main · MainActivity.java</small></span>
+          <span class="chip-mode">✎ Éditer</span>
+          <button class="ibtn">💾</button><button class="ibtn">↶</button><button class="ibtn">↷</button>
+        </div>
+        <div class="onglets">
+          <span class="onglet actif">MainActivity.java <span class="modifie">✱</span> <span class="fermer">✕</span></span>
+        </div>
+        <div class="filariane"><span>…</span><span class="segments2"><span class="on">Code</span><span>Aperçu</span></span></div>
+        <div class="editeur" style="min-height:170px">
+          <div class="gouttiere">44<br>45<br>46<br>47<br>48</div>
+          <div class="code">    <span class="tp">Intent</span> ouvrir = <span class="mc">new</span> <span class="tp">Intent</span>(<span class="ch">"joide.ouvrir"</span>);<span class="curseur"></span>
+}</div>
+        </div>
+        <div style="background:var(--sc-low);border-top:1px solid var(--contour-var);padding:26px 12px;text-align:center;color:var(--contour);font-size:10.5px">⌨ clavier logiciel — la zone d'édition reste visible au-dessus ; le dock se replie sous le clavier</div>
+        <div class="dock">
+          <div class="poignee"><span class="poignée-barre"></span></div>
+          <div class="dock-barre"><span class="ibtn">⌕</span><span class="ibtn">&gt;_</span><span class="état">▶ build ok</span><button class="ibtn" style="margin-left:auto">✦</button></div>
+        </div>
+      </div>
+      <figcaption><b>Clavier ouvert</b> — l'éditeur garde le focus visible (ajustements de fenêtre), la barre de symboles se replie, le dock passe en réduit. Le ✱ de l'onglet suit le tampon réel : enregistrer l'éteint, fermer un onglet modifié demande confirmation (Enregistrer / Ignorer / Annuler).</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section>
+  <h2>Règles de la zone (résumé)</h2>
+  <p class="sous"><b>Onglets</b> : appui → fichier actif ; ✕ → fermeture (confirmation si modifié, jamais de perte silencieuse) ; appui long → Fermer · Fermer les autres · Copier le chemin. Le tiroir gauche suit le fichier actif (mode Suivre). <b>Édition</b> : annuler/rétablir vivent avec le tampon (désactivés honnêtement quand il n'y a rien à défaire), enregistrement explicite + sauvegarde de sûreté à la suspension. <b>Erreurs</b> : soulignement ondulé, appui → détail en feuille, « aller à la ligne » depuis Problèmes (dock). <b>Barre de symboles</b> : chemin du symbole sous le curseur, appui → saute à la définition (même moteur que l'onglet Structure). <b>Grandes lignes</b> : la gouttière est virtuelle (rendu par fenêtre), la coloration est incrémentale — un fichier de 20 000 lignes se déplace à 60 fps, la lecture des fichiers hors norme reste bornée et dite.</p>
+</section>
+</main>
+<script>function basculerTheme(){var h=document.documentElement,n=h.getAttribute("data-theme")==="dark"?"light":"dark";h.setAttribute("data-theme",n);document.getElementById("bascul").textContent=n==="dark"?"☀ Clair":"☾ Sombre"}</script>
+</body>
+</html>

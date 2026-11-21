@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JoIDE — aperçu du dock (comportement de la feuille du bas)</title>
+<!--
+  Aperçu autonome du dock de l'atelier — le comportement de la feuille du bas
+  (BottomSheetBehavior réel du WorkbenchFragment : réduit → mi-hauteur →
+  plein, cycle par la poignée et la barre, plein calé SOUS la barre d'outils),
+  avec les VRAIS jetons de colors.xml (clair + sombre), même esprit que
+  mockups/tiroir-gauche.html. Console, problèmes et étapes sont des EXEMPLES
+  D'ILLUSTRATION. Icônes et dessins originaux uniquement.
+-->
+<style>
+:root{
+  --fond:#FBFAED; --sc-lowest:#FFFFFF; --sc-low:#F5F4E7; --sc:#EFEEE2;
+  --sc-high:#EAE9DC; --sc-highest:#E4E3D7;
+  --sur:#1B1C15; --sur-var:#45483A; --contour:#767966; --contour-var:#C6C9B2;
+  --primaire:#465700; --sur-primaire:#FFFFFF; --conteneur-primaire:#C7EE45; --sur-conteneur-primaire:#273300;
+  --sc2:#DEE5C3; --sur-sc2:#2A3119;
+  --tertiaire:#6C3E85; --conteneur-tertiaire:#F2D9FF; --sur-conteneur-tertiaire:#3E2457;
+  --erreur:#8F4C38; --conteneur-erreur:#FFDBD1; --sur-conteneur-erreur:#5B1A0B;
+  --ok:#29A847; --alerte:#D98300; --info:#2399B8;
+  --ok-soft:rgba(41,168,71,.16); --err-soft:rgba(143,76,56,.14); --warn-soft:rgba(217,131,0,.15); --info-soft:rgba(35,153,184,.14);
+  --code-bg:#14160E; --code-sur:#E7E7DA;
+}
+[data-theme="dark"]{
+  --fond:#12140C; --sc-lowest:#0C0F07; --sc-low:#1A1C14; --sc:#1F2118;
+  --sc-high:#292B22; --sc-highest:#34362C;
+  --sur:#E3E3D6; --sur-var:#BDC2A9; --contour:#90937E; --contour-var:#42453A;
+  --primaire:#CDF14A; --sur-primaire:#1B2400; --conteneur-primaire:#344200; --sur-conteneur-primaire:#E4FF74;
+  --sc2:#424937; --sur-sc2:#D8E0BE;
+  --tertiaire:#DEB8F5; --conteneur-tertiaire:#4B2B64; --sur-conteneur-tertiaire:#F2D9FF;
+  --erreur:#FFB4A2; --conteneur-erreur:#723523; --sur-conteneur-erreur:#FFDBD1;
+  --ok:#34D058; --alerte:#FFB340; --info:#5AC8E0;
+  --ok-soft:rgba(52,208,88,.16); --err-soft:rgba(255,180,162,.13); --warn-soft:rgba(255,179,64,.14); --info-soft:rgba(90,200,224,.13);
+  --code-bg:#0C0F07; --code-sur:#E3E3D6;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,segoe ui,sans-serif;background:var(--fond);color:var(--sur);font-size:14px}
+h1{font-size:22px;margin:0}
+h2{font-size:17px;margin:28px 0 4px}
+h3{font-size:14px;margin:18px 0 6px}
+.sous{color:var(--sur-var);font-size:12.5px;margin:0 0 14px;max-width:880px;line-height:1.55}
+.entete{position:sticky;top:0;z-index:9;display:flex;align-items:center;gap:12px;padding:12px 20px;background:var(--fond);border-bottom:1px solid var(--contour-var)}
+.entete .pastille{width:30px;height:30px;border-radius:50%;background:var(--conteneur-primaire);color:var(--sur-conteneur-primaire);display:flex;align-items:center;justify-content:center;font-weight:700}
+.bascul{margin-left:auto;border:1px solid var(--contour);background:var(--sc);color:var(--sur);border-radius:20px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer}
+.notice{margin:14px 20px;padding:10px 14px;border-radius:12px;background:var(--warn-soft);font-size:12.5px;line-height:1.5}
+main{padding:0 20px 60px}
+.galerie{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:22px;align-items:start}
+figure{margin:0}
+.cadre{display:flex;flex-direction:column;gap:8px}
+figcaption{font-size:12px;color:var(--sur-var);line-height:1.5}
+figcaption b{color:var(--sur)}
+/* ===== Téléphone ===== */
+.tel{position:relative;width:100%;max-width:380px;height:560px;border:1px solid var(--contour-var);border-radius:18px;overflow:hidden;background:var(--code-bg);display:flex;flex-direction:column}
+.tel .barre-outils{display:flex;align-items:center;gap:8px;height:52px;padding:0 10px;background:var(--sc);border-bottom:1px solid var(--contour-var);flex:none}
+.tel .titre-projet{flex:1;min-width:0}
+.tel .titre-projet b{font-size:13.5px;display:block}
+.tel .titre-projet small{color:var(--sur-var);font-size:10.5px}
+.ibtn{width:34px;height:34px;display:flex;align-items:center;justify-content:center;border:none;background:none;color:var(--sur-var);font-size:15px;cursor:pointer;flex:none}
+/* le code derrière la feuille (décor de l'atelier) */
+.tel .derrière{flex:1;color:var(--code-sur);opacity:.5;font-family:ui-monospace,monospace;font-size:10px;line-height:1.9;padding:10px 14px;overflow:hidden;white-space:pre}
+/* ===== La feuille (dock) ===== */
+.feuille{position:absolute;left:0;right:0;bottom:0;background:var(--sc);border-top:1px solid var(--contour-var);border-radius:16px 16px 0 0;box-shadow:0 -6px 24px rgba(0,0,0,.12);display:flex;flex-direction:column;transition:height .38s cubic-bezier(.25,.8,.25,1);overflow:hidden}
+.poignée-zone{padding:6px 0 2px;display:flex;justify-content:center;cursor:pointer;flex:none}
+.poignée-barre{width:34px;height:4px;border-radius:2px;background:var(--contour-var)}
+.dock-barre{display:flex;align-items:center;gap:10px;padding:2px 12px 8px;font-size:12px;color:var(--sur-var);flex:none}
+.dock-barre .ibtn{width:28px;height:28px;font-size:13px}
+.état{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700}
+.état.ok{color:var(--ok)} .état.err{color:var(--erreur)} .état.warn{color:var(--alerte)}
+.pastille-ia{margin-left:auto;position:relative}
+.badge{position:absolute;top:-2px;right:-4px;min-width:14px;height:14px;border-radius:7px;background:var(--erreur);color:#fff;font-size:8.5px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 3px}
+/* corps de la feuille */
+.feuille-corps{flex:1;min-height:0;display:flex;flex-direction:column;padding:0 12px 12px}
+.onglets-dock{display:flex;gap:6px;flex-wrap:wrap;padding-bottom:6px;flex:none}
+.onglet-dock{display:inline-flex;align-items:center;height:26px;padding:0 11px;border-radius:13px;background:var(--sc-high);color:var(--sur-var);font-size:10.5px;font-weight:700;white-space:nowrap}
+.onglet-dock.on{background:var(--sc2);color:var(--sur-sc2)}
+.contenu-dock{flex:1;min-height:0;overflow-y:auto;background:var(--sc-lowest);border:1px solid var(--contour-var);border-radius:10px;padding:8px 10px;font-family:ui-monospace,monospace;font-size:10.5px;line-height:1.75;color:var(--sur-var)}
+.contenu-dock .ligne-c{white-space:pre-wrap}
+.contenu-dock .t-ok{color:var(--ok)} .contenu-dock .t-err{color:var(--erreur)} .contenu-dock .t-warn{color:var(--alerte)} .contenu-dock .t-info{color:var(--info)}
+.problème{display:flex;align-items:center;gap:8px;padding:5px 2px;font-family:system-ui,sans-serif;font-size:11.5px;color:var(--sur)}
+.problème .point{width:8px;height:8px;border-radius:50%;flex:none}
+.problème small{color:var(--contour);margin-left:auto;font-family:ui-monospace,monospace}
+/* étiquette d'état (démo interactive) */
+.étiquette-état{position:absolute;top:60px;left:50%;transform:translateX(-50%);background:var(--sc-lowest);border:1px solid var(--contour-var);color:var(--sur-var);font-size:10.5px;font-weight:700;border-radius:12px;padding:4px 12px;box-shadow:0 3px 12px rgba(0,0,0,.12);transition:opacity .25s}
+.légende-boutons{display:flex;gap:8px;flex-wrap:wrap}
+.bouton-demo{border:1.5px solid var(--contour);background:none;color:var(--sur);border-radius:16px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer}
+.bouton-demo.on{background:var(--sc2);color:var(--sur-sc2);border-color:var(--sc2)}
+@media(max-width:420px){.tel{border-radius:0;border-left:none;border-right:none;max-width:none}}
+</style>
+</head>
+<body>
+<div class="entete">
+  <span class="pastille">⌄</span>
+  <h1>Dock — comportement de la feuille du bas</h1>
+  <button class="bascul" onclick="basculerTheme()" id="bascul">☾ Sombre</button>
+</div>
+<p class="notice">⚠ <b>Aperçu interactif</b> — cliquez la poignée (ou les boutons) pour parcourir les états réels du <code>BottomSheetBehavior</code> : <b>réduit</b> (barre seule) → <b>mi-hauteur</b> → <b>plein</b> (calé sous la barre d'outils, 126 dp de chrome au-dessus) → retour au réduit. À la main : glissez la feuille — les états intermédiaires s'aimantent au plus proche. La console et les problèmes sont des <b>exemples de maquette</b> ; dans l'application tout sera réel (sorties de build, diagnostics avec position).</p>
+
+<main>
+<section>
+  <h2>1 · Les trois états (démo)</h2>
+  <p class="sous">La feuille vit au bas de l'atelier, sous la zone d'édition. En état réduit, seule la <b>barre</b> reste visible : recherche du projet (ouvre l'onglet Chercher du tiroir), terminal, état du build (appui = déplier), agent IA (tiroir droit) et son badge, symboles. La poignée ET la barre déplient — même geste que le studio ; un build terminé achève l'ouverture.</p>
+  <div class="galerie">
+    <figure class="cadre">
+      <div class="tel" id="demo">
+        <div class="étiquette-état" id="etiquette">RÉDUIT — barre seule</div>
+        <div class="barre-outils">
+          <button class="ibtn">☰</button>
+          <span class="titre-projet"><b>MonApplication</b><small>main</small></span>
+          <span style="font-size:11px;font-weight:700;color:var(--sur-sc2);background:var(--sc2);border-radius:13px;padding:4px 11px">✎ Éditer</span>
+        </div>
+        <div class="derrière">public void bind(Item item) {
+    label.setText(Objects.requireNonNull(
+        item.label));
+    badge.setVisibility(item.fait
+        ? View.VISIBLE : View.GONE);
+    racine.setOnClickListener(v -&gt; {
+        Intent ouvrir = new Intent("joide.ouvrir");
+        ouvrir.putExtra("id", item.id);
+        v.getContext().startActivity(ouvrir);
+    });
+}
+// … la zone d'édition continue derrière
+// la feuille, elle respire quand la
+// feuille se replie.</div>
+        <div class="feuille" id="feuille">
+          <div class="poignée-zone" onclick="cycle()">
+            <span class="poignée-barre"></span>
+          </div>
+          <div class="dock-barre" onclick="cycle()" style="cursor:pointer">
+            <button class="ibtn" aria-label="Chercher">⌕</button>
+            <span class="ibtn" aria-label="Terminal">&gt;_</span>
+            <span class="état ok" id="etat-build">▶ build ok · il y a 3 min</span>
+            <span class="pastille-ia"><button class="ibtn" aria-label="Agent IA">✦</button><span class="badge">2</span></span>
+            <button class="ibtn" aria-label="Symboles">⋮</button>
+          </div>
+          <div class="feuille-corps" id="feuille-corps">
+            <div class="onglets-dock" id="onglets-dock">
+              <span class="onglet-dock on">Forge Console</span>
+              <span class="onglet-dock">Problèmes</span>
+              <span class="onglet-dock">Journal</span>
+              <span class="onglet-dock">Logcat</span>
+            </div>
+            <div class="contenu-dock" id="console">
+              <div class="ligne-c"><span class="t-info">&gt; tâche</span> :app-android:compileDebugJavaWithJavac</div>
+              <div class="ligne-c"><span class="t-ok">✔</span> :core-files:compileJava</div>
+              <div class="ligne-c"><span class="t-ok">✔</span> :core-git:compileJava</div>
+              <div class="ligne-c"><span class="t-ok">✔</span> :app-android:compileDebugJavaWithJavac</div>
+              <div class="ligne-c"><span class="t-ok">✔</span> :app-android:dexBuilderDebug</div>
+              <div class="ligne-c"><span class="t-ok">✔</span> build réussi · 18 s · 59 tâches</div>
+              <div class="ligne-c"><span class="t-info">&gt; conseil</span> : la barre se replie d'un appui sur la poignée.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="légende-boutons" style="margin-top:4px">
+        <button class="bouton-demo on" id="b0" onclick="aller(0)">Réduit</button>
+        <button class="bouton-demo" id="b1" onclick="aller(1)">Mi-hauteur</button>
+        <button class="bouton-demo" id="b2" onclick="aller(2)">Plein</button>
+      </div>
+      <figcaption><b>Démo du comportement</b> — la feuille parcourt les trois états du <code>BottomSheetBehavior</code> réel : réduit (peek de la barre), mi-hauteur (<code>STATE_HALF_EXPANDED</code>), plein (<code>STATE_EXPANDED</code>, calé sous la barre d'outils — 126 dp de chrome au-dessus). Les transitions s'aimantent : un glissement relâché s'arrête sur l'état le plus proche.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tel">
+        <div class="barre-outils"><button class="ibtn">☰</button><span class="titre-projet"><b>MonApplication</b><small>main</small></span></div>
+        <div class="derrière">…
+…</div>
+        <div class="feuille" style="height:378px">
+          <div class="poignée-zone"><span class="poignée-barre"></span></div>
+          <div class="dock-barre">
+            <button class="ibtn">⌕</button><span class="ibtn">&gt;_</span>
+            <span class="état ok">▶ build ok · il y a 3 min</span>
+            <span class="pastille-ia"><button class="ibtn">✦</button><span class="badge">2</span></span>
+            <button class="ibtn">⋮</button>
+          </div>
+          <div class="feuille-corps">
+            <div class="onglets-dock">
+              <span class="onglet-dock">Forge Console</span>
+              <span class="onglet-dock on">Problèmes</span>
+              <span class="onglet-dock">Journal</span>
+              <span class="onglet-dock">Logcat</span>
+            </div>
+            <div class="contenu-dock">
+              <div class="problème"><span class="point" style="background:var(--erreur)"></span>requireNonNull peut renvoyer null ici <small>MainActivity.java:46</small></div>
+              <div class="problème"><span class="point" style="background:var(--erreur)"></span>Cette chaîne n'est pas traduite (values-fr) <small>strings.xml:12</small></div>
+              <div class="problème"><span class="point" style="background:var(--alerte)"></span>Import inutilisé : java.util.Date <small>MainViewModel.java:8</small></div>
+              <div class="problème"><span class="point" style="background:var(--alerte)"></span>build/ ignoré par .gitignore — non versionné <small>—</small></div>
+              <div style="padding:6px 2px;font-family:system-ui;font-size:10.5px;color:var(--contour)">2 erreurs · 2 avertissements — appui : ouvre le fichier à la ligne, l'occurrence sélectionnée</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Onglet Problèmes</b> — diagnostics réels avec position (fichier:ligne), regroupés par gravité, appui → ouvre le fichier <b>et sélectionne l'occurrence</b>. L'état du build dans la barre suit la dernière exécution : ok (vert), en cours (animated), erreur (rouge — la feuille s'ouvre seule à la fin d'un build échoué).</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tel">
+        <div class="barre-outils"><button class="ibtn">☰</button><span class="titre-projet"><b>MonApplication</b><small>main · mode build</small></span></div>
+        <div class="derrière">…
+…</div>
+        <div class="feuille" style="height:240px">
+          <div class="poignée-zone"><span class="poignée-barre"></span></div>
+          <div class="dock-barre">
+            <button class="ibtn">⌕</button><span class="ibtn">&gt;_</span>
+            <span class="état warn">◐ build en cours · étape 3/5</span>
+            <span class="pastille-ia"><button class="ibtn">✦</button><span class="badge">2</span></span>
+            <button class="ibtn">⋮</button>
+          </div>
+          <div class="feuille-corps">
+            <div class="onglets-dock">
+              <span class="onglet-dock">Gradle Console</span>
+              <span class="onglet-dock">Problèmes <span style="opacity:.7">2</span></span>
+              <span class="onglet-dock on">Étapes</span>
+              <span class="onglet-dock">Terminal</span>
+            </div>
+            <div class="contenu-dock">
+              <div class="ligne-c"><span class="t-ok">✔</span> Préparation · 1,2 s</div>
+              <div class="ligne-c"><span class="t-ok">✔</span> Compilation des modules JVM · 6,4 s</div>
+              <div class="ligne-c"><span class="t-info">◐</span> DEX + empaquetage · en cours…</div>
+              <div class="ligne-c" style="color:var(--contour)">○ Installation</div>
+              <div class="ligne-c" style="color:var(--contour)">○ Lancement</div>
+              <div class="ligne-c"><span class="t-info">&gt;</span> la pastille IA compte les suggestions de l'agent (tiroir droit)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Mode build (chip de mode)</b> — les onglets du dock suivent le mode actif : Éditer (Forge Console · Problèmes · Journal · Logcat) ou Build (Gradle Console · Problèmes · <b>Étapes</b> · Terminal). Le bouton ⧉ de la barre copie la console ; le terminal est une vraie entrée/sortie, pas un décor.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section>
+  <h2>2 · Règles du comportement (résumé)</h2>
+  <p class="sous"><b>Cycle</b> : appui sur la poignée ou la barre → réduit → mi-hauteur → plein → réduit (implémentation réelle du <code>WorkbenchFragment</code>). <b>Glissement</b> : la feuille suit le doigt, relâchée elle s'aimante à l'état le plus proche ; depuis le réduit, un petit geste suffit. <b>Plein calé</b> : la feuille s'arrête SOUS la barre d'outils (52 + 40 + 34 dp de chrome) — les onglets et le fil d'Ariane restent atteignables. <b>Build</b> : la fin d'un build échoué ouvre la feuille sur Problèmes ; un build réussi met seulement la barre à jour (jamais de vol de focus). <b>Clavier</b> : la feuille se replie sous le clavier logiciel, la barre revient avec lui. <b>Badge IA</b> : compte les suggestions non lues de l'agent du projet (tiroir droit), s'efface à l'ouverture. Tout est réel : états, compteurs, positions — rien de figé.</p>
+</section>
+</main>
+<script>
+function basculerTheme(){var h=document.documentElement,n=h.getAttribute("data-theme")==="dark"?"light":"dark";h.setAttribute("data-theme",n);document.getElementById("bascul").textContent=n==="dark"?"☀ Clair":"☾ Sombre"}
+var état=0;
+var HAUTEURS=["92px","275px","434px"];
+var LIBELLÉS=["RÉDUIT — barre seule","MI-HAUTEUR — console et problèmes","PLEIN — calé sous la barre d'outils"];
+function appliquer(){
+  document.getElementById("feuille").style.height=HAUTEURS[état];
+  document.getElementById("etiquette").textContent=LIBELLÉS[état];
+  for(var i=0;i<3;i++){document.getElementById("b"+i).classList.toggle("on",i===état);}
+}
+function cycle(){état=(état+1)%3;appliquer();}
+function aller(n){état=n;appliquer();}
+appliquer();
+</script>
+</body>
+</html>

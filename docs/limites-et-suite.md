@@ -182,6 +182,23 @@
   de listing/compte/recherche/diff, délais), accessibilité (descriptions,
   confirmations destructrices, erreurs jamais muettes).
 
+### Passe de fidélité au preview (2026-11-21, `c744bca`)
+Analyse preview ↔ application (`docs/mockups/ecarts-tiroir.md`) puis
+correction : en-tête projet/branche + segments soudés du tiroir, icônes
+originales du preview (⇲ ⋮ ✂ ⤓ ⎇, silhouettes redessinées — jamais de
+glyphe Unicode en UI), barre de sélection conforme (＋ Indexer = stage
+réel), menu contextuel enrichi (.gitignore, Git : Historique), onglet Git
+réécrit sur la structure du preview (sous-navigation Changements·Branches·
+Historique·Plus, chip branche sélecteur, Fetch, « synchronisé il y a »,
+compteurs +/− réels, D barré / ! teal, tout indexer/désindexer, zone de
+commit 0/72 + Amend + Signoff, branches locales/distantes + Fusionner,
+**graphe à voies colorées** + pastilles de refs + pagination, feuille de
+diff à hunks et numéros de ligne, conflits Les deux + Abandonner la
+fusion, carte « Qui êtes-vous ? », init avec .gitignore de départ).
+Deux nouveaux aperçus : `docs/mockups/contenu-principal.html` (zone
+éditeur) et `docs/mockups/bottom-sheet.html` (comportement du dock,
+démo interactive des trois états du BottomSheetBehavior).
+
 ### Écarts assumés (consignés) et suite possible
 - **Glisser-déposer natif** (Lot 3) : remplacé par « Déplacer vers… » —
   l'appui long sert à la sélection multiple et au menu contextuel (choix
