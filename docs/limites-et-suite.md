@@ -1,107 +1,90 @@
-# Limites et suite — JoIDE
+# Limites et suite — refonte IA + tiroir gauche (état au 2026-11-21)
 
-> Ce qui est fait, ce qui reste, les hypothèses retenues, les vérifications qui
-> exigent un appareil réel. Ce document est la règle anti-« TODO silencieux » du
-> cahier des charges §7 : tout manque vit ici.
+> Ce fichier dit exactement ce qui est fait, ce qui ne l'est pas et pourquoi.
+> À mettre à jour à chaque lot livré.
 
-## 1. Ce qui est fait (à la date de mise à jour)
+## Refonte IA (mission prompt-agent-ia-refonte-complete-openrouter.md)
 
-| Élément | État |
-|---|---|
-| Phases 0-2 : analyses, revue, registre de références, inventaire génération 1 (différé) | Fait |
-| Phase 3 : conception, design system, licences, demandes Forge, ADR, fiches d'écrans | Fait |
-| Maquettes HTML des écrans clés (jalon J1) | Fait (`docs/mockups/`, miroir dans le répertoire de téléchargement) |
-| L0 : squelette multi-modules, contrôle des termes, règle de langue, contrôle API 28, règle de dépendances, hooks | Fait |
-| L1 : design system XML, thèmes clair/sombre, composants (carte projet, segments, état vide, strip d'avis, popup ancrée, bottom sheet 4 sections), coquille de navigation | Fait |
-| L2 : assistant des modes (modèle d'états JVM + 4 pages sans dépendance pager), stockage du choix | Fait (rapport `docs/lots/LOT-02.md`) |
-| L3 : Forge consommé **comme bibliothèque versionnée** (mavenLocal du checkout épinglé v0.2.6, ADR-001), traducteur d'événements + intégration avec le **moteur factice réel** en processus séparé, installateur signé (manifeste falsifié refusé, altération → BROKEN), lancement `EngineClient` | Fait (rapport `docs/lots/LOT-03.md` ; `app_process` et canal HTTPS de production = appareil réel) |
-| L4 : détection des projets, accueil câblé (cartes + badge), création depuis modèles buildables, stockage privé | Fait (rapport `docs/lots/LOT-04.md`) |
-| L5 : atelier — éditeur **céleris 2.2.11 intégré** (mavenLocal du checkout, ADR-001 bis), tiroir fichiers, quatre sections, bouton Construire → Console/Problèmes | Fait (J2 logique ; APK en CI, appareil = limites §4 ; rapport `docs/lots/LOT-05.md`) |
-| L6 : mode Gradle — **codeide consulté (consigne)** : terminal = dépendance JitPack termux-emulator/view (Apache-2.0, PAS de fork GPLv3, clavier interne), environnement vérifié par phases avec reprise, build Gradle → Console | Fait (J3 logique ; 8 tests JVM ; APK en CI ; rapport `docs/lots/LOT-06.md`) |
-| CI : build JVM + APK signé + contrôles | Fait (démarrée ; les jobs suivants seront suivis dans les rapports de lots) |
+### Fait (poussé, CI verte à chaque lot)
+- **Lot 0** (`3025f22`) : séparation Assistant/Agent — liste des conversations,
+  suggestions, « Créer un projet depuis cette conversation », assistant SANS
+  outil, puces de contexte réelles via AgentContext.
+- **Lot 1** (`31cdc5d`) : `ai/json/Json` (codec complet), `SseParser` (commentaires,
+  CRLF, UTF-8 coupé), `LlmError` typé + `Secrets` (rédaction), `HttpLlmTransport`
+  réécrit (appels d'outils cumulés par index, raisonnement, usage, vraie
+  finish_reason, erreur en flux, annulation CancellationToken, reprises avant
+  la première sortie), schémas d'outils sérialisés, tests sur serveur HTTP JDK.
+- **Lot 2** (`62f6e7b`) : `ProviderRegistry` — OpenRouter, OpenAI, Gemini
+  (compat vérifiée doc officielle), passerelle personnalisable ; Endpoint
+  (URLs par fournisseur, en-têtes), extras (reasoning au format du
+  fournisseur, routage OpenRouter), `ModelCatalog` (prix/capacités),
+  migration « passerelle »→« custom », suppression de « laboratoire ».
+  **Anthropic différé** : doc officielle inaccessible depuis l'environnement
+  (blocage région) et sources tierces contradictoires — règle « aucun champ
+  non confirmé ». À ajouter après vérification dans sa documentation.
+- **Lot 3** (`1ef465e`) : outils dans `ai/tools/` (un fichier par outil,
+  ToolArgs typé, schémas), `modifier_fichier` par remplacement ciblé,
+  espace de travail durci (évasion, chemins protégés, binaire, taille,
+  dossiers générés), `DiffBuilder` (diff réel à l'approbation),
+  `TurnCheckpoint` (annulation de tour avec aveu des suppressions),
+  détection de boucle, `demander_utilisateur`/`plan`, AGENTS.md borné et
+  caché, contexte volatil réel (branche, fichier actif, problèmes).
+- **Lot 4** (`bb5be47`) : conversation à **double contenu** (transcript +
+  historique exact du modèle), migration v1→v2, empreinte de projet,
+  `AiSessionViewModel` (survit rotation/tiroir/onglets, événements groupés
+  ~24 ms, persistance après chaque tour), liste des conversations de
+  l'agent, commandes /nouveau /annuler /modele /compacter /init.
+- **Lot 5** (`07ab918`) : `MarkdownParser` streaming-safe (propriété de
+  préfixes testée), `ResponseInterpreter` (raisonnement à part, bloc suivi
+  → chips, nature des blocs, nettoyage), rendu en blocs (paragraphes,
+  tableaux, cartes de code avec Copier), **bouton Appliquer** passant par
+  la porte de permission.
 
-## 2. Ce qui reste (les lots et jalons restants)
+### Non fait (avec la raison) — à livrir dans une session suivante
+- **Lot 6** (design chat) : composer extensible multiligne, bouton Stop
+  visible (l'annulation existe côté moteur — `AiSessionViewModel.cancelTurn`
+  — mais le bouton n'est pas posé), jauge de contexte, sélecteur de modèle
+  en bottom sheet, RecyclerView + DiffUtil (le transcript reste LinearLayout),
+  accessibilité TalkBack complète.
+- **Lot 7** (réglages IA) : hub + sous-pages (Fournisseurs, Modèles,
+  Comportement, Permissions, Outils, Utilisation, Données, activation IA),
+  matrice de câblage dans docs/analyse-ia.md + test automatisé. La page
+  actuelle a été recâblée sur le registre réel (chips 4 fournisseurs,
+  modèle saisi, test de connexion pas encore posé).
+- **Lot 8** (intégrations atelier) : ouvrir fichier:ligne depuis le chat,
+  rafraîchissement éditeur/arbre après mutation (l'événementiel existe côté
+  tiroir : `WorkspaceEvents`), « Demander à l'IA » sur la sélection,
+  « Expliquer cette erreur » depuis les Problèmes.
+- **Lot 9** (qualité/docs) : ADR des décisions structurantes (fournisseurs,
+  codec JSON interne, stockage conversations, rendu Markdown maison, modèle
+  de réglages), contrôles automatiques API 28 sur le module `ai` (grep en CI),
+  perf 200 messages.
+- Ouvert mineur : changement de fournisseur en cours de conversation → la
+  session garde l'historique (`rebuildLoop`) mais le bouton n'existe pas
+  encore côté UI ; l'effort est lu globalement, l'épinglage par conversation
+  est archivé (champ `effort`) mais pas encore éditable.
 
-| Lot | Contenu | Jalon |
-|---|---|---|
-| L5 | Suite de l'atelier : LSP (code-lsp — demande B-02), aperçu XML (LayoutLib — accord de licence B-03), barre de symboles/clavier délégué au-dessus du clavier (appareil) | après L7 |
-| L6 | Suite du mode Gradle : installation réelle des composants sur appareil (canal `codeide-packages`), service foreground du terminal, terminal interactif | après L7 |
+## Tiroir gauche (mission prompt-agent-tiroir-gauche-refonte.md)
 
-Consigne du propriétaire (2026-11-20) : à l'étape terminal (L6), consulter aussi
-`jjoblab/codeide` (dépôt de l'écosystème maison) en complément du packaging
-(`codeide-packages`) et des forks de la famille libre — la base de code terminal à
-reprendre sera choisie à ce moment-là.
-| L7 | IA : fournisseurs (laboratoire + passerelle compatible OpenAI, liste vivante avec repli statique), boucle d'agent (2 moitiés de prompt, plafond + tour de clôture, appariement appel/résultat, compactage hystérésis), outils sur port étroit (lectures parallèles / mutations séquentielles), porte de permission unique (3 modes), coffre chiffré + tiroir IA | Fait (12 tests mock verts ; conversation réelle = appareil ; rapport `docs/lots/LOT-07.md`) |
-| L8 | Paramètres IA complets (approbation interactive avec diff dans l'invite), builds par l'agent via le `BuildBackend` (port BuildRunner), journal des écroulements câblé | Fait (24 + 18 tests verts ; approbation interactive, porte unique partagée ; rapport `docs/lots/LOT-08.md`) |
-| L8 | Paramètres, changement/réparation/désinstallation de mode (ModeManager), rapport de diagnostic copiable avec secrets rédigés, journal des écroulements borné | Fait (bascule de mode testée ; rapport copiable ; rapport `docs/lots/LOT-08.md`) |
-| L9 | Qualité : tests étendus, performances, accessibilité, sécurité, publication | **dernier lot (J4)** |
+### Fait
+- **Lot 0** (`ffb36a0`) : extraction sans régression — `LeftDrawerFragment` +
+  onglets, `WorkspaceViewModel`, contrat `WorkbenchHost`, bus
+  `WorkspaceEvents` (workbench-spi, testé), largeur min(320dp, écran−56dp)
+  aux dimens, « Files » → « Fichiers ».
 
-## 3. Hypothèses retenues (faute d'interrogation possible)
+### Non fait (lots 1 à 8) — raisons
+- Lots 1-8 non commencés (moteur de fichiers `core-files`, icônes/guides,
+  UI Fichiers, recherche, structure, `core-git` robuste, onglet Git dans le
+  tiroir, réglages/robustesse) : la session de travail a été consacrée à la
+  refonte IA (lots 0-5) comme l'ordonnait la mission ; l'aperçu validé
+  (`docs/mockups/tiroir-gauche.html`) décrit précisément chaque lot.
 
-0. **Clé du canal manifeste épinglée** dans `ForgeInstaller` (identique à
-   `ClesForge` de Forge — clé publique, pas un secret ; surchargeable par
-   `joide.forge.manifestKey` pour les tests).
-0. **Secrets CI posés** (2026-11-20) : `FORBIDDEN_TERMS` (contrôle des termes
-   actif en CI), `JOIDE_KEYSTORE_B64`/`JOIDE_KEYSTORE_MDP` (keystore PKCS12
-   dédié, signature release stable — mises à jour cumulatives autorisées) ;
-   la CI signe `assembleRelease` sur les étiquettes. Le jeton GitHub ayant
-   circulé en clair dans l'historique du bac à sable : **à révoquer**.
-1. **`targetSdk 28` confirmé** pour l'application entière (ADR-009) : cohérent avec
-   Forge (exécution de binaires téléchargés depuis le stockage privé), assume la
-   distribution hors magasin. Le cahier des charges demandait une confirmation par
-   ADR : faite, avec le plan de sortie (ADR-004).
-2. **AGP 8.7.3 / Gradle 8.11.1** pour l'environnement Gradle **embarqué** (distribué à
-   l'utilisateur du mode Gradle) : dernière combinaison stable ne exigeant pas un JDK
-   plus récent que ce que l'on peut embarquer raisonnablement ; réexaminable à L6.
-3. **Composite build** en attendant la publication Maven de Forge (F-01) : le clone
-   épinglé `v0.2.6` est inclus par `includeBuild` ; la bascule vers une coordonnée
-   Maven est préparée (ADR-001).
-4. **Termux forké dans ce dépôt** plutôt que consommé comme bibliothèque : la GPL de
-   l'application et de l'émulateur est assumée dans le module `build-gradle` isolé
-   (licences.md §1) ; le packaging du propriétaire (`codeide-packages`) fournit le
-   bootstrap à préfixe dédié.
-5. **Les versions des briques** (céleris, code-lsp, LayoutLib) seront épinglées à L5
-   après lecture des versions d'intégration de la génération 1 (autorisée alors, et
-   conforme à la consigne du propriétaire du 2026-11-20).
-6. **Jalons d'arrêt pour validation** : J1 (maquettes) atteignable sans appareil ;
-   J2-J4 exigent un appareil réel — les livraisons associées s'arrêtent à la
-   vérification maximale hors appareil (tests JVM/Robolectric, doubles) et le reste
-   est consigné ci-dessous §4.
-
-## 4. Vérifications qui exigent un appareil réel (règlement transparent)
-
-| Domaine | Ce qui n'est pas vérifiable dans le bac à sable |
-|---|---|
-| Forge sur appareil | Lancement réel du moteur (`app_process`), poignée de main, build réel d'un exemple, installation de l'APK produit par PackageInstaller, comportement du tueur de processus Android 12+ |
-| Terminal | Rendu de l'émulateur, clavier matériel/logiciel, sessions persistantes en arrière-plan, performances du bootstrap sur l'appareil |
-| Gradle embarqué | Daemon en mémoire bornée, temps de premier build, comportement sous pression mémoire |
-| Éditeur/LSP | Performances réelles des briques sur appareil, comportement du clavier avec la barre de symboles |
-| IA | Aucun appel réseau réel effectué dans le bac à sable (les tests utilisent un double de transport) |
-
-Chaque rapport de lot (`docs/lots/`) signale explicitement ce qui n'a pu être vérifié
-que sur appareil (règle du cahier des charges §6).
-
-## 5. Suite possible (au-delà de L9, non engagée)
-
-- **Complétion inline IA** et **génération de commit** : deux absences du produit de
-  référence (REF-125) = deux différenciateurs immédiats ; non planifiés pour ne pas
-  lier la boucle agent à l'éditeur.
-- **Clés de secours** par fournisseur (REF-103) : rejeu automatique sur clé suivante.
-- **MCP** (client + serveur hôte) : extension bidirectionnelle (REF-122) — attendre
-  la stabilisation de L7.
-- **Jeu de couleurs de l'éditeur** éditable/importable (design-system §2) et thème
-  personnalisé.
-- **RTL complet** de l'UI hors éditeur.
-- **Historique du presse-papiers** dans l'atelier (REF-021).
-- **Import/export de projets** par SAF multi-format.
-
-## 6. Dettes connues
-
-- Les valeurs chiffrées du design system (palettes exactes) seront affinées aux
-  retours du jalon J1.
-- `codeide-packages` : le bootstrap minimal existe (aarch64) ; l'assemblage complet
-  (JDK, Gradle, SDK) de L6 est à construire sur cette base.
-- Étape terminal (L6) : consulter `jjoblab/codeide` (consigne du propriétaire) en
-  complément de `codeide-packages`.
-- Le contrôle CI des termes interdits exige le secret `FORBIDDEN_TERMS` (posé par
-  l'API GitHub, jamais versionné) ; voir `docs/` du workflow L0.
+## Comment continuer
+1. `cd /home/z/my-project/joide && git pull` — tout est poussé sur `main`.
+2. Les aperçus validés (`docs/mockups/ia.html`, `tiroir-gauche.html`)
+   restent la référence des écrans à livrer.
+3. Prochaines étapes dans l'ordre : IA Lot 6 → 7 → 8 → 9, puis tiroir 1 → 8.
+4. Outils en place : JDK 17 (`/home/z/my-project/tools/jdk17`), SDK Android
+   (`/home/z/my-project/tools/android-sdk`), forge en mavenLocal
+   (`tools/forge-mavenlocal.sh`), tests locaux
+   `JOIDE_SKIP_ANDROID=1 ./gradlew test` + `:app-android:assembleDebug`.
