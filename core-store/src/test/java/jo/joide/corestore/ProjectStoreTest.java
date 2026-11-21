@@ -65,8 +65,16 @@ class ProjectStoreTest {
     @Test
     void mostRecentProjectFirst() throws Exception {
         ProjectStore store = newStore();
-        ProjectTemplates.standard().instantiate(store, "forge-java", "ancien");
-        ProjectTemplates.standard().instantiate(store, "gradle-app", "recent");
+        java.nio.file.Path ancien = ProjectTemplates.standard()
+                .instantiate(store, "forge-java", "ancien");
+        java.nio.file.Path recent = ProjectTemplates.standard()
+                .instantiate(store, "gradle-app", "recent");
+        // Le tri est par mtime : sur un FS rapide (runner CI) les deux créations
+        // tombent dans la même milliseconde — imposer l'écart explicite.
+        java.nio.file.Files.setLastModifiedTime(
+                ancien, java.nio.file.attribute.FileTime.fromMillis(1_000L));
+        java.nio.file.Files.setLastModifiedTime(
+                recent, java.nio.file.attribute.FileTime.fromMillis(2_000L));
         assertEquals("recent", store.list().get(0).name(), "plus récent en tête");
         assertEquals("ancien", store.list().get(1).name());
     }
