@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JoIDE — aperçu de la refonte du tiroir gauche (Fichiers · Chercher · Structure · Git)</title>
+<!--
+  Aperçu autonome de la refonte du tiroir gauche, avec les VRAIS jetons de
+  colors.xml (clair + sombre), même esprit que mockups/atelier.html.
+  Les contenus (arbres, branches, commits, compteurs) sont des EXEMPLES
+  D'ILLUSTRATION : aucune donnée d'exemple ne réapparaîtra dans l'application.
+  Conventions d'ergonomie référencées : arborescence à la manière d'Android
+  Studio (icônes par type, dossiers compacts), guides d'indentation à la
+  manière de VS Code — icônes et dessins originaux uniquement.
+-->
+<style>
+:root{
+  --fond:#FBFAED; --sc-lowest:#FFFFFF; --sc-low:#F5F4E7; --sc:#EFEEE2;
+  --sc-high:#EAE9DC; --sc-highest:#E4E3D7;
+  --sur:#1B1C15; --sur-var:#45483A; --contour:#767966; --contour-var:#C6C9B2;
+  --primaire:#465700; --sur-primaire:#FFFFFF; --conteneur-primaire:#C7EE45; --sur-conteneur-primaire:#273300;
+  --sc2:#DEE5C3; --sur-sc2:#2A3119;
+  --tertiaire:#6C3E85; --conteneur-tertiaire:#F2D9FF; --sur-conteneur-tertiaire:#3E2457;
+  --erreur:#8F4C38; --conteneur-erreur:#FFDBD1; --sur-conteneur-erreur:#5B1A0B;
+  --ok:#29A847; --alerte:#D98300; --info:#2399B8;
+  --ok-soft:rgba(41,168,71,.16); --err-soft:rgba(143,76,56,.14); --warn-soft:rgba(217,131,0,.15); --info-soft:rgba(35,153,184,.14);
+  --code-bg:#14160E; --code-sur:#E7E7DA;
+}
+[data-theme="dark"]{
+  --fond:#12140C; --sc-lowest:#0C0F07; --sc-low:#1A1C14; --sc:#1F2118;
+  --sc-high:#292B22; --sc-highest:#34362C;
+  --sur:#E3E3D6; --sur-var:#BDC2A9; --contour:#90937E; --contour-var:#42453A;
+  --primaire:#CDF14A; --sur-primaire:#1B2400; --conteneur-primaire:#344200; --sur-conteneur-primaire:#E4FF74;
+  --sc2:#424937; --sur-sc2:#D8E0BE;
+  --tertiaire:#DEB8F5; --conteneur-tertiaire:#4B2B64; --sur-conteneur-tertiaire:#F2D9FF;
+  --erreur:#FFB4A2; --conteneur-erreur:#723523; --sur-conteneur-erreur:#FFDBD1;
+  --ok:#34D058; --alerte:#FFB340; --info:#5AC8E0;
+  --ok-soft:rgba(52,208,88,.16); --err-soft:rgba(255,180,162,.13); --warn-soft:rgba(255,179,64,.14); --info-soft:rgba(90,200,224,.13);
+  --code-bg:#0C0F07; --code-sur:#E3E3D6;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,segoe ui,sans-serif;background:var(--fond);color:var(--sur);font-size:14px}
+h1{font-size:22px;margin:0}
+h2{font-size:17px;margin:28px 0 4px}
+h3{font-size:14px;margin:18px 0 6px}
+.sous{color:var(--sur-var);font-size:12.5px;margin:0 0 14px;max-width:880px;line-height:1.55}
+.entete{position:sticky;top:0;z-index:9;display:flex;align-items:center;gap:12px;padding:12px 20px;background:var(--fond);border-bottom:1px solid var(--contour-var)}
+.entete .pastille{width:30px;height:30px;border-radius:50%;background:var(--conteneur-primaire);color:var(--sur-conteneur-primaire);display:flex;align-items:center;justify-content:center;font-weight:700}
+.bascul{margin-left:auto;border:1px solid var(--contour);background:var(--sc);color:var(--sur);border-radius:20px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer}
+.notice{margin:14px 20px;padding:10px 14px;border-radius:12px;background:var(--warn-soft);font-size:12.5px;line-height:1.5}
+main{padding:0 20px 60px}
+.galerie{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:22px;align-items:start}
+figure{margin:0}
+.cadre{display:flex;flex-direction:column;gap:8px}
+figcaption{font-size:12px;color:var(--sur-var);line-height:1.5}
+figcaption b{color:var(--sur)}
+/* ===== Tiroir (320 dp) ===== */
+.tiroir{width:100%;max-width:320px;border:1px solid var(--contour-var);border-radius:18px;overflow:hidden;background:var(--sc);display:flex;flex-direction:column}
+.tiroir.large{max-width:560px}
+.tete-tiroir{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 10px 6px}
+.tete-tiroir b{font-size:13.5px;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tete-tiroir small{color:var(--sur-var);font-size:11px}
+.tete-tiroir .fin{margin-left:auto;display:flex;gap:2px}
+.ibtn{width:34px;height:34px;display:flex;align-items:center;justify-content:center;border:none;background:none;color:var(--sur-var);font-size:15px;cursor:pointer;flex:none}
+.segments{display:flex;margin:4px 10px 8px;background:var(--sc-high);border-radius:18px;padding:3px}
+.segments span{flex:1;text-align:center;font-size:11.5px;font-weight:700;color:var(--sur-var);padding:6px 0;border-radius:15px;white-space:nowrap}
+.segments span.on{background:var(--sc2);color:var(--sur-sc2)}
+.outils{display:flex;align-items:center;gap:4px;padding:0 10px 8px;flex-wrap:wrap}
+.outils .ibtn{width:30px;height:30px;font-size:13px;border-radius:8px}
+.outils .ibtn.on{background:var(--sc2);color:var(--sur-sc2)}
+.corps-t{flex:1;overflow:hidden;display:flex;flex-direction:column}
+/* ===== Arborescence ===== */
+.arbre{padding:2px 6px 10px;overflow-y:auto;max-height:430px;font-size:12.5px}
+.rangée{position:relative;display:flex;align-items:center;gap:6px;height:34px;padding-right:6px;border-radius:8px;cursor:pointer;white-space:nowrap}
+.rangée:hover{background:var(--sc-high)}
+.rangée.active{background:var(--sc-highest)}
+.rangée.active .nom-r{font-weight:700}
+.rangée .nom-r{overflow:hidden;text-overflow:ellipsis}
+.rangée .fin-r{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--sur-var)}
+/* guides d'indentation : un trait par niveau, aligné sous le chevron */
+.guide{position:absolute;top:0;bottom:0;width:1px;background:var(--contour-var);opacity:.55}
+.guide.actif{background:var(--primaire);opacity:.5;width:2px}
+.chev{width:16px;text-align:center;color:var(--sur-var);font-size:9px;flex:none;transition:transform .15s}
+.chev.fermé{transform:rotate(-90deg)}
+.ico{width:17px;height:17px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex:none}
+.ico.dossier{background:var(--conteneur-primaire);color:var(--sur-conteneur-primaire)}
+.ico.dossier-ouvert{background:var(--conteneur-primaire);color:var(--sur-conteneur-primaire);outline:2px solid var(--conteneur-primaire);outline-offset:-4px}
+.ico.dossier-exclu{background:var(--sc-highest);color:var(--contour)}
+.ico.paquet{background:var(--conteneur-tertiaire);color:var(--sur-conteneur-tertiaire);border-radius:50%}
+.ico.src{background:var(--sc2);color:var(--sur-sc2);border-radius:2px 8px 2px 8px}
+.ico.classe{background:var(--ok-soft);color:var(--ok)}
+.ico.interface{background:var(--info-soft);color:var(--info)}
+.ico.enum{background:var(--warn-soft);color:var(--alerte)}
+.ico.annotation{background:var(--conteneur-tertiaire);color:var(--sur-conteneur-tertiaire)}
+.ico.kotlin{background:var(--info-soft);color:var(--info);border-radius:50% 2px}
+.ico.xml{background:var(--sc-highest);color:var(--alerte)}
+.ico.layout{background:var(--sc-highest);color:var(--ok)}
+.ico.values{background:var(--sc-highest);color:var(--tertiaire)}
+.ico.drawable{background:var(--sc-highest);color:var(--info)}
+.ico.gradle{background:var(--sc2);color:var(--sur-sc2)}
+.ico.gitignore{background:var(--sc-highest);color:var(--contour)}
+.ico.manifest{background:var(--conteneur-erreur);color:var(--sur-conteneur-erreur)}
+.ico.readme{background:var(--sc-highest);color:var(--sur)}
+.ico.image{background:var(--sc-highest);color:var(--info)}
+.ico.test{background:var(--ok-soft);color:var(--ok);outline:1.5px solid var(--ok);outline-offset:-1.5px}
+.ico.inconnu{background:var(--sc-highest);color:var(--sur-var)}
+/* décorations git + problèmes */
+.point-git{width:8px;height:8px;border-radius:50%;flex:none}
+.point-git.modifie{background:#3B82C4}
+.point-git.ajoute{background:var(--ok)}
+.point-git.non-suivi{background:var(--info)}
+.point-git.conflit{background:var(--erreur)}
+.nom-r.git-modifie{color:#3B82C4}
+.nom-r.git-ajoute{color:var(--ok)}
+.nom-r.git-non-suivi{color:var(--info)}
+.nom-r.git-conflit{color:var(--erreur)}
+.nom-r.gris{color:var(--contour)}
+.pastille-err{width:9px;height:9px;border-radius:50%;background:var(--erreur);border:1.5px solid var(--sc);flex:none}
+.pastille-avert{width:9px;height:9px;border-radius:50%;background:var(--alerte);border:1.5px solid var(--sc);flex:none}
+.dossier-exclu-txt{color:var(--contour)}
+.badge-n{background:var(--sc-highest);color:var(--sur-var);border-radius:9px;font-size:9.5px;padding:1px 7px;font-weight:700}
+/* sélection multiple */
+.rangée.sélectionnée{background:var(--sc2)}
+.rangée.sélectionnée .case{border-color:var(--sur-sc2)}
+.case{width:16px;height:16px;border:1.5px solid var(--contour);border-radius:4px;flex:none;background:var(--sc-lowest)}
+.case.cochée{background:var(--primaire);border-color:var(--primaire);position:relative}
+.case.cochée::after{content:"✓";position:absolute;inset:0;color:var(--sur-primaire);font-size:11px;display:flex;align-items:center;justify-content:center}
+.barre-contexte{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--sc2);color:var(--sur-sc2);font-size:11.5px;font-weight:700}
+.barre-contextuelle{display:flex;gap:2px}
+/* menu contextuel / popup */
+.popup{position:relative;margin:-160px 26px 10px;background:var(--sc-lowest);border:1px solid var(--contour-var);border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.18);padding:6px;max-width:230px;z-index:3}
+.popup .item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;font-size:12.5px}
+.popup .item:hover{background:var(--sc-high)}
+.popup .item small{margin-left:auto;color:var(--sur-var)}
+.popup .séparateur{height:1px;background:var(--contour-var);margin:5px 8px}
+.popup .en-tête-menu{padding:6px 10px 4px;font-size:10.5px;color:var(--sur-var);font-weight:700}
+/* corbeille, états */
+.vide-t{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--sur-var);text-align:center;padding:26px 16px;font-size:12px;line-height:1.6;min-height:170px}
+.spinner{width:18px;height:18px;border-radius:50%;border:2.5px solid var(--contour-var);border-top-color:var(--primaire);animation:tour .9s linear infinite}
+@keyframes tour{to{transform:rotate(360deg)}}
+.erreur-lue{flex:1;padding:16px;font-size:12px;color:var(--sur-var);line-height:1.6}
+.bouton{display:inline-flex;align-items:center;height:34px;padding:0 15px;border-radius:17px;border:none;font-size:12px;font-weight:700;cursor:pointer}
+.bouton.plein{background:var(--primaire);color:var(--sur-primaire)}
+.bouton.contour{background:none;border:1.5px solid var(--contour);color:var(--sur)}
+/* pied du tiroir */
+.pied-tiroir{display:flex;gap:8px;padding:8px 10px;border-top:1px solid var(--contour-var)}
+.chip{display:inline-flex;align-items:center;height:30px;padding:0 13px;border-radius:15px;background:var(--sc-high);color:var(--sur);font-size:12px;font-weight:600;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.chip.on{background:var(--sc2);color:var(--sur-sc2)}
+/* filtre */
+.champ-filtre{display:flex;align-items:center;gap:8px;margin:2px 10px 8px;height:38px;border-radius:10px;background:var(--sc-lowest);border:1px solid var(--contour-var);padding:0 10px;font-size:12.5px;color:var(--sur)}
+.champ-filtre b{color:var(--primaire);background:var(--conteneur-primaire);border-radius:4px;padding:0 2px}
+/* ===== Chercher ===== */
+.bascules{display:flex;gap:6px;padding:0 10px 8px}
+.bas{height:28px;min-width:30px;padding:0 9px;border-radius:8px;background:var(--sc-high);color:var(--sur-var);font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center}
+.bas.on{background:var(--sc2);color:var(--sur-sc2)}
+.résultats{flex:1;overflow-y:auto;max-height:430px;padding:0 8px}
+.groupe-r{margin-bottom:6px}
+.tête-groupe{display:flex;align-items:center;gap:7px;padding:6px 6px;font-size:11.5px;color:var(--sur-var)}
+.tête-groupe b{color:var(--sur);font-size:12px}
+.résultat{display:flex;gap:8px;padding:5px 6px 5px 24px;border-radius:8px;font-family:ui-monospace,monospace;font-size:11px;line-height:1.6;color:var(--sur-var);cursor:pointer}
+.résultat:hover{background:var(--sc-high)}
+.résultat .numéro{color:var(--contour);min-width:26px;text-align:right}
+mark{background:var(--conteneur-primaire);color:var(--sur-conteneur-primaire);border-radius:3px;padding:0 1px}
+.apercu-remplace{display:flex;align-items:center;gap:6px;padding:4px 6px 4px 24px;font-family:ui-monospace,monospace;font-size:11px}
+.apercu-remplace .avant{color:var(--erreur);text-decoration:line-through}
+.apercu-remplace .après{color:var(--ok)}
+/* ===== Structure ===== */
+.plan{padding:4px 8px 10px;max-height:400px;overflow-y:auto;font-size:12.5px}
+.symbole{display:flex;align-items:center;gap:7px;height:30px;padding-right:6px;border-radius:8px}
+.symbole:hover{background:var(--sc-high)}
+.symbole.curseur{background:var(--sc-highest)}
+.symbole .sig{color:var(--sur-var);font-size:11px}
+.symbole small{margin-left:auto;color:var(--sur-var);font-family:ui-monospace,monospace;font-size:10px}
+/* ===== Git ===== */
+.git-tête{display:flex;align-items:center;gap:8px;padding:6px 10px;flex-wrap:wrap}
+.git-tête .branche{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:15px;background:var(--sc2);color:var(--sur-sc2);font-size:12px;font-weight:700}
+.git-tête .synchro{font-size:11px;color:var(--sur-var)}
+.git-tête .ibtn{width:30px;height:30px;font-size:13px}
+.sections-git{flex:1;overflow-y:auto;max-height:380px;padding:0 10px}
+.tête-section{display:flex;align-items:center;gap:6px;padding:8px 2px 4px;font-size:11.5px;font-weight:700;color:var(--sur-var)}
+.tête-section .badge-n{margin-left:auto}
+.ligne-git{display:flex;align-items:center;gap:8px;min-height:38px;padding:4px 4px;border-radius:8px;font-size:12.5px;flex-wrap:wrap}
+.ligne-git>span:nth-of-type(2){min-width:0;flex:1}
+.ligne-git:hover{background:var(--sc-high)}
+.ligne-git .chemin-p{color:var(--sur-var);font-size:10.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ligne-git .compteurs{margin-left:auto;font-family:ui-monospace,monospace;font-size:10.5px;white-space:nowrap}
+.ligne-git .compteurs .plus{color:var(--ok)}
+.ligne-git .compteurs .moins{color:var(--erreur)}
+.lettre-git{width:18px;height:18px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex:none}
+.lettre-git.M{background:var(--info-soft);color:#3B82C4}
+.lettre-git.A{background:var(--ok-soft);color:var(--ok)}
+.lettre-git.D{background:var(--sc-highest);color:var(--sur-var);text-decoration:line-through}
+.lettre-git.U{background:var(--err-soft);color:var(--erreur)}
+.zone-commit{border-top:1px solid var(--contour-var);padding:8px 10px}
+.zone-commit .sujet{display:flex;align-items:center;gap:8px;height:40px;border-radius:10px;background:var(--sc-lowest);border:1px solid var(--contour-var);padding:0 10px;font-size:12px;color:var(--sur-var)}
+.zone-commit .options{display:flex;align-items:center;gap:8px;margin-top:7px;font-size:11px;color:var(--sur-var)}
+.zone-commit .bouton{height:32px;font-size:11.5px;margin-left:auto}
+/* graphe */
+.graphe-ligne{display:flex;gap:8px;align-items:flex-start;padding:4px 2px}
+.voies{position:relative;width:34px;height:34px;flex:none}
+.voies span{position:absolute;width:2.5px;border-radius:2px}
+.voie-1{background:#3B82C4}.voie-2{background:var(--ok)}.voie-3{background:var(--tertiaire)}
+.nœud{position:absolute;width:10px;height:10px;border-radius:50%;border:2.5px solid}
+.commit-txt{flex:1;min-width:0;padding-top:2px}
+.commit-txt b{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.commit-txt small{color:var(--sur-var);font-size:10.5px}
+.pastille-réf{display:inline-block;height:16px;padding:0 7px;border-radius:8px;font-size:9.5px;font-weight:700;line-height:16px;margin-right:4px}
+.pastille-réf.br{background:var(--sc2);color:var(--sur-sc2)}
+.pastille-réf.tag{background:var(--warn-soft);color:var(--alerte)}
+.pastille-réf.tête{background:var(--conteneur-primaire);color:var(--sur-conteneur-primaire)}
+/* visionneuse de diff */
+.diff{border-radius:12px;overflow:hidden;border:1px solid var(--contour-var);font-family:ui-monospace,monospace;font-size:11px}
+.diff .entete-b{display:flex;align-items:center;gap:8px;background:var(--sc-highest);padding:6px 10px;font-size:11px;font-weight:700;color:var(--sur-var);font-family:system-ui}
+.diff pre{margin:0;padding:6px 0;line-height:1.7;background:var(--sc-lowest);overflow-x:auto}
+.l-add{background:var(--ok-soft);padding:0 10px;white-space:pre}
+.l-del{background:var(--err-soft);padding:0 10px;white-space:pre}
+.l-ctx{color:var(--sur-var);padding:0 10px;white-space:pre}
+.l-hunk{color:var(--info);padding:2px 10px;white-space:pre;font-weight:700}
+.côte{display:grid;grid-template-columns:1fr 1fr}
+.motif-add{background:var(--conteneur-primaire);color:var(--sur-conteneur-primaire);border-radius:3px}
+.motif-del{background:var(--conteneur-erreur);color:var(--sur-conteneur-erreur);border-radius:3px;text-decoration:line-through}
+.numéros{color:var(--contour);user-select:none}
+/* légende icônes */
+.légende{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:8px;max-width:900px}
+.légende .élément{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:10px;background:var(--sc-low);font-size:12px}
+@media(max-width:420px){.tiroir{border-radius:0;border-left:none;border-right:none;max-width:none}.segments span{font-size:10.5px}
+  .chip{font-size:11px;padding:0 10px;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+  .ibtn{width:30px;height:30px;font-size:13px}.rangée{font-size:12px}}
+</style>
+</head>
+<body>
+<div class="entete">
+  <span class="pastille">☰</span>
+  <h1>Tiroir gauche — aperçu de la refonte</h1>
+  <button class="bascul" onclick="basculerTheme()" id="bascul">☾ Sombre</button>
+</div>
+<p class="notice">⚠ <b>Aperçu d'illustration</b> — arbres, branches, commits, compteurs et noms de fichiers sont des <b>exemples de maquette</b> ; dans l'application, tout sera réel (listage du disque, état Git, diagnostics). Conventions d'ergonomie : arborescence à la manière d'Android Studio, guides d'indentation à la manière de VS Code — <b>icônes et dessins originaux</b> (décision de licence consignée dans l'ADR, rien de copié). Jetons : <code>colors.xml</code> clair + sombre.</p>
+
+<main>
+<section>
+  <h2>Plan de la refonte (résumé)</h2>
+  <p class="sous"><b>Lot 0 (livré)</b> — extraction sans régression : <code>LeftDrawerFragment</code> + onglets (Fichiers réel, Chercher/Structure « à venir », Git = écran plein existant), <code>WorkspaceViewModel</code>, contrat <code>WorkbenchHost</code>, bus <code>WorkspaceEvents</code> (workbench-spi, testé), largeur unique min(320 dp, écran − 56 dp) via dimens.
+  <b>Lot 1</b> — moteur de fichiers <code>core-files</code> : listage paresseux borné annulable, tri naturel dossiers d'abord, filtres (cachés, <code>.git/</code> jamais, générés estompés), dossiers compacts, <code>FsOperations</code> (créer/renommer/déplacer/copier/corbeille restaurable, atomique), modèles de fichiers, observation des dossiers étendus.
+  <b>Lot 2</b> — iconographie par type (VectorDrawables originaux, convention Android Studio) + guides d'indentation VS Code + décorations git/problèmes réelles.
+  <b>Lot 3</b> — onglet Fichiers UI : RecyclerView sur liste aplatie, vues Projet/Android, menu contextuel, sélection multiple, glisser-déposer, corbeille, synchronisation éditeur.
+  <b>Lot 4</b> — onglet Chercher : <code>core-search</code> (regex, mot entier, portée, globs, flux annulable), remplacement avec aperçu et annulation, « aller au fichier » flou.
+  <b>Lot 5</b> — onglet Structure : <code>core-outline</code> (Java, Kotlin, XML, Gradle, JSON, Markdown), tolérant au code incomplet, suivi du curseur.
+  <b>Lot 6</b> — moteur Git robuste <code>core-git</code> : statut exact (indexé/non indexé/conflits/suppressions), diff indexé et non indexé, branches, fetch/pull/push authentifiés (jeton au coffre, par hôte), stash, historique + graphe, cherry-pick/revert/reset, résolution de conflits, .gitignore, init.
+  <b>Lot 7</b> — onglet Git dans le tiroir (feuilles plein écran, onglets de diff dans la zone éditeur), visionneuse de diff partagée.
+  <b>Lot 8</b> — réglages « Explorateur et Git » (matrice de câblage), accessibilité, performance (20 000 fichiers), robustesse.</p>
+</section>
+<section>
+  <h2>1 · Fichiers — arborescence, guides, décorations</h2>
+  <p class="sous">Rangées de 40 dp : <b>guides d'indentation</b> (un trait par niveau, aligné sous le chevron du parent ; le guide du dossier du fichier actif est mis en évidence), chevrons animés, icônes par type (convention Android Studio, dessins originaux), dossiers compacts <code>com.example.app</code>, décorations <b>git</b> (point + couleur : modifié bleu, ajouté vert, non suivi teal, conflit rouge) et <b>problèmes</b> (pastille erreur/avertissement, héritée par les dossiers parents), fichier actif en gras sur <code>sc_highest</code>. Dossiers générés (<code>build/</code>) estompés et repliés ; <code>.git/</code> jamais affiché ; <code>.gitignore</code> et <code>.github/</code> toujours visibles.</p>
+  <div class="galerie">
+
+    <figure class="cadre">
+      <div class="tiroir">
+        <div class="tete-tiroir">
+          <b>MonApplication</b><small>main</small>
+          <span class="fin"><button class="ibtn" aria-label="Fermer">✕</button></span>
+        </div>
+        <div class="segments"><span class="on">Fichiers</span><span>Chercher</span><span>Structure</span><span>Git</span></div>
+        <div class="outils">
+          <span class="chip on">Projet</span><span class="chip">Android</span>
+          <span class="fin" style="margin-left:auto;display:flex;gap:2px">
+            <button class="ibtn" aria-label="Tout replier">⇤</button>
+            <button class="ibtn" aria-label="Tout déplier">⇥</button>
+            <button class="ibtn on" aria-label="Suivre le fichier actif">⇲</button>
+            <button class="ibtn" aria-label="Actualiser">⟳</button>
+            <button class="ibtn" aria-label="Filtrer">⌕</button>
+            <button class="ibtn" aria-label="Options">⋮</button>
+          </span>
+        </div>
+        <div class="corps-t"><div class="arbre">
+          <div class="rangée" style="padding-left:6px"><span class="chev">▾</span><span class="ico dossier-ouvert">▤</span><span class="nom-r">app</span></div>
+          <div class="rangée" style="padding-left:28px"><span class="chev">▾</span><span class="ico src">S</span><span class="nom-r">src/main</span><span class="fin-r"><span class="pastille-err"></span></span></div>
+          <div class="rangée" style="padding-left:50px"><span class="chev">▾</span><span class="ico paquet">◍</span><span class="nom-r">com.example.app</span></div>
+          <div class="rangée" style="padding-left:72px"><span class="chev fermé">▾</span><span class="ico paquet">◍</span><span class="nom-r">data</span><span class="fin-r"><span class="badge-n">4</span></span></div>
+          <div class="rangée active" style="padding-left:72px"><span class="chev">▾</span><span class="ico paquet">◍</span><span class="nom-r">ui</span></div>
+          <div class="rangée" style="padding-left:94px"><span class="ico classe">C</span><span class="nom-r git-modifie">MainActivity.java</span><span class="fin-r"><span class="point-git modifie"></span></span></div>
+          <div class="rangée" style="padding-left:94px"><span class="ico classe">C</span><span class="nom-r">MainViewModel.java</span><span class="fin-r"><span class="point-git modifie"></span></span></div>
+          <div class="rangée" style="padding-left:94px"><span class="ico interface">I</span><span class="nom-r">ClickHandler.kt</span></div>
+          <div class="rangée" style="padding-left:50px"><span class="chev fermé">▾</span><span class="ico test">T</span><span class="nom-r">test</span><span class="fin-r"><span class="badge-n">3</span></span></div>
+          <div class="rangée" style="padding-left:50px"><span class="chev">▾</span><span class="ico xml">X</span><span class="nom-r">res</span></div>
+          <div class="rangée" style="padding-left:72px"><span class="chev fermé">▾</span><span class="ico layout">L</span><span class="nom-r">layout</span><span class="fin-r"><span class="badge-n">6</span></span></div>
+          <div class="rangée" style="padding-left:72px"><span class="chev fermé">▾</span><span class="ico values">V</span><span class="nom-r">values</span><span class="fin-r"><span class="badge-n">4</span></span></div>
+          <div class="rangée" style="padding-left:72px"><span class="chev fermé">▾</span><span class="ico drawable">D</span><span class="nom-r">drawable</span><span class="fin-r"><span class="badge-n">3</span></span></div>
+          <div class="rangée" style="padding-left:50px"><span class="ico manifest">A</span><span class="nom-r">AndroidManifest.xml</span></div>
+          <div class="rangée" style="padding-left:28px"><span class="chev fermé">▾</span><span class="ico dossier-exclu">▤</span><span class="nom-r dossier-exclu-txt">build</span><span class="fin-r"><span class="badge-n">1 240</span></span></div>
+          <div class="rangée" style="padding-left:6px"><span class="ico gradle">G</span><span class="nom-r">build.gradle</span></div>
+          <div class="rangée" style="padding-left:6px"><span class="ico gradle">G</span><span class="nom-r">settings.gradle</span></div>
+          <div class="rangée" style="padding-left:6px"><span class="ico gitignore">∓</span><span class="nom-r">.gitignore</span></div>
+          <div class="rangée" style="padding-left:6px"><span class="ico readme">R</span><span class="nom-r">README.md</span></div>
+        </div></div>
+        <div class="pied-tiroir">
+          <span class="chip">＋ Nouveau</span>
+          <span class="chip">🗑 Corbeille</span>
+          <span class="chip" style="margin-left:auto">⌥</span>
+        </div>
+      </div>
+      <figcaption><b>Vue Projet</b> — arbre profond, dossiers compacts <code>com.example.app</code> sur une ligne, guides d'indentation (le guide du dossier actif est allumé), décorations git réelles (points) et erreur (pastille sur <code>src/main</code>), <code>build/</code> estompé replié avec compte, badge d'éléments des dossiers repliés.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tiroir">
+        <div class="tete-tiroir"><b>MonApplication</b><small>main</small><span class="fin"><button class="ibtn">✕</button></span></div>
+        <div class="segments"><span class="on">Fichiers</span><span>Chercher</span><span>Structure</span><span>Git</span></div>
+        <div class="outils"><span class="chip">Projet</span><span class="chip on">Android</span>
+          <span class="fin" style="margin-left:auto;display:flex;gap:2px"><button class="ibtn on">⇲</button><button class="ibtn">⟳</button><button class="ibtn">⋮</button></span></div>
+        <div class="corps-t"><div class="arbre">
+          <div class="rangée" style="padding-left:6px"><span class="chev">▾</span><span class="ico gradle">G</span><span class="nom-r">Gradle Scripts</span></div>
+          <div class="rangée" style="padding-left:28px"><span class="ico gradle">G</span><span class="nom-r">build.gradle (Module : app)</span></div>
+          <div class="rangée" style="padding-left:28px"><span class="ico gradle">G</span><span class="nom-r">build.gradle (Projet)</span></div>
+          <div class="rangée" style="padding-left:28px"><span class="ico gradle">G</span><span class="nom-r">libs.versions.toml</span></div>
+          <div class="rangée" style="padding-left:28px"><span class="ico gitignore">∓</span><span class="nom-r">gradle.properties</span></div>
+          <div class="rangée" style="padding-left:6px"><span class="chev">▾</span><span class="ico manifest">A</span><span class="nom-r">Manifests</span></div>
+          <div class="rangée" style="padding-left:28px"><span class="ico manifest">A</span><span class="nom-r">AndroidManifest.xml (app)</span></div>
+          <div class="rangée" style="padding-left:6px"><span class="chev">▾</span><span class="ico paquet">◍</span><span class="nom-r">java</span></div>
+          <div class="rangée" style="padding-left:28px"><span class="chev">▾</span><span class="ico paquet">◍</span><span class="nom-r">com.example.app (ui)</span></div>
+          <div class="rangée active" style="padding-left:50px"><span class="ico classe">C</span><span class="nom-r">MainActivity.java</span></div>
+          <div class="rangée" style="padding-left:28px"><span class="chev fermé">▾</span><span class="ico test">T</span><span class="nom-r">com.example.app (test)</span><span class="fin-r"><span class="badge-n">3</span></span></div>
+          <div class="rangée" style="padding-left:6px"><span class="chev">▾</span><span class="ico xml">X</span><span class="nom-r">res</span></div>
+          <div class="rangée" style="padding-left:28px"><span class="chev fermé">▾</span><span class="ico layout">L</span><span class="nom-r">layout</span><span class="fin-r"><span class="badge-n">6</span></span></div>
+          <div class="rangée" style="padding-left:28px"><span class="chev fermé">▾</span><span class="ico values">V</span><span class="nom-r">values</span><span class="fin-r"><span class="badge-n">4</span></span></div>
+          <div class="rangée" style="padding-left:28px"><span class="chev fermé">▾</span><span class="ico drawable">D</span><span class="nom-r">drawable</span><span class="fin-r"><span class="badge-n">3</span></span></div>
+        </div></div>
+        <div class="pied-tiroir"><span class="chip">＋ Nouveau</span><span class="chip">🗑 Corbeille</span></div>
+      </div>
+      <figcaption><b>Vue Android</b> — regroupement par module (Manifests · java avec packages compactés et sources de test · res par type · Gradle Scripts), <b>adossé aux fichiers réels</b> : un nœud n'apparaît que si son contenu existe.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tiroir">
+        <div class="tete-tiroir"><b>MonApplication</b><small>main</small><span class="fin"><button class="ibtn">✕</button></span></div>
+        <div class="segments"><span class="on">Fichiers</span><span>Chercher</span><span>Structure</span><span>Git</span></div>
+        <div class="barre-contexte">3 éléments sélectionnés <span class="barre-contextuelle" style="margin-left:auto"><button class="ibtn" style="color:var(--sur-sc2)" aria-label="Supprimer">🗑</button><button class="ibtn" style="color:var(--sur-sc2)" aria-label="Copier">⧉</button><button class="ibtn" style="color:var(--sur-sc2)" aria-label="Déplacer">✂</button><button class="ibtn" style="color:var(--sur-sc2)" aria-label="Indexer">＋</button></span></div>
+        <div class="corps-t"><div class="arbre">
+          <div class="rangée" style="padding-left:6px"><span class="chev">▾</span><span class="ico dossier-ouvert">▤</span><span class="nom-r">app</span></div>
+          <div class="rangée sélectionnée" style="padding-left:28px"><span class="case cochée"></span><span class="ico classe">C</span><span class="nom-r">MainActivity.java</span></div>
+          <div class="rangée sélectionnée" style="padding-left:28px"><span class="case cochée"></span><span class="ico layout">L</span><span class="nom-r">activity_main.xml</span></div>
+          <div class="rangée sélectionnée" style="padding-left:28px"><span class="case cochée"></span><span class="ico values">V</span><span class="nom-r">strings.xml</span></div>
+          <div class="rangée" style="padding-left:28px"><span class="chev fermé">▾</span><span class="ico dossier">▤</span><span class="nom-r">build</span></div>
+        </div></div>
+        <div class="popup">
+          <div class="en-tête-menu">activity_main.xml</div>
+          <div class="item">✏️ Renommer <small>F2</small></div>
+          <div class="item">⧉ Dupliquer</div>
+          <div class="item">⧉ Copier · ✂ Couper</div>
+          <div class="séparateur"></div>
+          <div class="item">🗑 Supprimer <small>corbeille</small></div>
+          <div class="séparateur"></div>
+          <div class="item">＃ Copier le chemin relatif</div>
+          <div class="item">∓ Ajouter à .gitignore</div>
+          <div class="item">⌥ Git : Historique · Blame</div>
+        </div>
+      </div>
+      <figcaption><b>Sélection multiple + menu contextuel</b> — appui long pour entrer en sélection, barre d'actions contextuelle ; menu ancré (Nouveau ▸, Renommer en place, Dupliquer, Copier/Couper/Coller, Supprimer → corbeille avec Snackbar « Annuler », Copier le chemin, .gitignore, actions Git).</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tiroir">
+        <div class="tete-tiroir"><b>MonApplication</b><small>main</small><span class="fin"><button class="ibtn">✕</button></span></div>
+        <div class="segments"><span class="on">Fichiers</span><span>Chercher</span><span>Structure</span><span>Git</span></div>
+        <div class="champ-filtre">⌕ <span>main<b>act</b>ivity</span><span style="margin-left:auto;color:var(--contour)">2 résultats · filtre en direct</span></div>
+        <div class="corps-t"><div class="arbre">
+          <div class="rangée" style="padding-left:28px"><span class="ico classe">C</span><span class="nom-r"><b>MainAct</b>ivity.java</span><span class="fin-r"><span class="point-git modifie"></span></span></div>
+          <div class="rangée" style="padding-left:50px"><span class="ico layout">L</span><span class="nom-r">activity_m<b>ain</b>.xml</span></div>
+        </div>
+        <div class="vide-t" style="min-height:110px"><small>Le filtre par nom parcourt l'arbre étendu — borné et annulable, il n'étend pas tout le disque.</small></div>
+        </div>
+        <div class="pied-tiroir"><span class="chip">＋ Nouveau</span><span class="chip">🗑 Corbeille</span></div>
+      </div>
+      <figcaption><b>Filtre en direct</b> — surlignage des correspondances, compte réel, portée bornée.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tiroir">
+        <div class="tete-tiroir"><b>Corbeille</b><span class="fin"><button class="ibtn">✕</button></span></div>
+        <div class="corps-t" style="padding:10px">
+          <div class="carte" style="border-radius:12px;background:var(--sc-low);padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:8px">
+            <span class="ico classe">C</span><span style="flex:1"><b style="font-size:12.5px">OldActivity.java</b><br><small style="color:var(--sur-var)">app/src/…/ui · il y a 12 min · 3,1 Ko</small></span>
+            <button class="bouton contour" style="height:28px;font-size:11px">Restaurer</button>
+          </div>
+          <div class="carte" style="border-radius:12px;background:var(--sc-low);padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:8px">
+            <span class="ico layout">L</span><span style="flex:1"><b style="font-size:12.5px">brouillon.xml</b><br><small style="color:var(--sur-var)">app/src/…/layout · hier · 0,8 Ko</small></span>
+            <button class="bouton contour" style="height:28px;font-size:11px">Restaurer</button>
+          </div>
+          <div class="chips-rangée" style="padding:4px 0 0;display:flex;gap:8px">
+            <span class="bouton contour" style="color:var(--erreur)">Supprimer définitivement</span>
+            <span class="bouton contour">Vider</span>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Corbeille réelle</b> — <code>&lt;projet&gt;/.joide/corbeille/</code> horodaté, restaurable, purge réglable. Suppression avec confirmation Material et Snackbar « Annuler ».</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tiroir">
+        <div class="tete-tiroir"><b>MonApplication</b><span class="fin"><button class="ibtn">✕</button></span></div>
+        <div class="segments"><span class="on">Fichiers</span><span>Chercher</span><span>Structure</span><span>Git</span></div>
+        <div class="corps-t">
+          <div class="vide-t"><span class="spinner"></span>Lecture de <code>app/src/main/java</code>…<small>listage paresseux, annulable, hors fil UI</small></div>
+          <div class="erreur-lue">⚠ Lecture impossible : le dossier a été supprimé sur le disque.<br><br><span class="bouton contour">Réessayer</span></div>
+          <div class="vide-t"><span style="font-size:22px">▯</span><b>Dossier vide</b><small>créez un premier fichier (＋ Nouveau)</small></div>
+        </div>
+      </div>
+      <figcaption><b>États honnêtes</b> — chargement (spinner par dossier), erreur avec Réessayer, dossier vide. Jamais d'état muet.</figcaption>
+    </figure>
+  </div>
+
+  <h3>Légende du jeu d'icônes (convention Android Studio, dessins originaux)</h3>
+  <div class="légende">
+    <span class="élément"><span class="ico dossier">▤</span> dossier (fermé/ouvert)</span>
+    <span class="élément"><span class="ico src">S</span> racine source / test</span>
+    <span class="élément"><span class="ico paquet">◍</span> package</span>
+    <span class="élément"><span class="ico classe">C</span> classe Java</span>
+    <span class="élément"><span class="ico interface">I</span> interface</span>
+    <span class="élément"><span class="ico enum">E</span> énumération</span>
+    <span class="élément"><span class="ico annotation">@</span> annotation</span>
+    <span class="élément"><span class="ico classe" style="outline:1.5px dashed var(--sur-var);outline-offset:-1px">C</span> classe abstraite</span>
+    <span class="élément"><span class="ico kotlin">K</span> Kotlin (fichier/classe/objet)</span>
+    <span class="élément"><span class="ico manifest">A</span> AndroidManifest.xml</span>
+    <span class="élément"><span class="ico layout">L</span> layout XML</span>
+    <span class="élément"><span class="ico drawable">D</span> drawable</span>
+    <span class="élément"><span class="ico values">V</span> res values</span>
+    <span class="élément"><span class="ico xml">X</span> XML générique · menu · navigation</span>
+    <span class="élément"><span class="ico gradle">G</span> Gradle (build, settings, toml, wrapper)</span>
+    <span class="élément"><span class="ico gitignore">∓</span> .gitignore / .gitattributes</span>
+    <span class="élément"><span class="ico readme">R</span> README / LICENSE / texte</span>
+    <span class="élément"><span class="ico image">imgs</span> PNG/JPG/WebP (vignette réelle sinon icône)</span>
+    <span class="élément"><span class="ico inconnu">?</span> binaire / archive / inconnu</span>
+    <span class="élément"><span class="ico dossier-exclu">▤</span> généré / exclu (estompé)</span>
+    <span class="élément"><span class="pastille-err" style="position:static"></span> erreur de diagnostic</span>
+    <span class="élément"><span class="pastille-avert" style="position:static"></span> avertissement</span>
+    <span class="élément"><span class="point-git modifie" style="position:static"></span> git : modifié (bleu)</span>
+    <span class="élément"><span class="point-git ajoute" style="position:static"></span> git : ajouté/indexé (vert)</span>
+    <span class="élément"><span class="point-git non-suivi" style="position:static"></span> git : non suivi (teal)</span>
+    <span class="élément"><span class="point-git conflit" style="position:static"></span> git : conflit (rouge)</span>
+    <span class="élément"><span class="ico test">T</span> sources de test</span>
+    <span class="élément">🔒 lecture seule · 🔗 lien symbolique (superpositions)</span>
+  </div>
+</section>
+<section>
+  <h2>2 · Chercher — recherche du projet</h2>
+  <p class="sous">Champ avec focus à l'ouverture, bascules <b>Aa</b> (casse) · <b>W</b> (mot entier) · <b>.*</b> (regex), portée en menu, inclure/exclure repliable, ligne Remplacer repliable. Résultats <b>groupés par fichier</b> (repliables), appui → ouvre le fichier à la ligne et <b>sélectionne l'occurrence</b>. Flux : résultats poussés au fur et à mesure, compteur en direct, Stop, plafond annoncé. « Aller au fichier » : correspondance floue instantanée. Remplacement : <b>aperçu par occurrence</b> cochable, confirmation avec nombres exacts, annulation par instantané. Le bouton de recherche du dock ouvre cet onglet (finis les toasts).</p>
+  <div class="galerie">
+
+    <figure class="cadre">
+      <div class="tiroir">
+        <div class="tete-tiroir"><b>Chercher</b><span class="fin"><button class="ibtn">✕</button></span></div>
+        <div class="segments"><span>Fichiers</span><span class="on">Chercher</span><span>Structure</span><span>Git</span></div>
+        <div class="champ-filtre" style="margin-top:10px">⌕ <span>requireNonNull</span></div>
+        <div class="bascules"><span class="bas">Aa</span><span class="bas">W</span><span class="bas">.*</span><span class="chip" style="height:28px;font-size:11px">Portée : tout le projet ▾</span></div>
+        <div class="résultats">
+          <div class="vide-t" style="min-height:150px"><span style="font-size:22px">⌕</span>Tapez pour chercher dans le projet.<small>Texte, expressions régulières, mot entier ; exclut <code>.git/</code>, <code>build/</code>, binaires.</small></div>
+        </div>
+      </div>
+      <figcaption><b>État initial</b> — une phrase d'explication, rien de fabriqué.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tiroir">
+        <div class="tete-tiroir"><b>Chercher</b><span class="fin"><button class="ibtn">✕</button></span></div>
+        <div class="segments"><span>Fichiers</span><span class="on">Chercher</span><span>Structure</span><span>Git</span></div>
+        <div class="champ-filtre" style="margin-top:10px">⌕ <span>requireNonNull</span><span style="margin-left:auto;color:var(--primaire);font-weight:700">42 · Stop</span></div>
+        <div class="bascules"><span class="bas">Aa</span><span class="bas on">W</span><span class="bas">.*</span><span class="chip" style="height:28px;font-size:11px">Portée : app/src ▾</span></div>
+        <div class="résultats">
+          <div class="tête-groupe"><span class="ico classe">C</span><b>MainActivity.java</b><small>app/src/main/java/…/ui</small><span class="badge-n" style="margin-left:auto">3</span></div>
+          <div class="résultat"><span class="numéro">12</span><span>obj = Objects.<mark>requireNonNull</mark>(name, "name");</span></div>
+          <div class="résultat"><span class="numéro">31</span><span>Objects.<mark>requireNonNull</mark>(view);</span></div>
+          <div class="résultat"><span class="numéro">54</span><span>return <mark>requireNonNull</mark>(cache.get(key));</span></div>
+          <div class="tête-groupe"><span class="ico test">T</span><b>MainTest.java</b><small>app/src/test/java</small><span class="badge-n" style="margin-left:auto">1</span></div>
+          <div class="résultat"><span class="numéro">8</span><span>assertThrows(<mark>requireNonNull</mark>…);</span></div>
+        </div>
+      </div>
+      <figcaption><b>Résultats en direct</b> — groupés par fichier, occurrence surlignée, compteur réel, annulation immédiate (Stop ou nouvelle frappe).</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tiroir">
+        <div class="tete-tiroir"><b>Chercher</b><span class="fin"><button class="ibtn">✕</button></span></div>
+        <div class="segments"><span>Fichiers</span><span class="on">Chercher</span><span>Structure</span><span>Git</span></div>
+        <div class="champ-filtre" style="margin-top:10px">⌕ <span>getText\(\)</span><span style="margin-left:auto;color:var(--erreur)">regex invalide</span></div>
+        <div class="bascules"><span class="bas">Aa</span><span class="bas">W</span><span class="bas on">.*</span></div>
+        <div class="résultats">
+          <div class="carte" style="border-radius:12px;background:var(--conteneur-erreur);color:var(--sur-conteneur-erreur);padding:12px;font-size:12px">
+            <b>Expression régulière invalide</b><br>« getText\(\) » — parenthèse non fermée. Corrigez l'expression : le message exact du moteur s'affiche ici.
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Regex invalide</b> — message clair du moteur, jamais de crash.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tiroir">
+        <div class="tete-tiroir"><b>Chercher</b><span class="fin"><button class="ibtn">✕</button></span></div>
+        <div class="segments"><span>Fichiers</span><span class="on">Chercher</span><span>Structure</span><span>Git</span></div>
+        <div class="champ-filtre" style="margin-top:10px">⌕ <span>name</span></div>
+        <div class="bascules"><span class="bas">Aa</span><span class="bas">W</span><span class="bas">.*</span><span class="chip" style="height:28px;font-size:11px">Remplacer ▾</span></div>
+        <div class="champ-filtre" style="height:34px">→ <span>label</span><span style="margin-left:auto"><span class="bouton plein" style="height:26px;font-size:10.5px">Tout remplacer…</span></span></div>
+        <div class="résultats">
+          <div class="tête-groupe"><span class="ico values">V</span><b>strings.xml</b><span class="badge-n" style="margin-left:auto">2 occurrences</span></div>
+          <div class="apercu-remplace"><span class="case cochée" style="width:14px;height:14px"></span><span class="numéro" style="min-width:22px">4</span><span class="avant">app_<b>name</b></span>→<span class="après">app_<b>label</b></span></div>
+          <div class="apercu-remplace"><span class="case" style="width:14px;height:14px"></span><span class="numéro" style="min-width:22px">9</span><span class="avant">hint_<b>name</b></span>→<span class="après">hint_label</span></div>
+          <div class="vide-t" style="min-height:64px"><small>Remplacement groupé ($1 en mode regex) · annulation par instantané (Snackbar « Annuler ») · fichiers ouverts modifiés dans le tampon.</small></div>
+        </div>
+      </div>
+      <figcaption><b>Remplacement avec aperçu</b> — chaque occurrence cochable, confirmation avec le nombre exact de fichiers et d'occurrences, annulation. Les groupes de capture sont utilisables.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tiroir">
+        <div class="tete-tiroir"><b>Aller au fichier</b><span class="fin"><button class="ibtn">✕</button></span></div>
+        <div class="champ-filtre" style="margin-top:10px">⌕ <span>mnact</span><span style="margin-left:auto;color:var(--sur-var)">3 résultats</span></div>
+        <div class="résultats" style="max-height:190px">
+          <div class="résultat" style="font-family:inherit;font-size:12px"><span class="ico classe">C</span><span><b>MnAct</b>ivity.java <small style="color:var(--sur-var)">· app/src/main/java</small></span></div>
+          <div class="résultat" style="font-family:inherit;font-size:12px"><span class="ico test">T</span><span><b>MnAct</b>ivityTest.java <small style="color:var(--sur-var)">· ouvert récemment</small></span></div>
+          <div class="résultat" style="font-family:inherit;font-size:12px"><span class="ico layout">L</span><span>activity_<b>mn</b>.xml</span></div>
+        </div>
+        <div class="vide-t" style="min-height:80px"><small>Correspondance floue, classée : ouverts récents d'abord, puis proximité. Index léger des chemins maintenu par les événements de l'espace de travail.</small></div>
+      </div>
+      <figcaption><b>« Aller au fichier »</b> — <code>MnAct</code> trouve <code>MainActivity.java</code> : flou, instantané, réel.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section>
+  <h2>3 · Structure — plan du fichier actif</h2>
+  <p class="sous">Arbre repliable du fichier actif, <b>tolérant au code incomplet</b> (débouncé ~300 ms après la dernière frappe, hors fil UI). Java : package, imports repliés, classes/imbrications, champs, constructeurs, méthodes (signature courte), visibilité <code>+ − # ~</code>, <code>static/final/abstract</code>. XML : arbre des éléments avec <code>android:id</code>. Suit le curseur (le symbole courant est mis en évidence) ; tri par position ou alphabétique ; recherche rapide ; appui → saute à la ligne. États vides honnêtes.</p>
+  <div class="galerie">
+
+    <figure class="cadre">
+      <div class="tiroir">
+        <div class="tete-tiroir"><b>Structure</b><small>MainActivity.java</small><span class="fin"><button class="ibtn">✕</button></span></div>
+        <div class="segments"><span>Fichiers</span><span>Chercher</span><span class="on">Structure</span><span>Git</span></div>
+        <div class="outils"><span class="chip on">Position</span><span class="chip">A→Z</span><span class="fin" style="margin-left:auto;display:flex;gap:2px"><button class="ibtn on" title="Suivre le curseur">⇲</button><button class="ibtn" title="Filtres">⚙</button></span></div>
+        <div class="corps-t"><div class="plan">
+          <div class="symbole"><span class="ico paquet">◍</span>com.example.app</div>
+          <div class="symbole" style="padding-left:20px;color:var(--sur-var)"><span class="chev fermé">▾</span>4 imports</div>
+          <div class="symbole" style="padding-left:20px"><span class="ico classe">C</span><b>MainActivity</b><small>32</small></div>
+          <div class="symbole curseur" style="padding-left:40px"><span class="ico" style="background:var(--sc-highest);color:var(--sur-var);font-size:9px">f</span>− logger <span class="sig">Logger</span></div>
+          <div class="symbole" style="padding-left:40px"><span class="ico" style="background:var(--info-soft);color:var(--info);font-size:9px">c</span>+ onCreate <span class="sig">(Bundle)</span><small>41</small></div>
+          <div class="symbole" style="padding-left:40px"><span class="ico" style="background:var(--info-soft);color:var(--info);font-size:9px">m</span>~ attachUi <span class="sig">()</span><small>58</small></div>
+          <div class="symbole" style="padding-left:40px"><span class="ico classe">C</span><b>Holder</b> <span class="sig">· interne</span><small>72</small></div>
+          <div class="symbole" style="padding-left:60px"><span class="ico" style="background:var(--sc-highest);color:var(--sur-var);font-size:9px">f</span>+ itemView <span class="sig">View</span></div>
+          <div class="symbole" style="padding-left:60px"><span class="ico" style="background:var(--info-soft);color:var(--info);font-size:9px">m</span>+ bind <span class="sig">(Item)</span><small>79</small></div>
+        </div></div>
+      </div>
+      <figcaption><b>Plan Java</b> — badges de visibilité (<code>+ − # ~</code>), membres statiques/imbriqués, symbole courant mis en évidence (suivi du curseur).</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tiroir">
+        <div class="tete-tiroir"><b>Structure</b><small>activity_main.xml</small><span class="fin"><button class="ibtn">✕</button></span></div>
+        <div class="segments"><span>Fichiers</span><span>Chercher</span><span class="on">Structure</span><span>Git</span></div>
+        <div class="corps-t" style="margin-top:8px"><div class="plan">
+          <div class="symbole"><span class="ico layout">L</span>LinearLayout <span class="sig">android:id=@id/root</span><small>2</small></div>
+          <div class="symbole" style="padding-left:20px"><span class="ico layout">L</span>TextView <span class="sig">@id/titre</span><small>8</small></div>
+          <div class="symbole" style="padding-left:20px"><span class="ico layout">L</span>EditText <span class="sig">@id/champ</span><small>14</small></div>
+          <div class="symbole" style="padding-left:20px"><span class="ico layout">L</span>Button <span class="sig">@id/envoyer</span><small>22</small></div>
+        </div>
+        <div class="vide-t" style="min-height:90px"><small>Manifeste : composants (activités, services, permissions) listés de la même façon.</small></div>
+        </div>
+      </div>
+      <figcaption><b>Plan XML</b> — éléments avec <code>android:id</code> et attributs clés ; le manifeste montre les composants et permissions.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tiroir">
+        <div class="tete-tiroir"><b>Structure</b><span class="fin"><button class="ibtn">✕</button></span></div>
+        <div class="segments"><span>Fichiers</span><span>Chercher</span><span class="on">Structure</span><span>Git</span></div>
+        <div class="corps-t">
+          <div class="vide-t"><span style="font-size:22px">≡</span>Aucun fichier ouvert.<small>Ouvrez un fichier depuis l'arbre : son plan apparaît ici.</small></div>
+          <div class="vide-t" style="min-height:120px;border-top:1px solid var(--contour-var)"><span style="font-size:22px">◍</span>Langage non pris en charge.<small>Plans disponibles : Java, Kotlin, XML, Gradle, JSON, Markdown. Un fournisseur LSP pourra s'y brancher.</small></div>
+        </div>
+      </div>
+      <figcaption><b>États vides honnêtes</b> — chaque cas se dit : rien d'ouvert, langage non pris en charge, plan indisponible (fichier invalide).</figcaption>
+    </figure>
+  </div>
+</section>
+<section>
+  <h2>4 · Git — client complet dans le tiroir</h2>
+  <p class="sous">Le Git <b>ne quitte plus l'atelier</b>. Sous-navigation Changements · Branches · Historique · Plus. En-tête : branche courante (chip → sélecteur), suivi distant réel (<code>↓2 ↑1</code>, « synchronisé il y a… »), Fetch · Pull · Push avec progression et annulation. Statut <b>exact</b> : indexé / non indexé / non suivi / conflits ; les suppressions sont indexées et commitées ; diff <b>indexé</b> (HEAD→index) ET <b>non indexé</b> (index→dossier). Zone de commit toujours visible, pas cachée par le clavier. Historique avec graphe ; détails en feuille plein écran ; diffs dans la zone éditeur. Tout hors fil UI, annulable, erreurs typées avec action suggérée.</p>
+  <div class="galerie">
+
+    <figure class="cadre">
+      <div class="tiroir">
+        <div class="tete-tiroir"><b>MonApplication</b><span class="fin"><button class="ibtn">✕</button></span></div>
+        <div class="segments"><span>Fichiers</span><span>Chercher</span><span>Structure</span><span class="on">Git</span></div>
+        <div class="git-tête">
+          <span class="branche">⎇ main ▾</span>
+          <span class="synchro">↓2 ↑1 · synchronisé il y a 14 min</span>
+          <span class="fin" style="margin-left:auto;display:flex;gap:2px"><button class="ibtn" title="Fetch">⤓</button><button class="ibtn" title="Pull">⤓⇣</button><button class="ibtn" title="Push">⇧⤒</button></span>
+        </div>
+        <div class="chips-rangée" style="padding:0 10px 6px"><span class="chip on">Changements</span><span class="chip">Branches</span><span class="chip">Historique</span><span class="chip">Plus</span></div>
+        <div class="sections-git">
+          <div class="tête-section">⚠ Conflits <span class="badge-n">1</span></div>
+          <div class="ligne-git"><span class="lettre-git U">U</span><span style="min-width:0"><span class="nom-r git-conflit">strings.xml</span><br><span class="chemin-p">app/src/main/res/values</span></span><span class="compteurs"><span class="bouton contour" style="height:24px;font-size:10px">Résoudre</span></span></div>
+          <div class="tête-section">Indexés <span class="badge-n">2</span> <small style="margin-left:6px;font-weight:400">tout désindexer</small></div>
+          <div class="ligne-git"><span class="lettre-git M">M</span><span style="min-width:0"><span class="nom-r">MainActivity.java</span><br><span class="chemin-p">app/src/main/java/…/ui</span></span><span class="compteurs"><span class="plus">+12</span> <span class="moins">−3</span></span></div>
+          <div class="ligne-git"><span class="lettre-git A">A</span><span style="min-width:0"><span class="nom-r git-ajoute">Util.java</span><br><span class="chemin-p">app/src/main/java/…/ui</span></span><span class="compteurs"><span class="plus">+24</span></span></div>
+          <div class="tête-section">Non indexés <span class="badge-n">2</span> <small style="margin-left:6px;font-weight:400">tout indexer</small></div>
+          <div class="ligne-git"><span class="lettre-git M">M</span><span style="min-width:0"><span class="nom-r git-modifie">MainViewModel.java</span><br><span class="chemin-p">app/src/main/java/…/ui</span></span><span class="compteurs"><span class="plus">+4</span> <span class="moins">−1</span></span></div>
+          <div class="ligne-git"><span class="lettre-git D">D</span><span style="min-width:0"><span class="nom-r gris">OldActivity.java</span><br><span class="chemin-p">supprimé dans le dossier de travail</span></span><span class="compteurs"><span class="moins">−86</span></span></div>
+          <div class="tête-section">Non suivis <span class="badge-n">1</span></div>
+          <div class="ligne-git"><span class="lettre-git" style="background:var(--info-soft);color:var(--info)">!</span><span style="min-width:0"><span class="nom-r git-non-suivi">notes.md</span><br><span class="chemin-p">à la racine</span></span></div>
+        </div>
+        <div class="zone-commit">
+          <div class="sujet">✎ Sujet du commit (50 car. conseillés) <span style="margin-left:auto;color:var(--contour)">0/72</span></div>
+          <div class="options"><span class="case"></span> Amend <span class="case"></span> Signoff <span class="bouton plein">Commit</span></div>
+        </div>
+      </div>
+      <figcaption><b>Changements</b> — sections Conflits/Indexés/Non indexés/Non suivis, badges M/A/D/U/!, compteurs +/− réels, suppression du dossier de travail correctement rapportée, zone de commit collée en bas (visible avec le clavier). Appui long : indexer, désindexer, annuler, diff, .gitignore.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tiroir">
+        <div class="tete-tiroir"><b>MonApplication</b><span class="fin"><button class="ibtn">✕</button></span></div>
+        <div class="segments"><span>Fichiers</span><span>Chercher</span><span>Structure</span><span class="on">Git</span></div>
+        <div class="git-tête"><span class="branche">⎇ main ▾</span><span class="synchro">↓2 ↑1</span></div>
+        <div class="chips-rangée" style="padding:0 10px 6px"><span class="chip">Changements</span><span class="chip on">Branches</span><span class="chip">Historique</span><span class="chip">Plus</span></div>
+        <div class="sections-git" style="max-height:330px">
+          <div class="tête-section">Locales</div>
+          <div class="ligne-git"><span class="pastille-réf tête">HEAD</span><span class="pastille-réf br">main</span><span class="chemin-p">↓2 ↑1</span><span class="compteurs"><button class="bouton contour" style="height:26px;font-size:10px">Fusionner</button></span></div>
+          <div class="ligne-git"><span class="pastille-réf br">feature/chat</span><span class="chemin-p">suit origin/feature/chat</span></div>
+          <div class="ligne-git"><span class="pastille-réf br">exp/icônes</span><span class="chemin-p">non fusionnée dans main</span></div>
+          <div class="tête-section">Distantes</div>
+          <div class="ligne-git"><span class="pastille-réf br" style="opacity:.65">origin/main</span><span class="chemin-p">il y a 14 min</span></div>
+          <div class="ligne-git"><span class="pastille-réf br" style="opacity:.65">origin/feature/chat</span></div>
+          <div class="chips-rangée" style="padding:8px 0"><span class="bouton contour">＋ Branche</span><span class="bouton contour">Basculer (propre)</span></div>
+          <div class="vide-t" style="min-height:78px"><small>Bascule avec arbre sale : <i>stash et basculer · annuler · annuler les modifications</i>. Suppression gardée-fou si non fusionnée. Renommage, suivi amont, comparaison avec la branche courante.</small></div>
+        </div>
+      </div>
+      <figcaption><b>Branches</b> — locales/distantes groupées, courante marquée, avance/recul par branche, création/bascule/fusion/renommage/suppression.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tiroir">
+        <div class="tete-tiroir"><b>MonApplication</b><span class="fin"><button class="ibtn">✕</button></span></div>
+        <div class="segments"><span>Fichiers</span><span>Chercher</span><span>Structure</span><span class="on">Git</span></div>
+        <div class="git-tête"><span class="branche">⎇ main</span><span class="synchro">historique · 50 par page</span></div>
+        <div class="chips-rangée" style="padding:0 10px 6px"><span class="chip">Changements</span><span class="chip">Branches</span><span class="chip on">Historique</span><span class="chip">Plus</span></div>
+        <div class="sections-git" style="max-height:400px">
+          <div class="graphe-ligne">
+            <span class="voies"><span class="voie-1" style="left:8px;top:0;height:34px"></span><span class="nœud voie-1" style="left:4px;top:12px;background:var(--fond)"></span></span>
+            <span class="commit-txt"><b><span class="pastille-réf tête">HEAD</span><span class="pastille-réf br">main</span>Refonte du composer</b><small>olson12jb · il y a 2 h · a1b2c3d</small></span>
+          </div>
+          <div class="graphe-ligne">
+            <span class="voies"><span class="voie-1" style="left:8px;top:0;height:34px"></span><span class="voie-2" style="left:20px;top:0;height:34px"></span><span class="nœud voie-2" style="left:16px;top:12px;background:var(--fond)"></span></span>
+            <span class="commit-txt"><b>Corrige la sélection vide</b><small>olson12jb · hier · 9f8e7d6 · feature/chat</small></span>
+          </div>
+          <div class="graphe-ligne">
+            <span class="voies"><span class="voie-1" style="left:8px;top:0;height:34px"></span><span class="voie-2" style="left:20px;top:-34px;height:34px"></span><span class="nœud voie-1" style="left:4px;top:12px;background:var(--fond)"></span></span>
+            <span class="commit-txt"><b>Tiroir gauche : extraction</b><small>olson12jb · il y a 2 j · c4d5e6f</small></span>
+          </div>
+          <div class="graphe-ligne">
+            <span class="voies"><span class="voie-1" style="left:8px;top:0;height:34px"></span><span class="nœud voie-1" style="left:4px;top:12px;background:var(--fond)"></span></span>
+            <span class="commit-txt"><b><span class="pastille-réf tag">v0.1.0</span>Version initiale</b><small>olson12jb · il y a 3 j · 0a1b2c3</small></span>
+          </div>
+          <div class="chips-rangée" style="padding:6px 0"><span class="bouton contour">Charger 50 de plus</span><span class="bouton contour">Filtres ▾</span></div>
+        </div>
+      </div>
+      <figcaption><b>Historique avec graphe</b> — voies colorées calculées en JVM, pastilles branches/étiquettes/HEAD, filtres (branche, auteur, texte, fichier), pagination. Appui → détail du commit (feuille) : fichiers modifiés, diff, cherry-pick, revert, reset, créer une branche ici.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tiroir">
+        <div class="tete-tiroir"><b>Diff · MainViewModel.java</b><span class="fin"><button class="ibtn">✕</button></span></div>
+        <div class="chips-rangée" style="padding:8px 10px 0"><span class="chip on">Unifié</span><span class="chip">Côte à côte</span><span class="chip" style="margin-left:auto">Indexé ▾</span></div>
+        <div class="corps-t" style="padding:10px">
+          <div class="diff">
+            <div class="entete-b"><span>app/src/main/java/…/MainViewModel.java</span><span style="margin-left:auto"><span class="plus" style="color:var(--ok)">+4</span> <span style="color:var(--erreur)">−1</span></span></div>
+            <pre><span class="l-hunk">@@ -18,7 +18,10 @@</span>
+<span class="l-ctx"><span class="numéros"> 18 </span>public void bind(Item item) {</span>
+<span class="l-del"><span class="numéros"> 19 </span>     label.setText(<span class="motif-del">item.name</span>);</span>
+<span class="l-add"><span class="numéros"> 19 </span>     label.setText(<span class="motif-add">requireNonNull(item.label)</span>);</span>
+<span class="l-ctx"><span class="numéros"> 20 </span>}</span></pre>
+          </div>
+          <div class="chips-rangée" style="padding:10px 0 0;display:flex;gap:8px">
+            <span class="bouton contour">Indexer ce hunk</span><span class="bouton contour">Annuler ce hunk…</span><span class="bouton contour">Copier</span>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Visionneuse de diff (partagée Git / Recherche / Agent IA)</b> — unifié ou côte à côte selon la largeur, surlignage au niveau des mots, actions par hunk (indexer / annuler avec confirmation + instantané), défilement horizontal sans casser la mise en page, garde-fou gros fichiers.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tiroir">
+        <div class="tete-tiroir"><b>Résolution de conflit</b><span class="fin"><button class="ibtn">✕</button></span></div>
+        <div class="corps-t" style="padding:10px">
+          <div class="carte" style="border-radius:12px;background:var(--conteneur-erreur);color:var(--sur-conteneur-erreur);padding:10px 12px;font-size:12px;margin-bottom:10px">
+            <b>strings.xml</b> — conflit de fusion : 2 blocs. Choisis par bloc, ou par fichier entier.
+          </div>
+          <div class="diff">
+            <div class="entete-b">Bloc 1 · lignes 4–9 <span style="margin-left:auto;display:flex;gap:6px"><button class="bouton contour" style="height:24px;font-size:10px">Le nôtre</button><button class="bouton contour" style="height:24px;font-size:10px">Le leur</button><button class="bouton contour" style="height:24px;font-size:10px">Les deux</button></span></div>
+            <pre><span class="l-del"><span class="numéros"> ◄ </span>&lt;string name="app_name"&gt;MonAppli&lt;/string&gt;</span>
+<span class="l-add"><span class="numéros"> ► </span>&lt;string name="app_name"&gt;MonApplication&lt;/string&gt;</span></pre>
+          </div>
+          <div class="chips-rangée" style="padding:10px 0 0;display:flex;gap:8px">
+            <span class="bouton plein">Marquer résolu (indexer)</span><span class="bouton contour">Abandonner la fusion</span>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Résolution de conflits</b> — par bloc (marqueurs de fusion parsés) ou par fichier (le nôtre / le leur / les deux), marquer résolu = indexer, abandonner propre. Détection fiable sur merge, pull, cherry-pick, stash.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tiroir">
+        <div class="tete-tiroir"><b>MonApplication</b><span class="fin"><button class="ibtn">✕</button></span></div>
+        <div class="segments"><span>Fichiers</span><span>Chercher</span><span>Structure</span><span class="on">Git</span></div>
+        <div class="corps-t">
+          <div class="vide-t" style="min-height:130px"><span style="font-size:22px">⎇</span><b>Ce projet n'est pas un dépôt Git</b><small>Initialisez un dépôt (.gitignore de départ pour projets Android/Gradle, premier commit proposé), ou clonez depuis l'accueil.</small><span class="bouton contour">Initialiser un dépôt</span></div>
+          <div class="carte" style="border-radius:12px;background:var(--sc-low);padding:11px 12px;font-size:12px;display:flex;align-items:center;gap:8px"><b>Qui êtes-vous ?</b><small style="color:var(--sur-var)">nom + e-mail pour les commits — jamais codés en dur, saisis ici</small><span class="bouton contour" style="margin-left:auto">Définir</span></div>
+          <div class="carte" style="border-radius:12px;background:var(--sc-low);padding:11px 12px;font-size:12px;margin-top:8px;display:flex;align-items:center;gap:8px"><b>Jeton requis</b><small style="color:var(--sur-var)">github.com — jeton d'accès personnel au coffre chiffré, jamais dans l'URL ni .git/config</small><span class="bouton contour" style="margin-left:auto">Ajouter</span></div>
+          <div class="carte" style="border-radius:12px;background:var(--sc-low);padding:11px 12px;font-size:12px;margin-top:8px"><b>Push en cours</b><br><span class="synchro">écriture des objets : 68 % · 1,2 Mo / 1,8 Mo</span><br><span class="bouton contour" style="margin-top:6px">Annuler</span></div>
+        </div>
+      </div>
+      <figcaption><b>États Git</b> — dépôt absent (init + .gitignore), identité manquante (invite), jeton par hôte (coffre), opération longue avec progression réelle et annulation.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section>
+  <h2>5 · Variante élargie (tablette)</h2>
+  <p class="sous">Sur tablette, le tiroir peut s'élargir (option) : l'arbre respire, le diff passe en <b>côte à côte</b>, la recherche gagne une colonne de résultat plus lisible. Mêmes composants, mêmes jetons.</p>
+  <div class="galerie">
+    <figure class="cadre">
+      <div class="tiroir large">
+        <div class="tete-tiroir"><b>MonApplication</b><small>main</small><span class="fin"><button class="ibtn">✕</button></span></div>
+        <div class="segments"><span class="on">Fichiers</span><span>Chercher</span><span>Structure</span><span>Git</span></div>
+        <div class="outils"><span class="chip on">Projet</span><span class="chip">Android</span><span class="fin" style="margin-left:auto;display:flex;gap:2px"><button class="ibtn">⇤</button><button class="ibtn">⇥</button><button class="ibtn on">⇲</button><button class="ibtn">⟳</button><button class="ibtn">⌕</button><button class="ibtn">⋮</button></span></div>
+        <div class="corps-t" style="flex-direction:row;gap:0">
+          <div class="arbre" style="flex:1;max-height:330px;border-right:1px solid var(--contour-var)">
+            <div class="rangée" style="padding-left:6px"><span class="chev">▾</span><span class="ico dossier-ouvert">▤</span><span class="nom-r">app</span></div>
+            <div class="rangée" style="padding-left:28px"><span class="chev">▾</span><span class="ico src">S</span><span class="nom-r">src/main</span></div>
+            <div class="rangée active" style="padding-left:50px"><span class="ico paquet">◍</span><span class="nom-r">com.example.app</span></div>
+            <div class="rangée" style="padding-left:72px"><span class="ico classe">C</span><span class="nom-r git-modifie">MainActivity.java</span><span class="fin-r"><span class="point-git modifie"></span></span></div>
+            <div class="rangée" style="padding-left:72px"><span class="ico classe">C</span><span class="nom-r">MainViewModel.java</span></div>
+          </div>
+          <div style="flex:1.2;padding:10px">
+            <div class="diff">
+              <div class="entete-b"><span>MainViewModel.java</span><span style="margin-left:auto">Côte à côte</span></div>
+              <div class="côte">
+                <pre style="margin:0;padding:6px 4px;font-family:ui-monospace,monospace;font-size:10.5px;line-height:1.7;background:var(--sc-lowest)"><span class="l-del">name)</span>
+<span class="l-ctx">}</span></pre>
+                <pre style="margin:0;padding:6px 4px;font-family:ui-monospace,monospace;font-size:10.5px;line-height:1.7;background:var(--sc-lowest)"><span class="l-add">requireNonNull(item.label));</span>
+<span class="l-ctx">}</span></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Tiroir élargi</b> — arbre + aperçu du diff côte à côte ; navigation clavier (flèches, Entrée, F2, Suppr, Ctrl+C/X/V).</figcaption>
+    </figure>
+  </div>
+</section>
+</main>
+<script>function basculerTheme(){var h=document.documentElement,n=h.getAttribute("data-theme")==="dark"?"light":"dark";h.setAttribute("data-theme",n);document.getElementById("bascul").textContent=n==="dark"?"☀ Clair":"☾ Sombre"}</script>
+</body>
+</html>

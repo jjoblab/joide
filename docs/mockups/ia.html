@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JoIDE — aperçu de la refonte IA (moteur, chat, rendu, réglages)</title>
+<!--
+  Aperçu autonome de la refonte IA (Lots 1 à 9 + Lot 0 déjà livré) — même
+  esprit que mockups/atelier.html, avec les VRAIS jetons de colors.xml
+  (clair + sombre). Les contenus (modèles, prix, compteurs, noms de fichiers)
+  sont des EXEMPLES D'ILLUSTRATION : aucune donnée d'exemple ne réapparaîtra
+  dans l'application — tout y viendra du fournisseur, de l'utilisateur ou
+  d'une constante documentée.
+-->
+<style>
+/* ===== Jetons (values/colors.xml + values-night/colors.xml) ===== */
+:root{
+  --fond:#FBFAED; --sc-lowest:#FFFFFF; --sc-low:#F5F4E7; --sc:#EFEEE2;
+  --sc-high:#EAE9DC; --sc-highest:#E4E3D7;
+  --sur:#1B1C15; --sur-var:#45483A; --contour:#767966; --contour-var:#C6C9B2;
+  --primaire:#465700; --sur-primaire:#FFFFFF; --conteneur-primaire:#C7EE45; --sur-conteneur-primaire:#273300;
+  --sc2:#DEE5C3; --sur-sc2:#2A3119;
+  --tertiaire:#6C3E85; --sur-tertiaire:#FFFFFF; --conteneur-tertiaire:#F2D9FF; --sur-conteneur-tertiaire:#3E2457;
+  --erreur:#8F4C38; --conteneur-erreur:#FFDBD1; --sur-conteneur-erreur:#5B1A0B;
+  --ok:#29A847; --alerte:#D98300; --info:#2399B8;
+  --ok-soft:rgba(41,168,71,.16); --err-soft:rgba(143,76,56,.14); --warn-soft:rgba(217,131,0,.15); --info-soft:rgba(35,153,184,.14);
+  --code-bg:#14160E; --code-sur:#E7E7DA;
+}
+[data-theme="dark"]{
+  --fond:#12140C; --sc-lowest:#0C0F07; --sc-low:#1A1C14; --sc:#1F2118;
+  --sc-high:#292B22; --sc-highest:#34362C;
+  --sur:#E3E3D6; --sur-var:#BDC2A9; --contour:#90937E; --contour-var:#42453A;
+  --primaire:#CDF14A; --sur-primaire:#1B2400; --conteneur-primaire:#344200; --sur-conteneur-primaire:#E4FF74;
+  --sc2:#424937; --sur-sc2:#D8E0BE;
+  --tertiaire:#DEB8F5; --sur-tertiaire:#31124A; --conteneur-tertiaire:#4B2B64; --sur-conteneur-tertiaire:#F2D9FF;
+  --erreur:#FFB4A2; --conteneur-erreur:#723523; --sur-conteneur-erreur:#FFDBD1;
+  --ok:#34D058; --alerte:#FFB340; --info:#5AC8E0;
+  --ok-soft:rgba(52,208,88,.16); --err-soft:rgba(255,180,162,.13); --warn-soft:rgba(255,179,64,.14); --info-soft:rgba(90,200,224,.13);
+  --code-bg:#0C0F07; --code-sur:#E3E3D6;
+}
+/* ===== Socle ===== */
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,segoe ui,sans-serif;background:var(--fond);color:var(--sur);font-size:14px}
+h1{font-size:22px;margin:0}
+h2{font-size:17px;margin:28px 0 4px;color:var(--sur)}
+.sous{color:var(--sur-var);font-size:12.5px;margin:0 0 14px;max-width:860px;line-height:1.55}
+.entete{position:sticky;top:0;z-index:9;display:flex;align-items:center;gap:12px;padding:12px 20px;background:var(--fond);border-bottom:1px solid var(--contour-var)}
+.entete .pastille{width:30px;height:30px;border-radius:50%;background:var(--conteneur-primaire);color:var(--sur-conteneur-primaire);display:flex;align-items:center;justify-content:center;font-weight:700}
+.bascul{margin-left:auto;border:1px solid var(--contour);background:var(--sc);color:var(--sur);border-radius:20px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer}
+.notice{margin:14px 20px;padding:10px 14px;border-radius:12px;background:var(--warn-soft);color:var(--sur);font-size:12.5px;line-height:1.5}
+main{padding:0 20px 60px}
+.galerie{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:22px;align-items:start}
+.cadre{display:flex;flex-direction:column;gap:8px}
+.cadre figcaption{font-size:12px;color:var(--sur-var);line-height:1.5}
+.cadre b{color:var(--sur)}
+/* ===== Téléphone ===== */
+.tel{width:100%;max-width:340px;border:1px solid var(--contour-var);border-radius:22px;overflow:hidden;background:var(--fond);box-shadow:0 6px 24px rgba(0,0,0,.08)}
+.tiroir{max-width:340px}
+.barre{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid var(--contour-var)}
+.barre b{flex:1;min-width:90px;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ibtn{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:none;background:none;color:var(--sur-var);font-size:16px;cursor:pointer;flex:none}
+.ibtn.rond{background:var(--sc-high);border-radius:50%}
+.pastille-ia{width:26px;height:26px;border-radius:50%;background:var(--conteneur-primaire);color:var(--sur-conteneur-primaire);display:flex;align-items:center;justify-content:center;font-size:13px;flex:none}
+.pill{display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 12px;border-radius:13px;background:var(--sc-highest);color:var(--sur);font-size:11.5px;font-weight:600;white-space:nowrap}
+.pill.pc{background:var(--conteneur-primaire);color:var(--sur-conteneur-primaire)}
+.pill.tc{background:var(--conteneur-tertiaire);color:var(--sur-conteneur-tertiaire)}
+.pill.err{background:var(--conteneur-erreur);color:var(--sur-conteneur-erreur)}
+.corps{display:flex;flex-direction:column;padding:12px;gap:10px;min-height:200px}
+/* chips */
+.chips-rangée{display:flex;gap:8px;flex-wrap:wrap;padding:0 12px;margin-top:10px}
+.chip{display:inline-flex;align-items:center;height:32px;padding:0 14px;border-radius:16px;background:var(--sc-high);color:var(--sur);font-size:12.5px;font-weight:600;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.chip.on{background:var(--sc2);color:var(--sur-sc2)}
+.chip.action{background:var(--sc-highest)}
+.chip.ghost{background:none;border:1px dashed var(--contour)}
+/* transcript */
+.bulle{align-self:flex-end;max-width:82%;background:var(--sc2);color:var(--sur-sc2);border-radius:18px 18px 6px 18px;padding:10px 14px;font-size:13.5px;line-height:1.55}
+.reponse{max-width:100%;font-size:13.5px;line-height:1.6;color:var(--sur)}
+.reponse h4{margin:10px 0 4px;font-size:14px}
+.reponse ul{margin:4px 0;padding-left:20px}
+.reponse li{margin:2px 0}
+.reponse p{margin:6px 0}
+.carte{border-radius:14px;background:var(--sc-high);padding:12px 14px}
+.reflexion{border-radius:14px;background:var(--sc-high);padding:10px 14px}
+.reflexion .tete{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:var(--sur-var);cursor:pointer}
+.reflexion .barre-r{width:7px;height:11px;border-radius:3px;background:var(--primaire)}
+.reflexion .contenu{margin-top:8px;font-size:12.5px;color:var(--sur-var);line-height:1.55;white-space:pre-line}
+.carte-outil{display:flex;align-items:center;gap:10px;border-radius:12px;background:var(--sc-high);padding:10px 12px;font-size:12.5px}
+.carte-outil .ico{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex:none}
+.carte-outil .ico.ok{background:var(--ok-soft);color:var(--ok)}
+.carte-outil .ico.err{background:var(--err-soft);color:var(--erreur)}
+.carte-outil .ico.course{background:var(--info-soft);color:var(--info)}
+.groupe-actions{border-radius:14px;border:1px solid var(--contour-var);padding:10px 12px}
+.groupe-actions .tete{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:var(--sur-var)}
+.groupe-actions .corps-g{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.ligne-outil{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--sur-var)}
+.ligne-outil .nom{color:var(--sur);font-weight:600}
+/* code + diff */
+.bloc-code{border-radius:12px;overflow:hidden;border:1px solid var(--contour-var)}
+.bloc-code .entete-b{display:flex;align-items:center;gap:8px;background:var(--sc-highest);padding:7px 10px;font-size:11.5px;font-weight:700;color:var(--sur-var)}
+.bloc-code .entete-b .chemin{flex:1;font-family:ui-monospace,monospace;font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bloc-code .mini-b{border:none;background:none;color:var(--sur-var);font-size:11px;font-weight:700;cursor:pointer;padding:2px 6px;border-radius:8px}
+.bloc-code .mini-b.appliquer{background:var(--conteneur-primaire);color:var(--sur-conteneur-primaire)}
+.bloc-code pre{margin:0;background:var(--code-bg);color:var(--code-sur);padding:10px 12px;font-family:ui-monospace,monospace;font-size:11.5px;line-height:1.6;overflow-x:auto}
+.k{color:#C792EA}.t{color:#82AAFF}.s{color:#C3E88D}.c{color:#697098}.n{color:#F78C6C}
+.diff{border-radius:12px;overflow:hidden;border:1px solid var(--contour-var)}
+.diff .entete-b{display:flex;align-items:center;gap:8px;background:var(--sc-highest);padding:7px 10px;font-size:11.5px;font-weight:700;color:var(--sur-var)}
+.diff pre{margin:0;padding:8px 0;font-family:ui-monospace,monospace;font-size:11.5px;line-height:1.65;background:var(--sc-lowest)}
+.diff .l-add{background:var(--ok-soft);color:var(--sur);padding:0 12px;white-space:pre}
+.diff .l-del{background:var(--err-soft);color:var(--sur);padding:0 12px;white-space:pre;text-decoration-color:var(--erreur)}
+.diff .l-ctx{color:var(--sur-var);padding:0 12px;white-space:pre}
+.diff .l-hunk{color:var(--info);padding:2px 12px;white-space:pre;font-weight:700}
+/* tableau */
+.tableau{border-radius:12px;overflow:hidden;border:1px solid var(--contour-var)}
+.tableau table{border-collapse:collapse;width:100%;font-size:12px}
+.tableau th{background:var(--sc-highest);text-align:left;padding:7px 10px;color:var(--sur-var)}
+.tableau td{padding:7px 10px;border-top:1px solid var(--contour-var);color:var(--sur)}
+/* erreurs / états */
+.carte-erreur{border-radius:14px;background:var(--conteneur-erreur);color:var(--sur-conteneur-erreur);padding:12px 14px}
+.carte-erreur .t-err{font-weight:700;font-size:13.5px}
+.carte-erreur p{margin:6px 0 10px;font-size:12.5px;line-height:1.55}
+.carte-erreur .actions{display:flex;gap:8px;flex-wrap:wrap}
+.bouton{display:inline-flex;align-items:center;height:36px;padding:0 16px;border-radius:18px;border:none;font-size:12.5px;font-weight:700;cursor:pointer}
+.bouton.plein{background:var(--conteneur-erreur);color:var(--sur-conteneur-erreur)}
+.bouton.contour{background:none;border:1.5px solid currentColor}
+.carte-manque{border-radius:14px;border:1.5px dashed var(--contour);padding:14px;text-align:center;color:var(--sur-var);font-size:12.5px;line-height:1.6}
+.carte-manque b{color:var(--sur)}
+.vide{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--sur-var);text-align:center;padding:26px 18px;font-size:12.5px;line-height:1.6}
+.spinner{width:18px;height:18px;border-radius:50%;border:2.5px solid var(--contour-var);border-top-color:var(--primaire);animation:tour 0.9s linear infinite}
+@keyframes tour{to{transform:rotate(360deg)}}
+/* composer */
+.composer{border-top:1px solid var(--contour-var);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.ligne-etat{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--sur-var)}
+.ligne-etat .pt{width:7px;height:7px;border-radius:50%;background:var(--primaire)}
+.saisie{display:flex;align-items:flex-end;gap:8px}
+.champ{flex:1;min-height:44px;border-radius:22px;background:var(--sc-lowest);border:1px solid var(--contour-var);display:flex;align-items:center;padding:0 16px;font-size:13px;color:var(--sur-var)}
+.envoyer{width:44px;height:44px;border-radius:50%;border:none;background:var(--primaire);color:var(--sur-primaire);font-size:17px;display:flex;align-items:center;justify-content:center;flex:none;cursor:pointer}
+.envoyer.stop{background:var(--conteneur-erreur);color:var(--sur-conteneur-erreur)}
+.jauge{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--sur-var)}
+.anneau{width:20px;height:20px;border-radius:50%;background:conic-gradient(var(--primaire) 62%, var(--contour-var) 0);display:flex;align-items:center;justify-content:center}
+.anneau::after{content:"";width:13px;height:13px;border-radius:50%;background:var(--fond)}
+/* permission */
+.carte-perm{border-radius:14px;background:var(--conteneur-tertiaire);color:var(--sur-conteneur-tertiaire);padding:12px 14px}
+.carte-perm .t-perm{font-weight:700;font-size:13px}
+.carte-perm .sous-perm{font-size:12px;margin:4px 0 8px;line-height:1.5}
+.carte-perm .actions{display:flex;gap:8px;flex-wrap:wrap}
+.carte-perm .bouton{height:32px;font-size:11.5px}
+.carte-perm .bouton.plein{background:var(--sur-conteneur-tertiaire);color:var(--conteneur-tertiaire)}
+/* feuille (bottom sheet) */
+.feuille{position:relative;border-radius:22px 22px 0 0;background:var(--sc-lowest);border:1px solid var(--contour-var);border-bottom:none;overflow:hidden}
+.feuille .poignee{width:38px;height:5px;border-radius:3px;background:var(--contour-var);margin:10px auto 4px}
+.feuille .corps-f{padding:6px 14px 16px;max-height:430px;overflow-y:auto}
+.feuille h3{margin:8px 0 2px;font-size:15.5px}
+.recherche{display:flex;align-items:center;gap:8px;height:44px;border-radius:22px;background:var(--sc);padding:0 14px;font-size:13px;color:var(--sur-var);margin:10px 0 8px}
+.modele{display:flex;align-items:center;gap:10px;padding:10px 6px;border-bottom:1px solid var(--contour-var)}
+.modele:last-child{border-bottom:none}
+.modele .nom-m{flex:1;min-width:0}
+.modele .nom-m b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.modele .nom-m small{color:var(--sur-var);font-size:11px}
+.badge{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap}
+.badge.gratuit{background:var(--ok-soft);color:var(--ok)}
+.badge.outils{background:var(--info-soft);color:var(--info)}
+.badge.raison{background:var(--conteneur-tertiaire);color:var(--sur-conteneur-tertiaire)}
+.badge.vision{background:var(--sc2);color:var(--sur-sc2)}
+.badge.sel{background:var(--conteneur-primaire);color:var(--sur-conteneur-primaire)}
+/* réglages */
+.rangée{display:flex;align-items:center;gap:12px;padding:13px 4px;border-bottom:1px solid var(--contour-var)}
+.rangée:last-child{border-bottom:none}
+.rangée .ico-r{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px;flex:none}
+.rangée .txt{flex:1;min-width:0}
+.rangée .txt b{display:block;font-size:13.5px}
+.rangée .txt small{color:var(--sur-var);font-size:11.5px}
+.rangée .fin{color:var(--sur-var);font-size:11.5px;text-align:right}
+.interrupteur{width:46px;height:27px;border-radius:14px;background:var(--sc-highest);border:1.5px solid var(--contour);position:relative;flex:none}
+.interrupteur::after{content:"";position:absolute;top:2.5px;left:3px;width:19px;height:19px;border-radius:50%;background:var(--contour)}
+.interrupteur.on{background:var(--conteneur-primaire);border-color:var(--conteneur-primaire)}
+.interrupteur.on::after{left:21px;background:var(--sur-conteneur-primaire)}
+.carte-réglage{border-radius:16px;background:var(--sc-low);padding:4px 14px;margin-top:10px}
+.étiquette{font-size:11.5px;font-weight:700;color:var(--sur-var);margin:16px 0 2px;text-transform:uppercase;letter-spacing:.4px}
+.petit-champ{display:flex;align-items:center;gap:8px;height:46px;border-radius:12px;background:var(--sc-lowest);border:1px solid var(--contour-var);padding:0 12px;font-family:ui-monospace,monospace;font-size:12px;color:var(--sur-var);margin-top:8px}
+.petit-champ .oeil{margin-left:auto;cursor:pointer}
+.pastille-statut{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:13px;font-size:11px;font-weight:700}
+.pastille-statut.ok{background:var(--ok-soft);color:var(--ok)}
+.pastille-statut.ko{background:var(--err-soft);color:var(--erreur)}
+.curseur{height:4px;border-radius:2px;background:var(--sc-highest);position:relative;margin:14px 2px 2px}
+.curseur::after{content:"";position:absolute;left:52%;top:-7px;width:18px;height:18px;border-radius:50%;background:var(--primaire);border:3px solid var(--fond)}
+.métriques{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}
+.métrique{border-radius:12px;background:var(--sc-low);padding:10px;text-align:center}
+.métrique b{display:block;font-size:16px}
+.métrique small{color:var(--sur-var);font-size:10.5px}
+@media(max-width:420px){.tel,.tiroir{border-radius:0;border-left:none;border-right:none;max-width:none}
+  .chip{font-size:11.5px;padding:0 10px}.pill{font-size:10.5px;height:24px;padding:0 9px}
+  .barre{gap:6px;padding:8px 10px}.ibtn{width:32px;height:32px;font-size:14px}}
+</style>
+</head>
+<body>
+<div class="entete">
+  <span class="pastille">✦</span>
+  <h1>Refonte IA — aperçu des écrans</h1>
+  <button class="bascul" onclick="basculerTheme()" id="bascul">☾ Sombre</button>
+</div>
+<p class="notice">⚠ <b>Aperçu d'illustration</b> — les modèles, prix, compteurs et contenus montrés ici sont des <b>exemples de maquette</b>. Dans l'application, tout vient du fournisseur (catalogue vivant), de l'utilisateur ou d'une constante documentée : rien d'inventé ne s'affichera comme réel. Jetons : <code>colors.xml</code> clair + sombre.</p>
+
+<main>
+<section>
+  <h2>Plan de la refonte (résumé)</h2>
+  <p class="sous"><b>Lot 0 (livré)</b> — séparation Assistant (accueil, sans outils, conversations persistées JSON dans <code>filesDir/assistant/</code> derrière <code>ConversationStore</code>) / Agent (tiroir droit, puces de contexte réelles via <code>AgentContext</code>).
+  <b>Lot 1</b> — <code>ai/json/Json</code> (codec complet), <code>SseParser</code>, réécriture d'<code>HttpLlmTransport</code> (outils fragmentés par index, annulation, reprises), <code>LlmError</code> typé + rédaction des secrets, tests sur serveur HTTP JDK.
+  <b>Lot 2</b> — <code>ProviderRegistry</code> : OpenRouter, OpenAI, Anthropic, Gemini, passerelle personnalisable ; migration <code>passerelle→custom</code>, suppression des identifiants fictifs.
+  <b>Lot 3</b> — agent plus sûr : outils un fichier par outil + schémas JSON, <code>modifier_fichier</code> par remplacement ciblé, garde-fous de chemins, diff réel à l'approbation, points de contrôle (annulation de tour), <code>AGENTS.md</code> enfin lu.
+  <b>Lot 4</b> — <code>ConversationStore</code> généralisé (double contenu transcript/historique, atomique), liste assistant <i>et</i> agent, <code>AiSessionViewModel</code> (survit rotation/tiroir/onglet).
+  <b>Lot 5</b> — rendu Markdown streaming-safe + <code>ResponseInterpreter</code> (blocs code avec cible, diffs applicables, réflexion repliable, chips de suivi), cartes d'outils vraies.
+  <b>Lot 6</b> — design du chat (composer extensible, Stop, jauge de contexte, états vides, accessibilité).
+  <b>Lot 7</b> — Réglages IA en hub + sous-pages, matrice de câblage complète.
+  <b>Lot 8</b> — intégrations atelier (ouvrir fichier à une ligne, rafraîchissement après mutation, build du mode actif).
+  <b>Lot 9</b> — qualité, ADR, docs, contrôles automatiques (API 28, câblage, aucune donnée factice).</p>
+</section>
+<section>
+  <h2>1 · Assistant (accueil)</h2>
+  <p class="sous">Écran plein avec bouton retour. <b>Liste des conversations</b> (titre dérivé du premier message, date relative, compte de messages — persistées dans <code>filesDir/assistant/</code>, un JSON par conversation, écriture atomique). <b>Conversation vide</b> : suggestions de départ qui remplissent le champ sans envoyer. <b>Conversation riche</b> : réponse structurée (titres, liste, tableau, bloc de code coloré avec cible, carte diff, bloc Réflexion repliable, chips de suivi) — un seul chemin de rendu partagé avec l'agent.</p>
+  <div class="galerie">
+
+    <figure class=" cadre">
+      <div class="tel">
+        <div class="barre">
+          <button class="ibtn" aria-label="Retour">←</button>
+          <span class="pastille-ia">✦</span><b>Assistant</b>
+          <button class="ibtn" aria-label="Actions">⋮</button>
+        </div>
+        <div class="chips-rangée" style="padding:12px 12px 0">
+          <span class="bouton plein" style="background:var(--primaire);color:var(--sur-primaire);width:100%;justify-content:center">＋ Nouvelle conversation</span>
+        </div>
+        <div class="corps" style="gap:8px">
+          <div class="carte">
+            <b>Expliquer les records Java</b><br>
+            <small style="color:var(--sur-var)">8 messages · il y a 2 h</small>
+          </div>
+          <div class="carte">
+            <b>Idée d'application météo pour débutant</b><br>
+            <small style="color:var(--sur-var)">4 messages · hier</small>
+          </div>
+          <div class="carte">
+            <b>Comprendre « cannot find symbol »</b><br>
+            <small style="color:var(--sur-var)">12 messages · il y a 3 j</small>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Liste des conversations</b> — entrée de l'onglet IA de l'accueil. Le titre est le début du premier message ; la date est réelle (relative), le compte est réel.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tel">
+        <div class="barre">
+          <button class="ibtn" aria-label="Retour">←</button>
+          <span class="pastille-ia">✦</span><b>Assistant</b>
+          <span class="pill" style="margin-left:auto">modèle ▾</span>
+          <button class="ibtn" aria-label="Actions">⋮</button>
+        </div>
+        <div class="chips-rangée">
+          <span class="chip action">Expliquer un concept</span>
+          <span class="chip action">Idée de projet</span>
+          <span class="chip action">Comprendre une erreur de build</span>
+          <span class="chip action">Apprendre Java</span>
+        </div>
+        <div class="vide" style="flex:1">
+          <span style="font-size:26px">✦</span>
+          Posez une question, ou touchez une suggestion pour préremplir le champ.
+          <small>L'assistant n'a accès à aucun fichier : il explique, propose, prépare.</small>
+        </div>
+        <div class="composer">
+          <div class="saisie">
+            <div class="champ">Demander, expliquer, imaginer…</div>
+            <button class="envoyer" aria-label="Envoyer">➤</button>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Conversation vide</b> — suggestions de départ (remplissent le champ, n'envoient pas). Aucune pill de permission : rien à approuver sans outil.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tel">
+        <div class="barre">
+          <button class="ibtn" aria-label="Retour">←</button>
+          <span class="pastille-ia">✦</span><b>Assistant</b>
+          <span class="pill" style="margin-left:auto">laboratoire-v1 ▾</span>
+          <button class="ibtn" aria-label="Actions">⋮</button>
+        </div>
+        <div class="corps" style="max-height:520px;overflow-y:auto">
+          <div class="bulle">Explique-moi les records en Java, avec un exemple et un tableau des cas d'usage.</div>
+          <div class="reflexion">
+            <div class="tete"><span class="barre-r"></span>Réflexion · 4 s <span style="margin-left:auto">▾</span></div>
+          </div>
+          <div class="reponse">
+            <p>Un <b>record</b> (Java 16+) est une classe de données : le compilateur génère constructeur, accesseurs, <code>equals</code>, <code>hashCode</code> et <code>toString</code>.</p>
+            <h4>Exemple</h4>
+            <div class="bloc-code">
+              <div class="entete-b"><span>Java</span><span class="chemin">Point.java</span>
+                <button class="mini-b">Copier</button>
+              </div>
+              <pre><span class="k">public record</span> <span class="t">Point</span>(<span class="t">int</span> x, <span class="t">int</span> y) {
+    <span class="c">// accesseurs x() et y() générés</span>
+}</pre>
+            </div>
+            <h4>Cas d'usage</h4>
+            <div class="tableau"><table>
+              <tr><th>Cas</th><th>Pertinent ?</th></tr>
+              <tr><td>Données immuables (DTO)</td><td>✔ Oui</td></tr>
+              <tr><td>Objet avec logique d'état</td><td>✘ Non — classe normale</td></tr>
+            </table></div>
+            <ul>
+              <li>Immuable par construction</li>
+              <li>Idéal pour les clés de carte, les retours d'API</li>
+            </ul>
+          </div>
+          <div class="chips-rangée" style="padding:0">
+            <span class="chip action">Et les records imbriqués ?</span>
+            <span class="chip action">Différence avec une classe ?</span>
+          </div>
+        </div>
+        <div class="composer">
+          <div class="ligne-etat"><span class="pt"></span>Réponse terminée · 1 240 tokens · 6,2 s</div>
+          <div class="saisie">
+            <button class="ibtn rond" aria-label="Joindre">＋</button>
+            <div class="champ" style="flex:1">Message…</div>
+            <button class="envoyer" aria-label="Envoyer">➤</button>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Conversation riche</b> — Markdown rendu (titres, liste, tableau), bloc de code avec en-tête et Copier, Réflexion repliable fermée, chips de suivi. Pied de réponse : valeurs réelles (tokens, durée) — masquées si inconnues. Exemples d'illustration.</figcaption>
+    </figure>
+  </div>
+</section>
+<section>
+  <h2>2 · Agent du projet (tiroir droit de l'atelier)</h2>
+  <p class="sous">Panneau étroit (min(420 dp, écran − 56 dp)) : en-tête compact (pastille IA, « Agent · nom », pills modèle et permission, ⋯), <b>puces de contexte</b> à valeurs réelles (fichier ouvert, problèmes du dernier build, sélection — bascule on/off, jointes au prochain message), ligne d'état au-dessus de la saisie, <b>groupe d'actions repliable</b> avec compteurs issus du diff réel, <b>carte de permission intégrée au transcript</b> (diff avant/après), bloc « Appliquer » passant par la porte, bouton <b>Stop</b>, jauge de contexte.</p>
+  <div class="galerie">
+
+    <figure class="cadre">
+      <div class="tiroir tel">
+        <div class="barre">
+          <span class="pastille-ia">✦</span><b>Agent · MonApplication</b>
+          <span class="pill" style="margin-left:auto">laboratoire-v1 ▾</span>
+          <span class="pill tc">Demander ✓</span>
+          <button class="ibtn" aria-label="Actions">⋮</button>
+        </div>
+        <div class="chips-rangée">
+          <span class="chip on">Fichier ouvert (Main.java)</span>
+          <span class="chip on">Problèmes (3)</span>
+          <span class="chip">Sélection</span>
+        </div>
+        <div class="corps" style="max-height:460px;overflow-y:auto">
+          <div class="bulle">Corrige l'erreur de compilation dans le fichier ouvert.</div>
+          <div class="groupe-actions">
+            <div class="tete">▾ 5 actions <span style="margin-left:auto;font-weight:400">+18 −3</span></div>
+            <div class="corps-g">
+              <div class="ligne-outil"><span class="ico ok" style="width:16px;height:16px;border-radius:50%;background:var(--ok-soft);color:var(--ok);display:flex;align-items:center;justify-content:center;font-size:9px">✓</span><span class="nom">Lu</span> Main.java · lignes 1–120</div>
+              <div class="ligne-outil"><span style="width:16px;height:16px;border-radius:50%;background:var(--ok-soft);color:var(--ok);display:flex;align-items:center;justify-content:center;font-size:9px">✓</span><span class="nom">Recherche</span> « requireNonNull » · 4 résultats</div>
+              <div class="ligne-outil"><span style="width:16px;height:16px;border-radius:50%;background:var(--ok-soft);color:var(--ok);display:flex;align-items:center;justify-content:center;font-size:9px">✓</span><span class="nom">Modifié</span> Main.java · +12 −1</div>
+              <div class="ligne-outil"><span style="width:16px;height:16px;border-radius:50%;background:var(--err-soft);color:var(--erreur);display:flex;align-items:center;justify-content:center;font-size:9px">✗</span><span class="nom">Build échoué</span> 1 erreur</div>
+            </div>
+          </div>
+          <div class="reponse">
+            <p>La variable <code>name</code> pouvait être nulle à la ligne 12. J'ai ajouté une vérification, le build passe.</p>
+            <div class="diff">
+              <div class="entete-b"><span>Diff · Main.java</span><span class="chemin" style="flex:1"></span><span class="pill" style="height:20px;font-size:10px">+12 −1</span></div>
+              <pre><span class="l-ctx">    public void greet(String name) {</span>
+<span class="l-del">-        System.out.println("Bonjour " + name);</span>
+<span class="l-add">+        Objects.requireNonNull(name, "name");</span>
+<span class="l-add">+        System.out.println("Bonjour " + name);</span>
+<span class="l-ctx">    }</span></pre>
+            </div>
+          </div>
+        </div>
+        <div class="composer">
+          <div class="ligne-etat"><span class="pt"></span>Écrit Main.java… <button class="mini-b" style="margin-left:auto;color:var(--erreur);font-weight:700">■ Stop</button></div>
+          <div class="saisie">
+            <button class="ibtn rond" aria-label="Joindre">＋</button>
+            <div class="champ" style="flex:1">@Main.java </div>
+            <button class="envoyer stop" aria-label="Arrêter">■</button>
+          </div>
+          <div class="jauge"><span class="anneau"></span>12 400 / 200 000 tokens de contexte</div>
+        </div>
+      </div>
+      <figcaption><b>Tiroir agent en cours de tour</b> — puces de contexte réelles (le compte de problèmes vient du dernier build), groupe d'actions repliable avec compteurs exacts, diff coloré, ligne d'état, Stop, jauge (masquée si la fenêtre du modèle est inconnue). Mention @ avec complétion sur l'arborescence réelle.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tiroir tel">
+        <div class="barre">
+          <span class="pastille-ia">✦</span><b>Agent · MonApplication</b>
+          <span class="pill" style="margin-left:auto">laboratoire-v1 ▾</span>
+          <span class="pill tc">Demander ✓</span>
+          <button class="ibtn" aria-label="Actions">⋮</button>
+        </div>
+        <div class="chips-rangée">
+          <span class="chip">Fichier ouvert (Main.java)</span>
+          <span class="chip">Problèmes (0)</span>
+        </div>
+        <div class="corps">
+          <div class="bulle">Ajoute une classe Util avec une méthode format.</div>
+          <div class="carte-perm">
+            <div class="t-perm">L'agent veut créer un fichier</div>
+            <div class="sous-perm">creer_fichier — <code>app/src/main/java/…/Util.java</code> · 24 lignes. Le diff complet vit dans l'invite :</div>
+            <div class="diff" style="margin:8px 0"><pre><span class="l-hunk">@@ -0,0 +1,4 @@</span>
+<span class="l-add">+public final class Util {</span>
+<span class="l-add">+    public static String format(String s) { … }</span>
+<span class="l-add">+}</span></pre></div>
+            <div class="actions">
+              <button class="bouton plein">Autoriser une fois</button>
+              <button class="bouton contour">Pour la session</button>
+              <button class="bouton contour">Refuser</button>
+            </div>
+          </div>
+        </div>
+        <div class="composer">
+          <div class="ligne-etat"><span class="pt" style="background:var(--tertiaire)"></span>Attend votre approbation</div>
+          <div class="saisie">
+            <div class="champ" style="flex:1">Message…</div>
+            <button class="envoyer" aria-label="Envoyer">➤</button>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Carte de permission intégrée au transcript</b> (remplace le dialogue système) : diff réel avant/après, trois décisions, fermeture = refus. Modes : Demander · Plan seulement · Auto (confirmation explicite).</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tiroir tel">
+        <div class="barre">
+          <span class="pastille-ia">✦</span><b>Agent · MonApplication</b>
+          <span class="pill" style="margin-left:auto">laboratoire-v1 ▾</span>
+          <span class="pill tc">Plan ✓</span>
+          <button class="ibtn" aria-label="Actions">⋮</button>
+        </div>
+        <div class="corps">
+          <div class="bulle">Propose un test pour Util.format.</div>
+          <div class="reponse">
+            <p>Voici le test proposé (mode <b>Plan seulement</b> : rien n'est modifié sans toi).</p>
+            <div class="bloc-code">
+              <div class="entete-b"><span>Java</span><span class="chemin">app/src/test/java/…/UtilTest.java</span>
+                <button class="mini-b">Copier</button>
+                <button class="mini-b appliquer">Appliquer…</button>
+              </div>
+              <pre><span class="k">@Test</span> <span class="t">void</span> <span class="n">formatTrim</span>() {
+    assertEquals(<span class="s">"ab"</span>, Util.format(<span class="s">" ab "</span>));
+}</pre>
+            </div>
+          </div>
+        </div>
+        <div class="composer">
+          <div class="saisie">
+            <div class="champ" style="flex:1">Message…</div>
+            <button class="envoyer" aria-label="Envoyer">➤</button>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Bloc « Appliquer »</b> — une proposition de code devient actionnable : Appliquer passe par la porte de permission (diff, approbation), jamais en contournant. « Voir le diff » ouvre la visionneuse partagée.</figcaption>
+    </figure>
+  </div>
+</section>
+<section>
+  <h2>3 · Sélecteur de modèle (bottom sheet)</h2>
+  <p class="sous">Ouvert depuis la pill modèle. Recherche, filtres, favoris, récents ; badges <b>Gratuit</b> / <b>Outils</b> / <b>Raisonnement</b> / <b>Vision</b> ; contexte et prix <b>uniquement s'ils sont connus</b> (catalogue du fournisseur — exemple d'illustration ci-dessous). Un modèle sans support d'outils ne peut servir l'agent : indiqué, avec proposition de repli.</p>
+  <div class="galerie">
+    <figure class="cadre">
+      <div class="tel">
+        <div class="feuille" style="margin-top:120px">
+          <div class="poignee"></div>
+          <div class="corps-f">
+            <h3>Modèle de l'agent</h3>
+            <div class="recherche">🔍 Rechercher un modèle…</div>
+            <div class="chips-rangée" style="padding:0 0 6px">
+              <span class="chip on">Tous</span>
+              <span class="chip">Gratuits</span>
+              <span class="chip">Outils</span>
+              <span class="chip">Raisonnement</span>
+              <span class="chip">★ Favoris</span>
+            </div>
+            <div class="modele">
+              <div class="nom-m"><b>modele-exemple-a (récent)</b><small>200k contexte · outils, raisonnement</small></div>
+              <span class="badge sel">Actif</span>
+            </div>
+            <div class="modele">
+              <div class="nom-m"><b>modele-exemple-b</b><small>128k contexte · outils, vision</small></div>
+              <span class="badge gratuit">Gratuit</span>
+            </div>
+            <div class="modele">
+              <div class="nom-m"><b>modele-exemple-c</b><small>32k contexte · sans outils — conseil seulement</small></div>
+              <span class="badge gratuit">Gratuit</span>
+              <span class="badge raison">Raisonnement</span>
+            </div>
+            <div class="modele">
+              <div class="nom-m"><b>modele-exemple-d</b><small>1 M contexte · outils</small></div>
+              <span class="badge outils">Outils</span>
+            </div>
+            <p class="sous" style="margin-top:10px">Prix affichés seulement quand le catalogue les fournit ; catalogue mis en cache 6 h, actualisable à la main ; repli sur le dernier cache si le réseau échoue — jamais une liste vide muette.</p>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Sélecteur de modèle</b> — la pill du chat ouvre cette feuille. Badges de capacités réels (issus du catalogue). Modèles, contextes et badges : exemples d'illustration.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section>
+  <h2>4 · Réglages IA (hub + sous-pages)</h2>
+  <p class="sous">La page unique actuelle devient un <b>hub</b> (cartes Material 3, une icône par ligne, état résumé en sous-titre — mêmes composants que le hub Paramètres existant) vers : Fournisseurs · Modèles · Comportement · Permissions et sécurité · Outils et connexions · Utilisation et coûts · Données · Activer/désactiver l'IA. <b>Chaque réglage a un lecteur réel</b> (matrice de câblage, test automatisé) ; un réglage sans effet est retiré ou dit « à venir ».</p>
+  <div class="galerie">
+
+    <figure class="cadre">
+      <div class="tel">
+        <div class="barre"><button class="ibtn" aria-label="Retour">←</button><b>Réglages IA</b></div>
+        <div class="corps">
+          <div class="carte-réglage">
+            <div class="rangée"><span class="ico-r" style="background:var(--conteneur-primaire);color:var(--sur-conteneur-primaire)">⚙</span><span class="txt"><b>Activer la fonctionnalité IA</b><small>L'onglet IA et le tiroir agent suivent ce réglage</small></span><span class="interrupteur on"></span></div>
+          </div>
+          <div class="carte-réglage">
+            <div class="rangée"><span class="ico-r" style="background:var(--sc2);color:var(--sur-sc2)">✦</span><span class="txt"><b>Fournisseurs</b><small>OpenRouter actif · clé enregistrée ✓</small></span><span class="fin">›</span></div>
+            <div class="rangée"><span class="ico-r" style="background:var(--sc2);color:var(--sur-sc2)">◇</span><span class="txt"><b>Modèles</b><small>Assistant : modele-exemple-a · Agent : modele-exemple-d</small></span><span class="fin">›</span></div>
+            <div class="rangée"><span class="ico-r" style="background:var(--sc2);color:var(--sur-sc2)">≡</span><span class="txt"><b>Comportement</b><small>Effort moyen · 8 192 tokens · 16 itérations</small></span><span class="fin">›</span></div>
+          </div>
+          <div class="carte-réglage">
+            <div class="rangée"><span class="ico-r" style="background:var(--conteneur-tertiaire);color:var(--sur-conteneur-tertiaire)">🛡</span><span class="txt"><b>Permissions et sécurité</b><small>Demander à chaque mutation</small></span><span class="fin">›</span></div>
+            <div class="rangée"><span class="ico-r" style="background:var(--sc2);color:var(--sur-sc2)">🔧</span><span class="txt"><b>Outils et connexions</b><small>Recherche web : à venir · MCP : à venir</small></span><span class="fin">›</span></div>
+            <div class="rangée"><span class="ico-r" style="background:var(--sc2);color:var(--sur-sc2)">◐</span><span class="txt"><b>Utilisation et coûts</b><small>Séance : 18 400 tokens</small></span><span class="fin">›</span></div>
+            <div class="rangée"><span class="ico-r" style="background:var(--sc2);color:var(--sur-sc2)">⌸</span><span class="txt"><b>Données</b><small>7 conversations · 142 Ko</small></span><span class="fin">›</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Hub Réglages IA</b> — état résumé réel par ligne (clé testée, compteurs locaux). Les puces fictives (trois fournisseurs vers le même identifiant) et le défilement de modèles au clic disparaissent.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tel">
+        <div class="barre"><button class="ibtn" aria-label="Retour">←</button><b>Fournisseur · OpenRouter</b></div>
+        <div class="corps" style="max-height:470px;overflow-y:auto">
+          <div class="pastille-statut ok">✓ Clé enregistrée · testée il y a 4 min</div>
+          <div class="étiquette">Clé API</div>
+          <div class="petit-champ">sk-or-v1-•••••••••••••••<span class="oeil">👁</span></div>
+          <div class="chips-rangée" style="padding:8px 0 0">
+            <span class="bouton plein" style="background:var(--primaire);color:var(--sur-primaire);width:100%;justify-content:center">Tester la connexion</span>
+          </div>
+          <div class="étiquette">Attribution de l'application</div>
+          <div class="carte-réglage">
+            <div class="rangée"><span class="txt"><b>Identifier JoIDE auprès d'OpenRouter</b><small>En-têtes HTTP-Referer et X-Title</small></span><span class="interrupteur on"></span></div>
+          </div>
+          <div class="étiquette">Routage</div>
+          <div class="carte-réglage">
+            <div class="rangée"><span class="txt"><b>Trier les fournisseurs par</b><small>Prix (moins cher d'abord)</small></span><span class="fin">›</span></div>
+            <div class="rangée"><span class="txt"><b>Autoriser les replis de routage</b><small>allow_fallbacks</small></span><span class="interrupteur on"></span></div>
+            <div class="rangée"><span class="txt"><b>Exiger le support des outils</b><small>require_parameters quand des outils sont envoyés</small></span><span class="interrupteur on"></span></div>
+            <div class="rangée"><span class="txt"><b>Refuser les fournisseurs qui conservent mes données</b><small>data_collection : deny</small></span><span class="interrupteur on"></span></div>
+            <div class="rangée"><span class="txt"><b>Modèles de repli</b><small>2 modèles si l'actif échoue</small></span><span class="fin">›</span></div>
+          </div>
+          <p class="sous" style="margin-top:10px">Chaque champ n'est envoyé qu'après vérification dans la documentation officielle ; les écarts sont consignés dans l'ADR. URL de base éditable uniquement pour la passerelle personnalisée.</p>
+        </div>
+      </div>
+      <figcaption><b>Page fournisseur OpenRouter</b> — clé masquée, test réel (GET /key), attribution, routage. Aucun champ dont l'existence n'est pas confirmée par la doc officielle.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tel">
+        <div class="barre"><button class="ibtn" aria-label="Retour">←</button><b>Comportement</b></div>
+        <div class="corps" style="max-height:470px;overflow-y:auto">
+          <div class="étiquette">Effort de raisonnement</div>
+          <div class="chips-rangée" style="padding:0">
+            <span class="chip">Aucun</span><span class="chip">Faible</span><span class="chip on">Moyen</span><span class="chip">Élevé</span><span class="chip">Défaut</span>
+          </div>
+          <p class="sous" style="margin:6px 0 0">Désactivé avec le motif affiché si le modèle ne supporte pas le raisonnement.</p>
+          <div class="étiquette">Température (assistant)</div>
+          <div class="curseur"></div>
+          <div class="étiquette">Plafonds</div>
+          <div class="carte-réglage">
+            <div class="rangée"><span class="txt"><b>Tokens de sortie max</b><small>appliqué à chaque réponse</small></span><span class="fin">8 192</span></div>
+            <div class="rangée"><span class="txt"><b>Itérations d'outils max</b><small>plafond + tour de clôture</small></span><span class="fin">16</span></div>
+            <div class="rangée"><span class="txt"><b>Seuil de compactage</b><small>élimination puis résumé</small></span><span class="fin">Auto</span></div>
+          </div>
+          <div class="étiquette">Instructions personnalisées</div>
+          <div class="petit-champ" style="height:64px;align-items:flex-start;padding-top:10px;font-family:inherit">Réponds en français, avec des exemples courts.</div>
+          <div class="carte-réglage">
+            <div class="rangée"><span class="txt"><b>Lire AGENTS.md du projet</b><small>borné, mis en cache par (chemin, mtime)</small></span><span class="interrupteur on"></span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Comportement</b> — effort (épinglé par conversation), température assistant, plafonds réellement lus par le moteur (tokens max, itérations), instructions perso dans la moitié stable du prompt.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tel">
+        <div class="barre"><button class="ibtn" aria-label="Retour">←</button><b>Permissions et sécurité</b></div>
+        <div class="corps">
+          <div class="étiquette" style="margin-top:0">Mode de permission</div>
+          <div class="carte-réglage">
+            <div class="rangée"><span class="txt"><b>Demander à chaque mutation</b><small>Diff dans l'invite, à chaque écriture</small></span><span class="interrupteur on"></span></div>
+            <div class="rangée"><span class="txt"><b>Plan seulement</b><small>L'agent lit et propose, ne modifie rien</small></span><span class="interrupteur"></span></div>
+            <div class="rangée"><span class="txt"><b>Auto — accepter</b><small>Exige une confirmation explicite</small></span><span class="interrupteur"></span></div>
+          </div>
+          <div class="étiquette">Ce qui part de l'appareil</div>
+          <div class="carte"><small style="color:var(--sur-var);line-height:1.6">La conversation complète (messages, contenus de fichiers lus, résultats d'outils et de build) part vers le fournisseur actif. Les secrets détectés (clés, jetons, mots de passe) sont masqués avant envoi.</small></div>
+          <div class="carte-réglage">
+            <div class="rangée"><span class="txt"><b>Masquer les secrets détectés</b><small>fichiers parcourus avant envoi</small></span><span class="interrupteur on"></span></div>
+            <div class="rangée"><span class="txt"><b>Chemins protégés en écriture</b><small>.git/, local.properties, *.jks, .env…</small></span><span class="fin">›</span></div>
+            <div class="rangée"><span class="txt"><b>Oublier les autorisations de la session</b></span><span class="fin">›</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Permissions et sécurité</b> — trois modes expliqués en une phrase, liste réelle des chemins protégés, notice honnête par fournisseur (privacyNotice), masquage des secrets avant envoi.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tel">
+        <div class="barre"><button class="ibtn" aria-label="Retour">←</button><b>Utilisation et coûts</b></div>
+        <div class="corps">
+          <div class="métriques">
+            <div class="métrique"><b>18,4k</b><small>séance</small></div>
+            <div class="métrique"><b>212k</b><small>aujourd'hui</small></div>
+            <div class="métrique"><b>1,1 M</b><small>ce mois</small></div>
+          </div>
+          <div class="étiquette">Coût estimé</div>
+          <div class="carte"><small style="color:var(--sur-var)">0,42 € estimés ce mois — calculé uniquement quand le prix du modèle est connu dans le catalogue ; sinon la ligne n'apparaît pas.</small></div>
+          <div class="étiquette">Solde OpenRouter</div>
+          <div class="carte" style="display:flex;align-items:center;gap:10px">
+            <b style="font-size:17px">4,18 €</b>
+            <span class="pastille-statut ok">✓ clé valide · limite 10 €/mois</span>
+            <span style="margin-left:auto" class="bouton contour">Actualiser</span>
+          </div>
+          <div class="chips-rangée" style="padding:0">
+            <span class="bouton contour" style="color:var(--erreur)">Réinitialiser les compteurs</span>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Utilisation et coûts</b> — compteurs locaux réels (jamais inventés) ; solde et limite via l'API du fournisseur avec bouton Actualiser ; coût seulement si le prix est connu. Exemples d'illustration.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section>
+  <h2>5 · États honnêtes (aucune donnée factice)</h2>
+  <p class="sous">Chaque cause a <b>son</b> message et <b>ses</b> actions. Sans clé : carte explicite avec « Configurer un fournisseur ». Chargement, hors-ligne et troncatures se disent, jamais ne se déguisent.</p>
+  <div class="galerie">
+
+    <figure class="cadre">
+      <div class="tiroir tel">
+        <div class="barre"><span class="pastille-ia">✦</span><b>Assistant</b></div>
+        <div class="corps" style="min-height:210px">
+          <div class="carte-manque"><b>Aucune clé IA configurée</b><br>Pour discuter avec un fournisseur distant, ajoutez une clé dans Réglages IA → Fournisseurs. La passerelle locale (serveur compatible sur votre appareil) fonctionne sans clé.</div>
+          <div class="chips-rangée" style="padding:0"><span class="bouton plein" style="background:var(--primaire);color:var(--sur-primaire)">Configurer un fournisseur</span></div>
+        </div>
+      </div>
+      <figcaption><b>Absence de clé</b> — aucun plantage au premier message ; l'état se dit.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tiroir tel">
+        <div class="barre"><span class="pastille-ia">✦</span><b>Agent · MonApplication</b></div>
+        <div class="corps" style="min-height:210px">
+          <div class="bulle">Résume le projet.</div>
+          <div class="carte-erreur">
+            <div class="t-err">Clé refusée (401)</div>
+            <p>Le fournisseur a rejeté la clé. Vérifiez-la dans Réglages IA → Fournisseurs — elle n'apparaît jamais dans les journaux.</p>
+            <div class="actions"><button class="bouton contour">Réessayer</button><button class="bouton contour">Ouvrir les réglages</button></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>401 — clé refusée</b> : actions Réessayer / Réglages.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tiroir tel">
+        <div class="barre"><span class="pastille-ia">✦</span><b>Agent · MonApplication</b></div>
+        <div class="corps" style="min-height:210px">
+          <div class="carte-erreur">
+            <div class="t-err">Crédits insuffisants (402)</div>
+            <p>Le solde du compte ne couvre pas cette requête. Rechargez le compte du fournisseur, ou choisissez un modèle gratuit.</p>
+            <div class="actions"><button class="bouton contour">Changer de modèle</button><button class="bouton contour">Voir les détails</button></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>402 — crédits insuffisants</b> : proposition de passer à un modèle gratuit.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tiroir tel">
+        <div class="barre"><span class="pastille-ia">✦</span><b>Agent · MonApplication</b></div>
+        <div class="corps" style="min-height:210px">
+          <div class="carte-erreur">
+            <div class="t-err">Limite de débit atteinte (429)</div>
+            <p>Trop de requêtes — réessayez dans 42 s (indiqué par le fournisseur), ou changez de modèle. Les modèles gratuits ont des limites plus strictes.</p>
+            <div class="actions"><button class="bouton contour">Réessayer</button><button class="bouton contour">Changer de modèle</button></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>429 — limite de débit</b> : Retry-After respecté et affiché ; reprise automatique uniquement avant la première sortie.</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tiroir tel">
+        <div class="barre"><span class="pastille-ia">✦</span><b>Agent · MonApplication</b></div>
+        <div class="corps" style="min-height:210px">
+          <div class="carte-erreur">
+            <div class="t-err">Contexte trop long</div>
+            <p>La conversation dépasse la fenêtre du modèle. Compactez l'historique (les anciens résultats d'outils sont résumés), ou démarrez une nouvelle conversation.</p>
+            <div class="actions"><button class="bouton contour">Compacter</button><button class="bouton contour">Nouvelle conversation</button></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Contexte trop long</b> : action de compactage (régime réel, pas un message générique).</figcaption>
+    </figure>
+
+    <figure class="cadre">
+      <div class="tiroir tel">
+        <div class="barre"><span class="pastille-ia">✦</span><b>Agent · MonApplication</b></div>
+        <div class="corps" style="min-height:210px">
+          <div class="ligne-etat"><span class="spinner"></span>Chargement du catalogue des modèles…</div>
+          <div class="carte-manque">Hors-ligne — le dernier catalogue en cache reste utilisable ; une liste vide ne s'affiche jamais comme un état normal.</div>
+        </div>
+      </div>
+      <figcaption><b>Chargement / hors-ligne</b> — repli sur le cache, état dit.</figcaption>
+    </figure>
+  </div>
+</section>
+</main>
+<script>function basculerTheme(){var h=document.documentElement,n=h.getAttribute("data-theme")==="dark"?"light":"dark";h.setAttribute("data-theme",n);document.getElementById("bascul").textContent=n==="dark"?"☀ Clair":"☾ Sombre"}</script>
+</body>
+</html>
