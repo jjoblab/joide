@@ -166,7 +166,11 @@ public final class AiPanelFragment extends Fragment {
                         ? AiSessionViewModel.Role.AGENT : AiSessionViewModel.Role.ASSISTANT,
                         root), AiSessionViewModel.class);
         session.init(root != null ? AiSessionViewModel.Role.AGENT
-                : AiSessionViewModel.Role.ASSISTANT, root, requireContext());
+                : AiSessionViewModel.Role.ASSISTANT, root, requireContext(),
+                root != null && requireParentFragment() instanceof jo.joide.app.WorkbenchFragment
+                        ? ((jo.joide.app.WorkbenchFragment) requireParentFragment())
+                                .workspaceEvents()
+                        : null);
         session.events().observe(getViewLifecycleOwner(), batch -> {
             if (batch != null) {
                 for (AgentLoop.LoopEvent event : batch) {
@@ -385,6 +389,12 @@ public final class AiPanelFragment extends Fragment {
      * @param isNew faux pour une relance (Réessayer) : ni bulle ni persistance
      *              en double — la question est déjà au transcript.
      */
+    /** Question préremplie ( « Expliquer cette erreur » — Lot 8). */
+    public void prefillPrompt(String prompt) {
+        binding.inputField.setText(prompt);
+        binding.inputField.setSelection(binding.inputField.getText().length());
+    }
+
     /** Complétion « @ » sur l'arborescence réelle du projet (Lot 6). */
     private void wireMentionCompletion() {
         binding.inputField.addTextChangedListener(new android.text.TextWatcher() {
@@ -1062,6 +1072,12 @@ public final class AiPanelFragment extends Fragment {
                             Snackbar.LENGTH_SHORT).show());
             header.addView(hint);
         } else if (code.title() != null && !code.title().isEmpty()) {
+            TextView open = actionChip(getString(R.string.chat_code_open));
+            open.setOnClickListener(v ->
+                    ((jo.joide.app.WorkbenchFragment) requireParentFragment())
+                            .openFile(java.nio.file.Paths.get(
+                                    projectRoot(), code.title())));
+            header.addView(open);
             TextView apply = actionChip(getString(R.string.chat_code_apply));
             apply.setOnClickListener(v -> applyProposal(code.title(), code.code()));
             header.addView(apply);

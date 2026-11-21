@@ -12,7 +12,14 @@ import jo.joide.workbench.WorkspaceEvents;
 public class WorkspaceViewModel extends ViewModel {
 
     private String projectPath;
-    private final WorkspaceEvents events = new WorkspaceEvents();
+    private WorkspaceEvents events = new WorkspaceEvents();
+
+    /** Attache le bus partagé de l'atelier (Lot 8) : un seul chemin de mise à jour. */
+    public void attachEvents(WorkspaceEvents shared) {
+        if (shared != null && shared != events) {
+            this.events = shared;
+        }
+    }
 
     /** Pose le chemin du projet (une seule fois : l'atelier ne change pas). */
     public void init(String path) {

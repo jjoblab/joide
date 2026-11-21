@@ -24,6 +24,9 @@
     <string name="assistant_choisir">Installer ce mode</string>
     <string name="commun_retour">Retour</string>
     <string name="commun_ok">OK</string>
+    <string name="problems_explain_title">Problème de build</string>
+    <string name="problems_explain_action">Expliquer avec l\'agent IA</string>
+    <string name="problems_explain_prompt">Explique cette erreur du dernier build et propose la correction minimale (relis le fichier, corrige, vérifie par un build) :\n%1$s%2$s\n%3$s</string>
     <string name="commun_annuler">Annuler</string>
     <string name="assistant_commencer">Commencer</string>
     <string name="mode_forge_limites">Limites : AAR et ViewBinding non supportés ; les composants Android (aapt2, plateformes) ne sont pas encore publiés par Forge.</string>

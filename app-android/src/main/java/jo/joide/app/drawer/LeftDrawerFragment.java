@@ -50,6 +50,11 @@ public final class LeftDrawerFragment extends Fragment {
             @Nullable Bundle savedInstanceState) {
         binding = LeftDrawerFragmentBinding.inflate(inflater, container, false);
         viewModel = new ViewModelProvider(this).get(WorkspaceViewModel.class);
+        // Lot 8 : bus partagé de l'atelier — l'arbre voit les mutations de
+        // l'agent et les changements de fichiers, pas seulement les siennes.
+        if (requireParentFragment() instanceof jo.joide.app.WorkbenchFragment workbench) {
+            viewModel.attachEvents(workbench.workspaceEvents());
+        }
         viewModel.init(projectPath());
 
         // Sélecteur : trois onglets hébergés ; Git ouvre l'écran Git (comme

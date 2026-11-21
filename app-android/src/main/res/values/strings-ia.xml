@@ -223,6 +223,8 @@
     <string name="chat_prompt_explain">Explique le fichier actuellement ouvert dans l\'éditeur : structure, rôle, points délicats. Cite les lignes importantes.</string>
     <string name="chat_prompt_fix">Corrige les problèmes du dernier build : liste les diagnostics, propose la correction minimale pour chacun, puis vérifie par un build.</string>
     <string name="chat_prompt_test">Écris un test pour le fichier ouvert : identifie les méthodes clés et couvre-les (cas nominal + cas limite). Propose le fichier de test.</string>
+    <!-- Lot 8 : intégrations atelier -->
+    <string name="chat_code_open">Ouvrir</string>
     <string name="chat_code_copy">Copier</string>
     <string name="chat_code_apply">Appliquer…</string>
     <string name="chat_code_applied">Fichier écrit (via la permission) : %1$s</string>

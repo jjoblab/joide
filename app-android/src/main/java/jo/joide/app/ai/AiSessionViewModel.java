@@ -53,6 +53,7 @@ public class AiSessionViewModel extends ViewModel {
     private Role role = Role.ASSISTANT;
     private String projectPath;
     private Context applicationContext;
+    private jo.joide.workbench.WorkspaceEvents workspaceEvents;
     private ConversationStore store;
     private AgentLoop loop;
     private Conversation conversation;
@@ -73,11 +74,14 @@ public class AiSessionViewModel extends ViewModel {
                 : "session-ia-agent-" + ConversationStore.fingerprint(projectPath);
     }
 
-    /** Initialise la session (une fois) : rôle, projet, stockage. */
-    public void init(Role role, @Nullable String projectPath, Context context) {
+    /** Initialise la session (une fois) : rôle, projet, stockage, bus de l'atelier. */
+    public void init(Role role, @Nullable String projectPath, Context context,
+            @Nullable jo.joide.workbench.WorkspaceEvents events) {
         if (this.store != null) {
+            this.workspaceEvents = events;
             return;
         }
+        this.workspaceEvents = events;
         this.role = role;
         this.projectPath = projectPath;
         this.applicationContext = context.getApplicationContext();
@@ -329,6 +333,13 @@ public class AiSessionViewModel extends ViewModel {
             }
             // L'usage réel traverse le dernier TurnCompleted vu dans emit.
             rememberTurn(answer.toString(), lastUsage);
+            // Lot 8 : chaque fichier touché par le tour est publié — l'éditeur
+            // et l'arbre se rafraîchissent sans action de l'utilisateur.
+            if (current.checkpoint() != null) {
+                for (String touched : current.checkpoint().touchedPaths()) {
+                    publishChanged(touched);
+                }
+            }
             main.post(() -> turnRunning = false);
         });
     }
@@ -399,6 +410,7 @@ public class AiSessionViewModel extends ViewModel {
                 current.checkpoint().beforeChange(path);
                 current.loopWorkspace().writeFile(path, content);
                 current.checkpoint().afterChange(path, false);
+                publishChanged(path);
                 onSuccess.accept(path);
             } catch (Exception e) {
                 onFailure.accept(e.getMessage() != null ? e.getMessage()
@@ -461,6 +473,20 @@ public class AiSessionViewModel extends ViewModel {
             List<String> safe = new ArrayList<>(matches);
             main.post(() -> onSuggestions.accept(safe));
         });
+    }
+
+    /** Publie un fichier changé sur le bus de l'atelier (si branché). */
+    private void publishChanged(String relativePath) {
+        jo.joide.workbench.WorkspaceEvents bus = workspaceEvents;
+        if (bus == null || projectPath == null || relativePath == null) {
+            return;
+        }
+        try {
+            bus.publish(new jo.joide.workbench.WorkspaceEvents.FileChangedOnDisk(
+                    java.nio.file.Paths.get(projectPath).resolve(relativePath)));
+        } catch (Exception ignored) {
+            // Chemin improbable : l'événement est best effort.
+        }
     }
 
     /** Annule les effets du dernier tour (checkpoint) et le dit au modèle. */

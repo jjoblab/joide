@@ -81,6 +81,7 @@ public class WorkbenchFragment extends Fragment
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
             @Nullable Bundle savedInstanceState) {
         binding = WorkbenchFragmentBinding.inflate(inflater, container, false);
+        subscribeWorkspaceEvents();
         projectPath = projectPath();
 
         if (projectPath != null) {
@@ -181,6 +182,39 @@ public class WorkbenchFragment extends Fragment
         }
     }
 
+    // ---- Lot 8 : les mutations de l'agent rafraîchissent l'éditeur ------------
+
+    private final java.util.concurrent.atomic.AtomicBoolean eventsSubscribed =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+
+    /** S'abonne au bus une fois : fichier changé sur le disque → recharger l'onglet ouvert. */
+    private void subscribeWorkspaceEvents() {
+        if (!eventsSubscribed.compareAndSet(false, true)) {
+            return;
+        }
+        workspaceEvents.subscribe(event -> {
+            java.nio.file.Path changed = null;
+            if (event instanceof jo.joide.workbench.WorkspaceEvents.FileChangedOnDisk changedEvent) {
+                changed = changedEvent.file();
+            } else if (event instanceof jo.joide.workbench.WorkspaceEvents.FileCreated created) {
+                changed = created.file();
+            } else if (event instanceof jo.joide.workbench.WorkspaceEvents.FileRenamed renamed) {
+                changed = renamed.to();
+            }
+            if (changed == null || activeFile == null) {
+                return;
+            }
+            java.nio.file.Path finalChanged = changed;
+            requireActivity().runOnUiThread(() -> {
+                // L'onglet actif concerné se relit depuis le disque : l'agent
+                // écrit, l'atelier suit — sans action de l'utilisateur.
+                if (activeFile != null && activeFile.equals(finalChanged)) {
+                    openFile(finalChanged);
+                }
+            });
+        });
+    }
+
     // ---- Contrat WorkbenchHost (le tiroir gauche ne touche jamais l'éditeur) --
 
     @Override
@@ -277,6 +311,51 @@ public class WorkbenchFragment extends Fragment
                                 || drawers.isDrawerOpen(androidx.core.view.GravityCompat.END));
             }
         });
+    }
+
+    // ---- Bus de l'espace de travail (Lot 8 : un seul chemin de mise à jour) ----
+
+    private final jo.joide.workbench.WorkspaceEvents workspaceEvents =
+            new jo.joide.workbench.WorkspaceEvents();
+
+    /** Bus partagé : arbre, recherche, structure, Git, agent IA (mêmes événements). */
+    public jo.joide.workbench.WorkspaceEvents workspaceEvents() {
+        return workspaceEvents;
+    }
+
+    /** Demande d'explication en attente pour l'agent (posée hors de l'atelier). */
+    private static volatile String pendingAgentAsk;
+
+    /**
+     * Ouvre le tiroir droit de l'agent avec une question préremplie
+     * ( « Expliquer cette erreur » depuis les Problèmes — Lot 8).
+     */
+    public void openAgentPanel(String prompt) {
+        openAiDrawer();
+        getChildFragmentManager().executePendingTransactions();
+        android.view.View drawer = binding.drawerLayout;
+        drawer.post(() -> {
+            androidx.fragment.app.Fragment panel = getChildFragmentManager()
+                    .findFragmentById(R.id.ai_drawer_container);
+            if (panel instanceof jo.joide.app.ai.AiPanelFragment agentPanel) {
+                agentPanel.prefillPrompt(prompt);
+            }
+        });
+    }
+
+    /** Inscrit une demande d'explication (consommée à la reprise de l'atelier). */
+    public static void requestAgentExplanation(String prompt) {
+        pendingAgentAsk = prompt;
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (pendingAgentAsk != null) {
+            String ask = pendingAgentAsk;
+            pendingAgentAsk = null;
+            openAgentPanel(ask);
+        }
     }
 
     /** Ouvre le tiroir droit : agent IA (fragment enfant créé à la première ouverture). */
@@ -831,6 +910,24 @@ public class WorkbenchFragment extends Fragment
     /** Une rangée de problème (studio : ✗/⚠ rouge/alerte + position cliquable). */
     private View problemRow(jo.joide.workbench.Diagnostic diagnostic) {
         LinearLayout row = new LinearLayout(requireContext());
+        // Lot 8 : « Expliquer cette erreur » depuis les Problèmes — l'agent
+        // reçoit le diagnostic exact (fichier, ligne, message).
+        row.setOnClickListener(v ->
+                new com.google.android.material.dialog.MaterialAlertDialogBuilder(
+                        requireContext())
+                        .setTitle(R.string.problems_explain_title)
+                        .setMessage(diagnostic.file()
+                                + (diagnostic.line() > 0
+                                        ? ":" + diagnostic.line() : "")
+                                + "\n" + diagnostic.message())
+                        .setPositiveButton(R.string.problems_explain_action,
+                                (d, w) -> openAgentPanel(getString(
+                                        R.string.problems_explain_prompt,
+                                        diagnostic.file(),
+                                        diagnostic.line() > 0 ? ":" + diagnostic.line() : "",
+                                        diagnostic.message())))
+                        .setNegativeButton(R.string.commun_annuler, null)
+                        .show());
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(android.view.Gravity.CENTER_VERTICAL);
         boolean error = diagnostic.severity() != jo.joide.workbench.Diagnostic.Severity.WARNING;
