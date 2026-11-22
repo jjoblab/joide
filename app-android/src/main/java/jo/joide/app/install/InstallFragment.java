@@ -19,9 +19,12 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import androidx.activity.OnBackPressedCallback;
 import jo.forge.setup.download.CancellationToken;
+import jo.forge.setup.install.InstalledState;
 import jo.forge.setup.manifest.ComponentManifest;
 import jo.forge.setup.manifest.EngineManifest;
+import jo.joide.app.HomeFragment;
 import jo.joide.app.R;
 import jo.joide.app.databinding.InstallFragmentBinding;
 import jo.joide.app.ModeSetupFragment;
@@ -67,6 +70,16 @@ public class InstallFragment extends Fragment {
     private Set<String> cachedIds = Set.of();
     /** Téléchargement du manifeste en cours (évite le double clic CTA). */
     private CompletableFuture<Void> manifestFuture;
+    /**
+     * État d'installation connu (cache). La vérification SHA-256 de tout le
+     * moteur est LOURDE (des centaines de Mo) : elle vit hors fil UI, sinon
+     * l'écran gèle et même le bouton retour ne répond plus (bug réel du
+     * premier lancement). Première valeur optimiste : fichier d'état lu sans
+     * vérification, corrigée dès que la vérification de fond arrive.
+     */
+    private volatile InstallState installState = InstallState.NOT_INSTALLED;
+    /** Vérification d'état en vol (une seule à la fois, jamais cumulées). */
+    private CompletableFuture<Void> stateFuture;
 
     @Nullable
     @Override
@@ -79,9 +92,22 @@ public class InstallFragment extends Fragment {
                 requireContext().getFilesDir().toPath().resolve("forge"),
                 new jo.forge.client.DeviceVmLauncher(),
                 deviceProfile());
+        // Première valeur honnête sans vérification lourde : un moteur inscrit
+        // dans l'état est présumé installé (la vérification de fond affine).
+        installState = backend.engineManager().installer().currentState().isPresent()
+                ? InstallState.INSTALLED : InstallState.NOT_INSTALLED;
 
-        binding.installBackButton.setOnClickListener(v ->
-                requireActivity().getSupportFragmentManager().popBackStack());
+        // Retour du premier lancement : la pile est VIDE (l'assistant a
+        // remplacé sans empiler) — popBackStack ne ferait rien. Le retour mène
+        // alors à l'accueil, jamais à un bouton mort ni à une sortie muette.
+        binding.installBackButton.setOnClickListener(v -> backOrHome());
+        requireActivity().getOnBackPressedDispatcher().addCallback(
+                getViewLifecycleOwner(), new OnBackPressedCallback(true) {
+                    @Override
+                    public void handleOnBackPressed() {
+                        backOrHome();
+                    }
+                });
         binding.installActionButton.setOnClickListener(v -> startInstall());
         binding.installRepairButton.setOnClickListener(v -> startInstall());
         binding.installUninstallButton.setOnClickListener(v -> showUninstallPopup());
@@ -136,7 +162,7 @@ public class InstallFragment extends Fragment {
                 // reste honnête — catalogue de repli + message visible, jamais
                 // une taille inventée.
                 manifest = null;
-                requireActivity().runOnUiThread(() -> {
+                onUi(() -> {
                     binding.installSigBadge.setText(getString(R.string.install_canal_sig_ko));
                     binding.installSigBadge.setBackgroundResource(R.drawable.fond_pill_err);
                     binding.installSigBadge.setTextColor(color(R.color.erreur));
@@ -144,8 +170,45 @@ public class InstallFragment extends Fragment {
                             e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
                 });
             }
-            requireActivity().runOnUiThread(this::render);
+            onUi(this::render);
         });
+    }
+
+    // ---- Navigation : retour honnête selon la pile ----------------------------
+
+    /**
+     * Retour : ferme la popup de désinstallation si ouverte, dépile s'il y a
+     * une entrée (paramètres, atelier), sinon mène à l'accueil (premier
+     * lancement : la pile est vide et le retour ne doit jamais être mort).
+     */
+    private void backOrHome() {
+        if (binding.installUninstallPopup.getVisibility() == View.VISIBLE) {
+            hideUninstallPopup();
+            return;
+        }
+        if (getParentFragmentManager().getBackStackEntryCount() > 0) {
+            getParentFragmentManager().popBackStack();
+        } else {
+            goHome();
+        }
+    }
+
+    /** Poursuit vers l'accueil (premier lancement : racine neuve, sans pile). */
+    private void goHome() {
+        getParentFragmentManager().beginTransaction()
+                .replace(((ViewGroup) requireView().getParent()).getId(), new HomeFragment())
+                .commit();
+    }
+
+    /** Exécute sur le fil UI si l'écran vit encore (jamais d'activité morte). */
+    private void onUi(Runnable action) {
+        if (isAdded()) {
+            requireActivity().runOnUiThread(() -> {
+                if (isAdded() && binding != null) {
+                    action.run();
+                }
+            });
+        }
     }
 
     // ---- Rendu (design studio, données réelles) ------------------------------
@@ -393,15 +456,29 @@ public class InstallFragment extends Fragment {
 
     // ---- État d'installation (moteur réel) -----------------------------------
 
-    /** Rafraîchit version installée / CTA / chips selon l'état réel du moteur. */
+    /**
+     * Rafraîchit version installée / CTA / chips selon l'état CONNU (cache) et
+     * lance la vérification réelle (SHA-256 de tout le moteur) hors fil UI.
+     * {@code render} reste instantané : aucun gel, même juste après une
+     * installation de plusieurs centaines de Mo.
+     */
     private void renderInstallState() {
-        InstallState state = backend.installState();
-        String version = backend.engineManager().installer().currentState()
-                .map(s -> s.engineVersion()).orElse(null);
+        renderInstallStateBits(installedVersion());
+        verifyInstallStateAsync();
+    }
+
+    /** Version installée (lecture du petit fichier d'état — rapide, fil UI ok). */
+    private String installedVersion() {
+        return backend.engineManager().installer().currentState()
+                .map(InstalledState::engineVersion).orElse(null);
+    }
+
+    /** Rendu depuis le cache — AUCUNE E/S lourde ici (fil UI). */
+    private void renderInstallStateBits(String version) {
         String detail;
-        if (state == InstallState.INSTALLED) {
+        if (installState == InstallState.INSTALLED) {
             detail = getString(R.string.install_version_installee, version);
-        } else if (state == InstallState.BROKEN) {
+        } else if (installState == InstallState.BROKEN) {
             detail = getString(R.string.install_version_casse, version);
         } else {
             detail = getString(R.string.install_version_aucune);
@@ -413,17 +490,38 @@ public class InstallFragment extends Fragment {
         TextView actionLabel = (TextView) ((LinearLayout) binding.installActionButton)
                 .getChildAt(1);
         actionLabel.setText(getString(
-                state == InstallState.NOT_INSTALLED
+                installState == InstallState.NOT_INSTALLED
                         ? R.string.install_bouton : R.string.install_reparer));
         binding.installRepairButton.setVisibility(
-                state == InstallState.NOT_INSTALLED ? View.GONE : View.VISIBLE);
+                installState == InstallState.NOT_INSTALLED ? View.GONE : View.VISIBLE);
         binding.installUninstallButton.setVisibility(
-                state == InstallState.NOT_INSTALLED ? View.GONE : View.VISIBLE);
+                installState == InstallState.NOT_INSTALLED ? View.GONE : View.VISIBLE);
         // Ligne d'état sous le badge du canal : version disponible / installée.
         binding.installTotalText.setText(String.format(Locale.FRANCE, "%s · %s",
                 manifest != null
                         ? getString(R.string.install_version_dispo,
                                 manifest.engineVersion()) : "—", detail));
+    }
+
+    /**
+     * Vérification réelle HORS fil UI (SHA-256 de chaque fichier du moteur :
+     lourde). Un seul vol à la fois ; le résultat raffine le cache puis
+     * re-rend les chips — sans jamais bloquer l'interface ni le retour.
+     */
+    private void verifyInstallStateAsync() {
+        if (stateFuture != null && !stateFuture.isDone()) {
+            return; // déjà en vol
+        }
+        stateFuture = CompletableFuture.runAsync(() -> {
+            try {
+                installState = backend.installState();
+            } catch (RuntimeException e) {
+                // Aucun moteur à vérifier (état pivoté entre-temps) : honnête.
+                installState = InstallState.NOT_INSTALLED;
+            }
+        });
+        stateFuture.thenRun(() -> onUi(() ->
+                renderInstallStateBits(installedVersion())));
     }
 
     // ---- Installation réelle (progression en octets, annulable) --------------
@@ -442,32 +540,56 @@ public class InstallFragment extends Fragment {
             long total = progress.bytesTotal() > 0 ? progress.bytesTotal() : 1;
             int percent = (int) Math.min(100,
                     progress.bytesReceived() * 100 / total);
-            requireActivity().runOnUiThread(() -> {
+            onUi(() -> {
                 binding.installProgressBar.setProgress(percent);
                 binding.installPercentText.setText(percent + " %");
                 binding.installMetaText.setText(getString(R.string.install_telecharge,
                         humanBytes(progress.bytesReceived()),
                         humanBytes(progress.bytesTotal())));
             });
-        }, installToken).whenComplete((rien, échec) -> requireActivity().runOnUiThread(() -> {
-            binding.installProgressCard.setVisibility(View.GONE);
-            if (échec instanceof CancellationException) {
-                toast(getString(R.string.install_annule));
-            } else if (échec != null) {
-                toast(getString(R.string.install_echec,
-                        échec.getMessage() != null ? échec.getMessage()
-                                : échec.getClass().getSimpleName()));
-            } else {
+        }, installToken).whenComplete((rien, échec) -> {
+            // Le marqueur de mode persiste hors fil UI (écriture disque) — le
+            // fil UI ne reçoit que le rendu.
+            String persistance = null;
+            if (échec == null) {
                 try {
                     modes.markInstalled(WorkMode.FORGE);
                 } catch (IOException e) {
-                    toast(e.getMessage());
+                    persistance = e.getMessage();
                 }
-                toast(getString(R.string.install_termine, manifest.engineVersion()));
             }
-            loadManifest();
-            render();
-        }));
+            final String avertissement = persistance;
+            if (!isAdded()) {
+                return; // l'utilisateur a quitté l'écran : l'état moteur reste la vérité
+            }
+            requireActivity().runOnUiThread(() -> {
+                if (binding == null) {
+                    return;
+                }
+                binding.installProgressCard.setVisibility(View.GONE);
+                if (échec instanceof CancellationException) {
+                    toast(getString(R.string.install_annule));
+                } else if (échec != null) {
+                    toast(getString(R.string.install_echec,
+                            échec.getMessage() != null ? échec.getMessage()
+                                    : échec.getClass().getSimpleName()));
+                } else {
+                    if (avertissement != null) {
+                        toast(avertissement);
+                    }
+                    toast(getString(R.string.install_termine, manifest.engineVersion()));
+                    if (getParentFragmentManager().getBackStackEntryCount() == 0) {
+                        // Premier lancement : l'installation réussie POURSUIT
+                        // vers l'accueil — l'utilisateur n'a plus rien à faire
+                        // ici et le retour n'est plus un cul-de-sac.
+                        goHome();
+                        return;
+                    }
+                }
+                loadManifest();
+                render();
+            });
+        });
     }
 
     private void cancelInstall() {
@@ -492,9 +614,9 @@ public class InstallFragment extends Fragment {
                 backend.engineManager().installer().uninstall();
                 modes.uninstall(WorkMode.FORGE);
             } catch (IOException e) {
-                requireActivity().runOnUiThread(() -> toast(e.getMessage()));
+                onUi(() -> toast(e.getMessage()));
             }
-            requireActivity().runOnUiThread(() -> {
+            onUi(() -> {
                 toast(getString(R.string.install_desinstalle));
                 loadManifest();
                 render();
