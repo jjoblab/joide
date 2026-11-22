@@ -454,4 +454,28 @@
     <string name="git_tiroir_plus_nav">Plus</string>
     <string name="git_tiroir_fusion_confirm">Fusionner « %1$s » dans la branche courante ?</string>
     <string name="git_tiroir_compteur_depart">0/72</string>
+    <!-- Contenu principal (fidélité preview contenu-principal.html) -->
+    <string name="atelier_vide_titre">Aucun fichier ouvert</string>
+    <string name="atelier_vide_detail">Ouvrez-en un depuis l\'arbre</string>
+    <string name="atelier_enregistre_ok">Enregistré : %1$s</string>
+    <string name="atelier_onglet_modifie_dialogue">« %1$s » a des modifications non enregistrées</string>
+    <string name="atelier_onglet_enregistrer">Enregistrer</string>
+    <string name="atelier_onglet_ignorer">Ignorer les modifications</string>
+    <string name="atelier_onglet_fermer">Fermer</string>
+    <string name="atelier_onglet_fermer_autres">Fermer les autres</string>
+    <string name="atelier_onglet_autres_modifiees">%1$d autre(s) tampon(s) modifié(s) seront perdus</string>
+    <string name="atelier_onglet_copier_chemin">Copier le chemin</string>
+    <string name="atelier_onglet_nouveau">Nouveau fichier</string>
+    <string name="atelier_onglet_nom_indice">nom du fichier (ex. Note.md)</string>
+    <string name="atelier_onglet_nom_invalide">Nom invalide ou déjà pris</string>
+    <string name="atelier_onglet_cree_ok">Créé et ouvert : %1$s</string>
+    <string name="atelier_binaire_titre">Fichier binaire — non textuel</string>
+    <string name="atelier_binaire_detail">%1$s · %2$s · l\'édition texte n\'a pas de sens ici</string>
+    <string name="atelier_image_taille">%1$s · %2$d×%3$d</string>
+    <string name="atelier_volumineux">Fichier volumineux (%1$s) — lecture tronquée aux 256 premiers Kio</string>
+    <string name="atelier_apercu_indisponible">Pas d\'aperçu pour ce type de fichier</string>
+    <string name="atelier_sauvegarde_proposee">Sauvegarde de sûreté plus récente — restaurer ?</string>
+    <string name="atelier_restaure">Restaurer</string>
+    <string name="atelier_sauvegarde_restauree">Sauvegarde restaurée (non enregistrée)</string>
+    <string name="atelier_chemin_copie">Chemin copié</string>
 </resources>

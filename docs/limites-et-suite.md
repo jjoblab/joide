@@ -199,6 +199,25 @@ Deux nouveaux aperçus : `docs/mockups/contenu-principal.html` (zone
 éditeur) et `docs/mockups/bottom-sheet.html` (comportement du dock,
 démo interactive des trois états du BottomSheetBehavior).
 
+### Contenu principal conforme au preview validé (2026-11-22)
+`docs/mockups/contenu-principal.html` **validé** → analyse
+(`docs/mockups/ecarts-contenu-principal.md`) puis rapprochement : boutons
+enregistrer/annuler/rétablir **réels** (brique céleris, activation honnête
+sur les profondeurs), **cache de tampons** (changer d'onglet ne perd plus
+les modifications — bug réel trouvé par l'analyse), ✱ par tampon réel,
+fermeture confirmée (Enregistrer/Ignorer/Annuler), menu long d'onglet
+(Fermer · Fermer les autres · Copier le chemin), ＋ nouveau fichier, fil
+d'Ariane + sous-titre suivis à chaque ouverture, coloration **aux jetons**
+de colors.xml, barre de symboles avec **chemin du symbole courant**
+(plan céleris, appui → saut) au-dessus des touches, segment **Aperçu**
+vivant (filière XML rendue depuis le tampon, saut à la ligne de l'élément ;
+images réelles pour les binaires), états honnêtes (binaire détecté,
+volumineux borné à 256 Kio annoncé, aucun fichier ouvert), sauvegarde de
+sûreté au cache à la suspension avec proposition de restauration, repli
+de la barre de symboles sous le clavier. Consigné : soulignement
+d'erreurs dans l'éditeur (demande l'API décorations de céleris ; les
+Problèmes du dock ouvrent déjà le fichier à la ligne).
+
 ### Écarts assumés (consignés) et suite possible
 - **Glisser-déposer natif** (Lot 3) : remplacé par « Déplacer vers… » —
   l'appui long sert à la sélection multiple et au menu contextuel (choix

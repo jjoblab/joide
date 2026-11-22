@@ -19,7 +19,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import jo.joide.app.R;
 import jo.joide.app.databinding.WorkbenchFragmentBinding;
 import jo.joide.corestore.ModePreferences;
@@ -110,28 +113,70 @@ public class WorkbenchFragment extends Fragment
         binding.menuButton.setOnClickListener(v ->
                 binding.drawerLayout.openDrawer(androidx.core.view.GravityCompat.START));
         binding.dotsButton.setOnClickListener(this::showOptionsMenu);
-        // Studio : save/undo/redo — la brique céleris porte ces états (L5) ;
-        // les boutons disent honnêtement l'état.
-        String editorState = getString(R.string.atelier_editeur_brique);
-        binding.saveButton.setOnClickListener(v -> toast(editorState));
-        binding.undoButton.setOnClickListener(v -> toast(editorState));
-        binding.redoButton.setOnClickListener(v -> toast(editorState));
+        // Preview contenu-principal : enregistrer/annuler/rétablir RÉELS —
+        // la brique céleris porte l'historique (undo/redo), l'écriture est
+        // nôtre ; l'activation suit les profondeurs, jamais d'état figé.
+        binding.saveButton.setOnClickListener(v -> saveActiveFile());
+        binding.undoButton.setOnClickListener(v -> {
+            if (editor != null && editor.session() != null && editor.session().undo()) {
+                onBufferEdited();
+            }
+        });
+        binding.redoButton.setOnClickListener(v -> {
+            if (editor != null && editor.session() != null && editor.session().redo()) {
+                onBufferEdited();
+            }
+        });
+        // Segments Code / Aperçu (preview : le filaire XML et les images).
+        binding.segmentCode.setOnClickListener(v -> showCodeView());
+        binding.segmentApercu.setOnClickListener(v -> showPreviewView());
+        setupKeyboardFold();
+    }
+
+    /** Repli de la barre de symboles quand le clavier monte (preview). */
+    private void setupKeyboardFold() {
+        final boolean[] symbolWasVisible = {false};
+        final int[] rootHeight = {0};
+        binding.getRoot().getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+            if (binding == null) {
+                return;
+            }
+            android.graphics.Rect frame = new android.graphics.Rect();
+            binding.getRoot().getWindowVisibleDisplayFrame(frame);
+            if (rootHeight[0] == 0) {
+                rootHeight[0] = binding.getRoot().getHeight();
+            }
+            boolean keyboard = rootHeight[0] - frame.height() > rootHeight[0] / 5;
+            if (keyboard && binding.symbolBar.getVisibility() == View.VISIBLE) {
+                symbolWasVisible[0] = true;
+                binding.symbolBar.setVisibility(View.GONE);
+            } else if (!keyboard && symbolWasVisible[0]) {
+                symbolWasVisible[0] = false;
+                binding.symbolBar.setVisibility(View.VISIBLE);
+            }
+        });
     }
 
     /** Thème de l'éditeur aux couleurs de la maquette v2 (fond sc-lowest, encres du studio). */
     private jo.celeris.android.view.EditorTheme editorThemeV2(boolean night) {
         int selection = (requireContext().getColor(R.color.primaire) & 0x00FFFFFF) | 0x40000000;
-        jo.celeris.android.view.SyntaxPalette palette = night
-                ? new jo.celeris.android.view.SyntaxPalette(
-                        0xFFCC7832, 0xFF7FDBCA, 0xFFC3E88D, 0xFF82AAFF,
-                        0xFF90937E, 0xFFB4AFA3, 0xFFFFCB6B, 0xFFB0BEC5,
-                        0xFFE3E3E3, 0xFFE3E3E3, 0xFFF06292, 0xFFE3E3E3,
-                        0xFFE3E3E3, 0xFFFF8A80)
-                : new jo.celeris.android.view.SyntaxPalette(
-                        0xFF6A1B9A, 0xFF00695C, 0xFF2E7D32, 0xFF1565C0,
-                        0xFF767966, 0xFF6D4C41, 0xFF8D5000, 0xFF455A64,
-                        0xFF202124, 0xFF202124, 0xFFAD1457, 0xFF202124,
-                        0xFF202124, 0xFFC62828);
+        android.content.Context context = requireContext();
+        int primaire = context.getColor(R.color.primaire);
+        int info = context.getColor(R.color.info);
+        int ok = context.getColor(R.color.ok);
+        int tertiaire = context.getColor(R.color.tertiaire);
+        int surVar = context.getColor(R.color.sur_var);
+        int contour = context.getColor(R.color.contour);
+        int sur = context.getColor(R.color.sur);
+        int erreur = context.getColor(R.color.erreur);
+        // Preview : coloration aux jetons (ordre SyntaxPalette : KEYWORD,
+        // TYPE, STRING, NUMBER, COMMENT, DOC, ANNOTATION, OPERATOR,
+        // PUNCTUATION, IDENTIFIER, CONSTANT, brackets ×2, ERROR).
+        jo.celeris.android.view.SyntaxPalette palette =
+                new jo.celeris.android.view.SyntaxPalette(
+                        primaire, info, ok, tertiaire, surVar, surVar,
+                        tertiaire, contour, sur, sur, primaire, sur, sur,
+                        erreur);
         return new jo.celeris.android.view.EditorTheme(night ? 2 : 1,
                 requireContext().getColor(R.color.sc_lowest),
                 requireContext().getColor(R.color.sur),
@@ -142,6 +187,160 @@ public class WorkbenchFragment extends Fragment
                 palette,
                 night ? jo.celeris.core.syntax.scope.ScopeThemes.dark()
                         : jo.celeris.core.syntax.scope.ScopeThemes.light());
+    }
+
+    // ---- Segments Code / Aperçu (preview contenu-principal) ------------------
+
+    /** Retour au Code : l'éditeur céleris reprend la place. */
+    private void showCodeView() {
+        if (activeFile != null && !activeTextual) {
+            return; // binaire : le Code n'a rien à montrer, on reste en Aperçu
+        }
+        binding.apercuZone.setVisibility(View.GONE);
+        binding.etatVide.setVisibility(View.GONE);
+        if (editorView != null) {
+            editorView.setVisibility(View.VISIBLE);
+        }
+        styleSegments(false);
+    }
+
+    /** Aperçu : filaire XML (tampon vivant) ou message honnête. */
+    private void showPreviewView() {
+        if (activeFile == null) {
+            appendToJournal(getString(R.string.atelier_apercu_indisponible));
+            return;
+        }
+        String name = activeFile.getFileName().toString().toLowerCase(Locale.ROOT);
+        if (name.endsWith(".xml")) {
+            String content = editor != null && editor.session() != null
+                    && editorView != null && editorView.getVisibility() == View.VISIBLE
+                    ? editor.session().text() : null;
+            if (content == null) {
+                try {
+                    content = new String(Files.readAllBytes(activeFile),
+                            StandardCharsets.UTF_8);
+                } catch (IOException e) {
+                    appendToJournal(getString(R.string.atelier_lecture_impossible,
+                            activeFile.getFileName().toString()));
+                    return;
+                }
+            }
+            renderXmlWireframe(content);
+            return;
+        }
+        // Images : l'état binaire EST l'aperçu (déjà rendu si binaire).
+        if (isImageName(name)) {
+            try {
+                showBinaryState(activeFile, Files.size(activeFile));
+            } catch (IOException e) {
+                appendToJournal(getString(R.string.atelier_apercu_indisponible));
+            }
+            return;
+        }
+        appendToJournal(getString(R.string.atelier_apercu_indisponible));
+    }
+
+    private static boolean isImageName(String name) {
+        return name.endsWith(".png") || name.endsWith(".jpg")
+                || name.endsWith(".jpeg") || name.endsWith(".webp")
+                || name.endsWith(".gif") || name.endsWith(".bmp");
+    }
+
+    /**
+     * Filaire XML du preview : chaque élément devient une boîte contour avec
+     * son tag et son {@code android:id}, imbriquée comme dans le layout.
+     * Appui sur une boîte → retour au Code, curseur sur la ligne de l'élément.
+     */
+    private void renderXmlWireframe(String content) {
+        binding.etatVide.setVisibility(View.GONE);
+        if (editorView != null) {
+            editorView.setVisibility(View.GONE);
+        }
+        binding.apercuZone.setVisibility(View.VISIBLE);
+        binding.apercuZone.removeAllViews();
+        try {
+            org.xmlpull.v1.XmlPullParser parser = android.util.Xml.newPullParser();
+            parser.setInput(new java.io.StringReader(content));
+            LinearLayout root = new LinearLayout(requireContext());
+            root.setOrientation(LinearLayout.VERTICAL);
+            java.util.Deque<LinearLayout> stack = new java.util.ArrayDeque<>();
+            stack.push(root);
+            int event = parser.getEventType();
+            while (event != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) {
+                if (event == org.xmlpull.v1.XmlPullParser.START_TAG) {
+                    LinearLayout box = wireframeBox(parser.getName(),
+                            parser.getAttributeValue(
+                                    "http://schemas.android.com/apk/res/android", "id"),
+                            parser.getLineNumber());
+                    LinearLayout parent = stack.peek();
+                    LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT);
+                    params.topMargin = dip(4);
+                    parent.addView(box, params);
+                    stack.push(box);
+                } else if (event == org.xmlpull.v1.XmlPullParser.END_TAG) {
+                    if (stack.size() > 1) {
+                        stack.pop();
+                    }
+                }
+                event = parser.next();
+            }
+            binding.apercuZone.addView(root);
+            styleSegments(true);
+        } catch (Exception e) {
+            // XML invalide (en cours de frappe) : honnête, pas de filaire figé.
+            appendToJournal(getString(R.string.atelier_apercu_indisponible));
+            showCodeView();
+        }
+    }
+
+    /** Une boîte du filaire : bordure contour, libellé tag · @id, saut au clic. */
+    private LinearLayout wireframeBox(String tag, String id, int line) {
+        LinearLayout box = new LinearLayout(requireContext());
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dip(7), dip(5), dip(7), dip(5));
+        android.graphics.drawable.GradientDrawable border =
+                new android.graphics.drawable.GradientDrawable();
+        border.setColor(android.graphics.Color.TRANSPARENT);
+        border.setStroke(dip(1), getResources().getColor(R.color.contour));
+        border.setCornerRadius(dip(6));
+        box.setBackground(border);
+        TextView label = new TextView(requireContext());
+        String shown = id != null ? tag + " · " + id.replace("@+id/", "@id/")
+                .replace("@id/", "") : tag;
+        label.setText(shown);
+        label.setTextSize(9.5f);
+        label.setTextColor(getResources().getColor(R.color.sur_var));
+        box.addView(label);
+        box.setOnClickListener(v -> {
+            showCodeView();
+            if (editor != null && editor.session() != null) {
+                String text = editor.session().text();
+                int offset = offsetOf(text, line, 1);
+                editor.session().setSelection(jo.celeris.core.text.MultiSelection.of(
+                        new jo.celeris.core.text.SelRange(offset, offset)));
+                if (editorView != null) {
+                    editorView.post(() -> editorView.requestRectangleOnScreen(
+                            editorView.caretBounds()));
+                }
+            }
+        });
+        return box;
+    }
+
+    /** Style des segments : l'actif sur la pastille primaire (studio). */
+    private void styleSegments(boolean previewOn) {
+        binding.segmentCode.setBackground(previewOn
+                ? null : getResources().getDrawable(R.drawable.fond_segment_actif));
+        binding.segmentCode.setColorFilter(previewOn
+                ? getResources().getColor(R.color.sur_var)
+                : getResources().getColor(R.color.sur_conteneur_primaire));
+        binding.segmentApercu.setBackground(previewOn
+                ? getResources().getDrawable(R.drawable.fond_segment_actif) : null);
+        binding.segmentApercu.setColorFilter(previewOn
+                ? getResources().getColor(R.color.sur_conteneur_primaire)
+                : getResources().getColor(R.color.sur_var));
     }
 
     /** Bascule la barre de symboles sous l'éditeur (v2 : via le menu ⋯ ou le ⋯ du dock). */
@@ -222,6 +421,12 @@ public class WorkbenchFragment extends Fragment
                     openFile(finalChanged);
                     return;
                 }
+                if (finalChanged.equals(skipNextDiskReload)) {
+                    // Notre propre sauvegarde : le tampon est déjà à jour,
+                    // pas de relecture (le curseur reste où il est).
+                    skipNextDiskReload = null;
+                    return;
+                }
                 if (activeFile.equals(finalChanged)) {
                     openFile(finalChanged);
                 }
@@ -233,15 +438,164 @@ public class WorkbenchFragment extends Fragment
 
     @Override
     public void openFile(Path file) {
+        // Le tampon quitté vit en cache : revenir retrouve les modifications.
+        snapshotCurrentBuffer();
         activeFile = file;
+        if (!openTabs.contains(file)) {
+            openTabs.add(file);
+        }
+        String cached = modifiedBuffers.get(file);
+        if (cached != null) {
+            attachEditor(file.getFileName().toString(), cached);
+            currentDirty = true;
+        } else {
+            openFromDisk(file);
+        }
+        rebuildTabs();
+        refreshFileChrome();
+        checkSafetyCopy(file);
+    }
+
+    /** Lecture disque avec états honnêtes : binaire, volumineux, texte. */
+    private void openFromDisk(Path file) {
+        currentDirty = false;
+        activeTextual = true;
         try {
-            String content = new String(Files.readAllBytes(file),
-                    StandardCharsets.UTF_8);
-            attachEditor(file.getFileName().toString(), content);
+            long size = Files.size(file);
+            if (size == 0) {
+                // Fichier vide : éditable tel quel (le panneau vide ne concerne
+                // que l'absence de fichier).
+                attachEditor(file.getFileName().toString(), "");
+                return;
+            }
+            if (isBinary(file)) {
+                showBinaryState(file, size);
+                return;
+            }
+            if (size > 256 * 1024) {
+                byte[] head = new byte[256 * 1024];
+                try (var in = Files.newInputStream(file)) {
+                    int read = in.read(head);
+                    if (read > 0 && read < head.length) {
+                        head = java.util.Arrays.copyOf(head, read);
+                    }
+                }
+                attachEditor(file.getFileName().toString(),
+                        new String(head, StandardCharsets.UTF_8));
+                appendToJournal(getString(R.string.atelier_volumineux,
+                        humanSize(size)));
+                return;
+            }
+            attachEditor(file.getFileName().toString(),
+                    new String(Files.readAllBytes(file), StandardCharsets.UTF_8));
         } catch (IOException e) {
             appendToJournal(getString(R.string.atelier_lecture_impossible,
                     file.getFileName().toString()));
         }
+    }
+
+    /** Binaire = octet nul dans la tête (aperçu image réel si image). */
+    private boolean isBinary(Path file) throws IOException {
+        byte[] head = new byte[8192];
+        int read;
+        try (var in = Files.newInputStream(file)) {
+            read = in.read(head);
+        }
+        for (int i = 0; i < Math.max(0, read); i++) {
+            if (head[i] == 0) {
+                return true;
+            }
+        }
+        return read < 0; // vide côté flux : traité comme texte vide ailleurs
+    }
+
+    /** État binaire du preview : type + taille ; l'image se rend, réelle. */
+    private void showBinaryState(Path file, long size) {
+        activeTextual = false;
+        String name = file.getFileName().toString();
+        String ext = name.contains(".")
+                ? name.substring(name.lastIndexOf('.') + 1).toUpperCase(Locale.ROOT)
+                : "?";
+        binding.etatVide.setVisibility(View.GONE);
+        if (editorView != null) {
+            editorView.setVisibility(View.GONE);
+        }
+        binding.apercuZone.setVisibility(View.VISIBLE);
+        binding.apercuZone.removeAllViews();
+        LinearLayout card = new LinearLayout(requireContext());
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+        String lower = name.toLowerCase(Locale.ROOT);
+        if (lower.endsWith(".png") || lower.endsWith(".jpg")
+                || lower.endsWith(".jpeg") || lower.endsWith(".webp")
+                || lower.endsWith(".gif") || lower.endsWith(".bmp")) {
+            android.graphics.BitmapFactory.Options bounds =
+                    new android.graphics.BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            android.graphics.BitmapFactory.decodeFile(file.toString(), bounds);
+            int sample = Math.max(1, Math.max(bounds.outWidth, bounds.outHeight) / 1024);
+            android.graphics.BitmapFactory.Options options =
+                    new android.graphics.BitmapFactory.Options();
+            options.inSampleSize = sample;
+            android.graphics.Bitmap bitmap =
+                    android.graphics.BitmapFactory.decodeFile(file.toString(), options);
+            if (bitmap != null) {
+                ImageView image = new ImageView(requireContext());
+                image.setImageBitmap(bitmap);
+                image.setMaxWidth(dip(280));
+                image.setAdjustViewBounds(true);
+                card.addView(image);
+                TextView caption = new TextView(requireContext());
+                caption.setText(getString(R.string.atelier_image_taille,
+                        humanSize(size), bounds.outWidth, bounds.outHeight));
+                caption.setTextSize(11f);
+                caption.setTextColor(getResources().getColor(R.color.sur_var));
+                caption.setPadding(0, dip(8), 0, 0);
+                card.addView(caption);
+                binding.apercuZone.addView(card);
+                styleSegments(true);
+                return;
+            }
+        }
+        TextView title = new TextView(requireContext());
+        title.setText(R.string.atelier_binaire_titre);
+        title.setTextSize(14f);
+        title.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        title.setTextColor(getResources().getColor(R.color.sur_var));
+        title.setPadding(0, dip(20), 0, 0);
+        card.addView(title);
+        TextView detail = new TextView(requireContext());
+        detail.setText(getString(R.string.atelier_binaire_detail, ext, humanSize(size)));
+        detail.setTextSize(12f);
+        detail.setTextColor(getResources().getColor(R.color.contour));
+        detail.setPadding(0, dip(4), 0, 0);
+        card.addView(detail);
+        binding.apercuZone.addView(card);
+        styleSegments(true);
+    }
+
+    /** « 4,2 Kio » — taille lisible (jamais d'octets bruts en UI). */
+    private static String humanSize(long bytes) {
+        if (bytes < 1024) {
+            return bytes + " o";
+        }
+        if (bytes < 1024 * 1024) {
+            return String.format(Locale.ROOT, "%.1f Kio", bytes / 1024.0);
+        }
+        return String.format(Locale.ROOT, "%.1f Mio", bytes / 1048576.0);
+    }
+
+    /** Fil d'Ariane + sous-titre (branche · fichier actif) à chaque ouverture. */
+    private void refreshFileChrome() {
+        binding.breadcrumb.setText(relativize(
+                activeFile != null ? activeFile : Paths.get(projectPath))
+                .replace('/', '›') + getString(R.string.atelier_fil_point));
+        binding.projectSubtitle.setText(subtitleBranch != null && activeFile != null
+                ? subtitleBranch + " · " + activeFile.getFileName()
+                : subtitleBranch != null ? subtitleBranch
+                : activeFile != null ? activeFile.getFileName().toString() : "");
+        binding.projectSubtitle.setVisibility(
+                binding.projectSubtitle.getText().length() > 0 ? View.VISIBLE : View.GONE);
     }
 
     @Nullable
@@ -252,7 +606,9 @@ public class WorkbenchFragment extends Fragment
 
     @Override
     public void openFileAt(Path file, int line, int column, int length) {
-        openFile(file);
+        if (!file.equals(activeFile)) {
+            openFile(file);
+        }
         // Sélection de l'occurrence (Lot 4 tiroir : résultats de recherche).
         // La brique éditeur suit la sélection posée sur la session.
         if (editor == null || editor.session() == null) {
@@ -488,6 +844,35 @@ public class WorkbenchFragment extends Fragment
     /** Fichier actif de l'éditeur (contexte vivant de l'agent — Lot 0). */
     private Path activeFile;
 
+    /** Tampons modifiés par fichier (preview contenu-principal : le ✱ suit
+     *  le tampon réel — changer d'onglet ne perd plus les modifications). */
+    private final Map<Path, String> modifiedBuffers = new HashMap<>();
+
+    /** Vrai si le tampon actif a des modifications non enregistrées. */
+    private boolean currentDirty;
+
+    /** Plan du fichier courant (chips de la barre de symboles). */
+    private final List<jo.celeris.core.syntax.structure.OutlineEntry> currentPlan =
+            new ArrayList<>();
+
+    /** Vue céleris (bascule Code/Aperçu, repli clavier). */
+    private jo.celeris.android.view.EditorView editorView;
+
+    /** Branche du sous-titre (complétée du fichier actif à chaque ouverture). */
+    private String subtitleBranch;
+
+    /** Rangée du chemin de symboles (preview : au-dessus des touches). */
+    private LinearLayout symbolPathRow;
+
+    /** Fichier dont le prochain événement disque est notre sauvegarde. */
+    private Path skipNextDiskReload;
+
+    /** Dernière session câblée (les écoutes suivent les ouvertures). */
+    private jo.celeris.core.text.TextSession wiredSession;
+
+    /** Vrai si le fichier actif est textuel (le Code n'ouvre pas un binaire). */
+    private boolean activeTextual = true;
+
     /** Diagnostics du dernier build (« fichier:ligne: message » — Lot 0). */
     private final List<String> lastDiagnostics = new ArrayList<>();
 
@@ -498,6 +883,8 @@ public class WorkbenchFragment extends Fragment
 
     private void setupTabs() {
         // Premier fichier ouvert d'emblée (studio : MainActivity.java actif).
+        // La découverte ne tourne qu'ici : reconstruire la rangée (fermeture,
+        // ✱) ne ré-ajoute jamais un onglet fermé.
         try (var stream = Files.walk(Paths.get(projectPath))) {
             stream.filter(Files::isRegularFile)
                     .filter(p -> p.getFileName().toString().endsWith(".java"))
@@ -516,16 +903,77 @@ public class WorkbenchFragment extends Fragment
                 // arborescence vide : onglets vides, journal honnête déjà écrit.
             }
         }
-        binding.filesTabs.removeAllViews();
-        for (int i = 0; i < openTabs.size(); i++) {
-            binding.filesTabs.addView(fileTab(openTabs.get(i), i == 0));
-        }
+        rebuildTabs();
         if (!openTabs.isEmpty()) {
             openFile(openTabs.get(0));
+        } else {
+            showEmptyState();
         }
-        // Fil d'Ariane : chemin relatif du fichier actif (studio : app › src › …).
-        binding.breadcrumb.setText(relativize(
-                openTabs.isEmpty() ? Paths.get(projectPath) : openTabs.get(0))
+    }
+
+    /** Reconstruit la rangée d'onglets : ✱ réel par tampon, ＋, état vide. */
+    private void rebuildTabs() {
+        binding.filesTabs.removeAllViews();
+        for (Path file : openTabs) {
+            binding.filesTabs.addView(fileTab(file, file.equals(activeFile)));
+        }
+        TextView plus = new TextView(requireContext());
+        plus.setText("＋");
+        plus.setTextSize(15f);
+        plus.setGravity(android.view.Gravity.CENTER);
+        plus.setTextColor(getResources().getColor(R.color.sur_var));
+        plus.setPadding(dip(12), 0, dip(8), 0);
+        plus.setOnClickListener(v -> askNewFile());
+        binding.filesTabs.addView(plus, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dip(32)));
+    }
+
+    /** ＋ : crée un vrai fichier à la racine du projet et l'ouvre. */
+    private void askNewFile() {
+        android.widget.EditText input = new android.widget.EditText(requireContext());
+        input.setHint(R.string.atelier_onglet_nom_indice);
+        input.setTextSize(13f);
+        input.setPadding(dip(20), dip(8), dip(20), 0);
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle(R.string.atelier_onglet_nouveau)
+                .setView(input)
+                .setPositiveButton(R.string.atelier_onglet_nouveau,
+                        (dialog, which) -> {
+                            String name = input.getText().toString().trim();
+                            if (name.isEmpty() || name.contains("/")
+                                    || name.contains("\\")) {
+                                toast(getString(R.string.atelier_onglet_nom_invalide));
+                                return;
+                            }
+                            Path created = Paths.get(projectPath).resolve(name);
+                            if (Files.exists(created)) {
+                                toast(getString(R.string.atelier_onglet_nom_invalide));
+                                return;
+                            }
+                            try {
+                                Files.write(created, new byte[0]);
+                            } catch (IOException e) {
+                                appendToJournal(getString(
+                                        R.string.atelier_lecture_impossible,
+                                        e.getMessage() != null ? e.getMessage() : ""));
+                                return;
+                            }
+                            appendToJournal(getString(
+                                    R.string.atelier_onglet_cree_ok, name));
+                            openFile(created);
+                        })
+                .setNegativeButton(R.string.tiroir_action_annuler, null)
+                .show();
+    }
+
+    /** État honnête sans fichier : la zone dit quoi faire, jamais muette. */
+    private void showEmptyState() {
+        if (editorView != null) {
+            editorView.setVisibility(View.GONE);
+        }
+        binding.apercuZone.setVisibility(View.GONE);
+        binding.etatVide.setVisibility(View.VISIBLE);
+        binding.breadcrumb.setText(relativize(Paths.get(projectPath))
                 .replace('/', '›') + getString(R.string.atelier_fil_point));
     }
 
@@ -561,8 +1009,9 @@ public class WorkbenchFragment extends Fragment
         name.setLayoutParams(nameParams);
         tab.addView(name);
 
-        // Point d'alerte (studio : modifications non enregistrées du 1er onglet).
-        if (active) {
+        // ✱ du preview : suit le tampon RÉEL (écoute d'édition céleris).
+        if (modifiedBuffers.containsKey(file)
+                || (file.equals(activeFile) && currentDirty)) {
             View dot = new View(requireContext());
             LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(dip(7), dip(7));
             dotParams.leftMargin = dip(7);
@@ -579,13 +1028,114 @@ public class WorkbenchFragment extends Fragment
         closeParams.leftMargin = dip(4);
         close.setLayoutParams(closeParams);
         close.setPadding(dip(4), dip(4), dip(4), dip(4));
-        close.setOnClickListener(v -> {
-            openTabs.remove(file);
-            setupTabs();
-        });
+        close.setOnClickListener(v -> closeTab(file));
         tab.addView(close);
         tab.setOnClickListener(v -> openFile(file));
+        // Appui long (preview) : Fermer · Fermer les autres · Copier le chemin.
+        tab.setOnLongClickListener(v -> {
+            showTabMenu(file, tab);
+            return true;
+        });
         return tab;
+    }
+
+    /** Menu d'onglet (preview : appui long). */
+    private void showTabMenu(Path file, View anchor) {
+        androidx.appcompat.widget.PopupMenu menu =
+                new androidx.appcompat.widget.PopupMenu(requireContext(), anchor);
+        menu.getMenu().add(0, 1, 0, R.string.atelier_onglet_fermer);
+        menu.getMenu().add(0, 2, 1, R.string.atelier_onglet_fermer_autres);
+        menu.getMenu().add(0, 3, 2, R.string.atelier_onglet_copier_chemin);
+        menu.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == 1) {
+                closeTab(file);
+            } else if (item.getItemId() == 2) {
+                closeOtherTabs(file);
+            } else if (item.getItemId() == 3) {
+                android.content.ClipboardManager clipboard =
+                        (android.content.ClipboardManager) requireContext()
+                                .getSystemService(Context.CLIPBOARD_SERVICE);
+                clipboard.setPrimaryClip(android.content.ClipData.newPlainText(
+                        getString(R.string.atelier_onglet_copier_chemin),
+                        file.toString()));
+                toast(getString(R.string.atelier_chemin_copie));
+            }
+            return true;
+        });
+        menu.show();
+    }
+
+    /** Fermeture d'onglet : confirmation si le tampon est modifié (preview). */
+    private void closeTab(Path file) {
+        boolean modified = modifiedBuffers.containsKey(file)
+                || (file.equals(activeFile) && currentDirty);
+        if (!modified) {
+            removeTab(file);
+            return;
+        }
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setMessage(getString(R.string.atelier_onglet_modifie_dialogue,
+                        file.getFileName().toString()))
+                .setPositiveButton(R.string.atelier_onglet_enregistrer,
+                        (dialog, which) -> {
+                            if (file.equals(activeFile)) {
+                                saveActiveFile();
+                            } else {
+                                saveBuffer(file, modifiedBuffers.get(file));
+                            }
+                            removeTab(file);
+                        })
+                .setNegativeButton(R.string.atelier_onglet_ignorer,
+                        (dialog, which) -> removeTab(file))
+                .setNeutralButton(R.string.tiroir_action_annuler, null)
+                .show();
+    }
+
+    /** Ferme tous les onglets sauf un ; jamais de perte silencieuse. */
+    private void closeOtherTabs(Path keep) {
+        long modifiedOthers = openTabs.stream()
+                .filter(f -> !f.equals(keep))
+                .filter(f -> modifiedBuffers.containsKey(f)
+                        || (f.equals(activeFile) && currentDirty))
+                .count();
+        if (modifiedOthers == 0) {
+            for (Path file : new ArrayList<>(openTabs)) {
+                if (!file.equals(keep)) {
+                    removeTab(file);
+                }
+            }
+            return;
+        }
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setMessage(getString(R.string.atelier_onglet_autres_modifiees,
+                        (int) modifiedOthers))
+                .setPositiveButton(R.string.atelier_onglet_fermer_autres,
+                        (dialog, which) -> {
+                            for (Path file : new ArrayList<>(openTabs)) {
+                                if (!file.equals(keep)) {
+                                    removeTab(file);
+                                }
+                            }
+                        })
+                .setNegativeButton(R.string.tiroir_action_annuler, null)
+                .show();
+    }
+
+    /** Retire un onglet (tampon jeté, sauvegarde de sûreté effacée). */
+    private void removeTab(Path file) {
+        modifiedBuffers.remove(file);
+        deleteSafetyCopy(file);
+        openTabs.remove(file);
+        if (file.equals(activeFile)) {
+            activeFile = null;
+            currentDirty = false;
+            if (!openTabs.isEmpty()) {
+                openFile(openTabs.get(0));
+            } else {
+                showEmptyState();
+            }
+        }
+        rebuildTabs();
     }
 
     // ---- Tiroir gauche : contenu extrait (Lot 0) → LeftDrawerFragment -------
@@ -651,6 +1201,148 @@ public class WorkbenchFragment extends Fragment
         return selection.length() == 0 ? null : selection.toString();
     }
 
+    /** Le tampon actif part en cache s'il est modifié (changement d'onglet). */
+    private void snapshotCurrentBuffer() {
+        if (activeFile != null && currentDirty
+                && editor != null && editor.session() != null) {
+            modifiedBuffers.put(activeFile, editor.session().text());
+        }
+    }
+
+    /** Enregistre le tampon actif sur disque (événement disque publié). */
+    private void saveActiveFile() {
+        if (activeFile == null) {
+            return;
+        }
+        if (!activeTextual || editor == null || editor.session() == null
+                || editorView == null || editorView.getVisibility() != View.VISIBLE) {
+            return; // état binaire/aperçu : rien à enregistrer.
+        }
+        saveBuffer(activeFile, editor.session().text());
+    }
+
+    /** Écrit un tampon (actif ou en cache) : jamais muet, jamais d'écrasement
+     *  silencieux d'erreur — le journal dit ce qui s'est passé. */
+    private void saveBuffer(Path file, String content) {
+        try {
+            Files.write(file, (content == null ? "" : content)
+                    .getBytes(StandardCharsets.UTF_8));
+            modifiedBuffers.remove(file);
+            if (file.equals(activeFile)) {
+                currentDirty = false;
+            }
+            deleteSafetyCopy(file);
+            appendToJournal(getString(R.string.atelier_enregistre_ok,
+                    file.getFileName().toString()));
+            skipNextDiskReload = file;
+            workspaceEvents.publish(
+                    new jo.joide.workbench.WorkspaceEvents.FileChangedOnDisk(file));
+            rebuildTabs();
+            refreshTools();
+        } catch (IOException e) {
+            appendToJournal(getString(R.string.atelier_lecture_impossible,
+                    e.getMessage() != null ? e.getMessage() : ""));
+        }
+    }
+
+    /** Sauvegarde de sûreté (cache, jamais dans le projet) : suspension. */
+    private Path safetyCopyFor(Path file) {
+        String rel = Paths.get(projectPath).relativize(file).toString();
+        return requireContext().getCacheDir().toPath()
+                .resolve("sauvegardes").resolve(rel);
+    }
+
+    private void deleteSafetyCopy(Path file) {
+        try {
+            Files.deleteIfExists(safetyCopyFor(file));
+        } catch (IOException ignored) {
+            // le cache est jetable : une copie restante ne gêne personne
+        }
+    }
+
+    /** À la suspension : les tampons modifiés partent au cache. */
+    @Override
+    public void onPause() {
+        super.onPause();
+        snapshotCurrentBuffer();
+        if (projectPath == null) {
+            return;
+        }
+        for (Map.Entry<Path, String> entry : modifiedBuffers.entrySet()) {
+            try {
+                Path target = safetyCopyFor(entry.getKey());
+                Files.createDirectories(target.getParent());
+                Files.write(target, entry.getValue().getBytes(StandardCharsets.UTF_8));
+            } catch (IOException ignored) {
+                // mieux vaut une suspension silencieuse qu'un crash bloquant
+            }
+        }
+    }
+
+    /** Une sauvegarde de sûreté plus récente que le disque → Restaurer. */
+    private void checkSafetyCopy(Path file) {
+        Path safety = safetyCopyFor(file);
+        if (!Files.isRegularFile(safety)) {
+            return;
+        }
+        try {
+            if (Files.getLastModifiedTime(safety).toMillis()
+                    <= Files.getLastModifiedTime(file).toMillis()) {
+                return;
+            }
+            String saved = new String(Files.readAllBytes(safety),
+                        StandardCharsets.UTF_8);
+            String disk = editor != null && editor.session() != null
+                    && editorView != null && editorView.getVisibility() == View.VISIBLE
+                    ? editor.session().text() : null;
+            if (disk != null && saved.equals(disk)) {
+                return;
+            }
+            com.google.android.material.snackbar.Snackbar
+                    .make(binding.getRoot(),
+                            R.string.atelier_sauvegarde_proposee,
+                            com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                    .setAction(R.string.atelier_restaure, v -> {
+                        attachEditor(file.getFileName().toString(), saved);
+                        currentDirty = true;
+                        rebuildTabs();
+                        appendToJournal(getString(
+                                R.string.atelier_sauvegarde_restauree));
+                    })
+                    .show();
+        } catch (IOException ignored) {
+            // cache illisible : le disque fait foi
+        }
+    }
+
+    /** Activation honnête des outils (annuler/rétablir : profondeurs céleris). */
+    private void refreshTools() {
+        boolean canUndo = false;
+        boolean canRedo = false;
+        if (editor != null && editor.session() != null) {
+            canUndo = editor.session().undoDepth() > 0;
+            canRedo = editor.session().redoDepth() > 0;
+        }
+        binding.undoButton.setEnabled(canUndo);
+        binding.undoButton.setAlpha(canUndo ? 1f : 0.35f);
+        binding.redoButton.setEnabled(canRedo);
+        binding.redoButton.setAlpha(canRedo ? 1f : 0.35f);
+        boolean canSave = activeFile != null && (currentDirty
+                || modifiedBuffers.containsKey(activeFile));
+        binding.saveButton.setEnabled(canSave);
+        binding.saveButton.setAlpha(canSave ? 1f : 0.35f);
+    }
+
+    /** Une édition a eu lieu : ✱ et outils suivent (preview). */
+    private void onBufferEdited() {
+        if (binding == null) {
+            return;
+        }
+        currentDirty = true;
+        rebuildTabs();
+        refreshTools();
+    }
+
     // ---- Éditeur (brique céleris, conception §6) ----------------------------
 
     private jo.celeris.android.host.CelerisEditor editor;
@@ -674,6 +1366,16 @@ public class WorkbenchFragment extends Fragment
             binding.editorArea.addView(popups,
                     new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                             ViewGroup.LayoutParams.MATCH_PARENT));
+            editorView = view;
+            // Plan du fichier (chips de la barre de symboles — même moteur
+            // que la structure : la brique céleris produit les entrées).
+            view.addPlanListener(plan -> {
+                currentPlan.clear();
+                if (plan != null) {
+                    currentPlan.addAll(plan);
+                }
+                updateSymbolPath();
+            });
             jo.celeris.core.language.LanguageKit kit =
                     jo.celeris.core.language.LanguageKit.builder(
                             jo.celeris.core.language.LanguageKit.sharedDaemon())
@@ -688,7 +1390,37 @@ public class WorkbenchFragment extends Fragment
             view.settings().setFontSizeSp(12.5f);
         }
         editor.open(fileName, content);
+        wireSession();
+        // Un fichier texte s'ouvre : Code visible, états masqués (preview).
+        showCodeView();
+        refreshTools();
     }
+
+    /** Écoutes du tampon courant : édition (✱), curseur (chemin de symboles). */
+    private void wireSession() {
+        if (editor == null || editor.session() == null) {
+            return;
+        }
+        jo.celeris.core.text.TextSession session = editor.session();
+        if (session == wiredSession) {
+            return;
+        }
+        if (wiredSession != null) {
+            wiredSession.removeEditListener(sessionEdits);
+            wiredSession.removeSelectionListener(sessionSelection);
+        }
+        session.addEditListener(sessionEdits);
+        session.addSelectionListener(sessionSelection);
+        wiredSession = session;
+    }
+
+    private final jo.celeris.core.text.EditListener sessionEdits =
+            (start, end, before, after) -> requireActivity().runOnUiThread(
+                    this::onBufferEdited);
+
+    private final jo.celeris.core.text.SelectionListener sessionSelection =
+            selection -> requireActivity().runOnUiThread(
+                    this::updateSymbolPath);
 
     // ---- Dock à 3 detents (BuildDock.kt : 60dp collapse → 60% half → plein) --
 
@@ -862,8 +1594,27 @@ public class WorkbenchFragment extends Fragment
 
     // ---- Barre de symboles (studio : beige, Tab primaire + touches) ---------
 
-    /** Rangée de touches du studio : Tab primaire puis { ( . : = -> ⋯ ↓. */
+    /**
+     * Barre de symboles du preview : le CHEMIN DU SYMBOLE COURANT (chips du
+     * plan céleris, appui → saut) au-dessus des touches de code (conservées :
+     * utiles au téléphone). La rangée vit dans un défilement horizontal.
+     */
     private void buildSymbolBar() {
+        binding.symbolBar.removeAllViews();
+        symbolPathRow = new LinearLayout(requireContext());
+        symbolPathRow.setOrientation(LinearLayout.HORIZONTAL);
+        android.widget.HorizontalScrollView pathScroller =
+                new android.widget.HorizontalScrollView(requireContext());
+        pathScroller.setHorizontalScrollBarEnabled(false);
+        pathScroller.addView(symbolPathRow);
+        binding.symbolBar.addView(pathScroller, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        android.widget.HorizontalScrollView keysScroller =
+                new android.widget.HorizontalScrollView(requireContext());
+        keysScroller.setHorizontalScrollBarEnabled(false);
+        LinearLayout keysRow = new LinearLayout(requireContext());
+        keysRow.setOrientation(LinearLayout.HORIZONTAL);
+        keysRow.setPadding(0, dip(4), 0, dip(4));
         String[] symbols = {"Tab", "{", "}", "(", ")", ";", "\"", "=", "<", ">", "/", "."};
         for (String symbol : symbols) {
             TextView key = new TextView(requireContext());
@@ -879,7 +1630,87 @@ public class WorkbenchFragment extends Fragment
                     ViewGroup.LayoutParams.WRAP_CONTENT, dip(30));
             params.rightMargin = dip(5);
             key.setLayoutParams(params);
-            binding.symbolBar.addView(key);
+            key.setOnClickListener(v -> insertAtCursor(symbol.equals("Tab")
+                    ? "    " : symbol));
+            keysRow.addView(key);
+        }
+        keysScroller.addView(keysRow);
+        binding.symbolBar.addView(keysScroller, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        updateSymbolPath();
+    }
+
+    /** Insère du texte au curseur (touches de code — tampon vivant). */
+    private void insertAtCursor(String text) {
+        if (editor == null || editor.session() == null) {
+            return;
+        }
+        jo.celeris.core.text.TextSession session = editor.session();
+        List<Integer> carets = session.selection().carets();
+        int offset = carets.isEmpty() ? 0 : carets.get(carets.size() - 1);
+        session.replaceRange(offset, offset, text);
+    }
+
+    /** Chips du chemin : symboles englobants du curseur, appui → saut. */
+    private void updateSymbolPath() {
+        if (binding == null || symbolPathRow == null) {
+            return;
+        }
+        symbolPathRow.removeAllViews();
+        if (editor == null || editor.session() == null || currentPlan.isEmpty()) {
+            TextView none = new TextView(requireContext());
+            none.setText("—");
+            none.setTextSize(10.5f);
+            none.setTextColor(getResources().getColor(R.color.contour));
+            none.setPadding(0, dip(4), 0, dip(2));
+            symbolPathRow.addView(none);
+            return;
+        }
+        List<Integer> carets = editor.session().selection().carets();
+        int offset = carets.isEmpty() ? -1 : carets.get(carets.size() - 1);
+        List<jo.celeris.core.syntax.structure.OutlineEntry> enclosing = new ArrayList<>();
+        for (jo.celeris.core.syntax.structure.OutlineEntry entry : currentPlan) {
+            if (offset >= entry.startOffset() && offset <= entry.endOffset()) {
+                enclosing.add(entry);
+            }
+        }
+        enclosing.sort(java.util.Comparator.comparingInt(
+                jo.celeris.core.syntax.structure.OutlineEntry::startOffset));
+        if (enclosing.isEmpty() && !currentPlan.isEmpty()) {
+            // Hors de tout symbole : le premier du plan sert d'appel.
+            enclosing.add(currentPlan.get(0));
+        }
+        boolean first = true;
+        for (jo.celeris.core.syntax.structure.OutlineEntry entry : enclosing) {
+            if (!first) {
+                TextView chevron = new TextView(requireContext());
+                chevron.setText("›");
+                chevron.setTextSize(10.5f);
+                chevron.setTextColor(getResources().getColor(R.color.contour));
+                chevron.setPadding(dip(3), dip(4), dip(3), dip(2));
+                symbolPathRow.addView(chevron);
+            }
+            TextView chipView = new TextView(requireContext());
+            chipView.setText(entry.name());
+            chipView.setTextSize(10.5f);
+            chipView.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+            chipView.setTextColor(getResources().getColor(R.color.sur));
+            chipView.setBackground(getResources().getDrawable(R.drawable.fond_chip));
+            chipView.setPadding(dip(9), dip(2), dip(9), dip(2));
+            chipView.setOnClickListener(v -> {
+                if (editor == null || editor.session() == null) {
+                    return;
+                }
+                editor.session().setSelection(jo.celeris.core.text.MultiSelection.of(
+                        new jo.celeris.core.text.SelRange(entry.startOffset(),
+                                entry.startOffset())));
+                if (editorView != null) {
+                    editorView.post(() -> editorView.requestRectangleOnScreen(
+                            editorView.caretBounds()));
+                }
+            });
+            symbolPathRow.addView(chipView);
+            first = false;
         }
     }
 

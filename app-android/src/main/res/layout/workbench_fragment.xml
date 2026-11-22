@@ -279,15 +279,60 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:background="@color/sc_lowest" />
+            android:background="@color/sc_lowest">
+
+            <!-- Aperçu (segment droit du preview contenu-principal.html) :
+                 filaire XML rendu depuis le tampon vivant, ou image (état
+                 binaire). Bascule par visibilité avec l'éditeur céleris. -->
+            <ScrollView
+                android:id="@+id/apercu_zone"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone"
+                android:background="@color/sc_low"
+                android:padding="12dp" />
+
+            <!-- État honnête : aucun fichier ouvert (preview : « ouvrez-en
+                 un depuis l'arbre ») — jamais une zone muette. -->
+            <LinearLayout
+                android:id="@+id/etat_vide"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:visibility="gone"
+                android:padding="24dp">
+
+                <View
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:background="@drawable/fond_cadre_vide" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/atelier_vide_titre"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/sur_var" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/atelier_vide_detail"
+                    android:textSize="12sp"
+                    android:textColor="@color/contour" />
+            </LinearLayout>
+        </FrameLayout>
 
         <!-- Clavier de symboles (studio : beige, rangée Tab + touches 36dp) -->
         <LinearLayout
             android:id="@+id/symbol_bar"
             android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
             android:background="@color/clavier"
             android:paddingStart="5dp"
             android:paddingEnd="5dp"
