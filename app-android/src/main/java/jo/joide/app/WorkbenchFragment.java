@@ -1,26 +1,36 @@
 package jo.joide.app;
 
 import android.content.Context;
+import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Bundle;
+import android.text.SpannableStringBuilder;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.StyleSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -32,6 +42,8 @@ import jo.joide.buildforge.ForgeBackend;
 import jo.joide.buildgradle.GradleBackend;
 import jo.joide.workbench.BuildEvent;
 import jo.joide.workbench.BuildRequest;
+import jo.joide.workbench.ConsoleBuffer;
+import jo.joide.workbench.Durations;
 import jo.joide.workbench.WorkMode;
 
 /**
@@ -51,6 +63,14 @@ import jo.joide.workbench.WorkMode;
  * l'agent du tiroir droit ({@link jo.joide.app.ai.AgentContext}) — fichier
  * actif (tampon vivant de l'éditeur), diagnostics du dernier build,
  * sélection courante. Des valeurs réelles uniquement.</p>
+ *
+ * <p>Dock conforme au preview <i>bottom-sheet</i> (docs/mockups) : feuille à
+ * trois détents (réduit → mi-hauteur → plein calé sous la barre d'outils),
+ * console de build rendue depuis un {@link ConsoleBuffer} — lignes colorées
+ * par nature, tâches remplacées en place, progression collante, bilan avec
+ * durée et compte réels —, auto-suivi de la sortie sauf si le développeur a
+ * remonté, build échoué qui ouvre la feuille sur Problèmes, build réussi
+ * qui ne vole jamais le focus, repli de la feuille sous le clavier.</p>
  *
  * <p>Lot 0 tiroir gauche : le contenu du tiroir vit dans
  * {@link jo.joide.app.drawer.LeftDrawerFragment} (contrat
@@ -1423,18 +1443,65 @@ public class WorkbenchFragment extends Fragment
             selection -> requireActivity().runOnUiThread(
                     this::updateSymbolPath);
 
-    // ---- Dock à 3 detents (BuildDock.kt : 60dp collapse → 60% half → plein) --
+    // ---- Dock à 3 detents (preview bottom-sheet : 60dp réduit → 60 % mi-hauteur
+    //      → plein calé sous la toolbar) ------------------------------------
 
     private com.google.android.material.bottomsheet.BottomSheetBehavior<
             android.view.View> dockBehavior;
+
+    /** Console de build (modèle pur, testé) : lignes, tâches en place, capacité. */
+    private final ConsoleBuffer consoleBuffer = new ConsoleBuffer(
+            ConsoleBuffer.DEFAULT_CAPACITY);
+
+    /** Tampon rendu (spans par nature de ligne) — reconstruit sur clear(). */
+    private final SpannableStringBuilder consoleText = new SpannableStringBuilder();
+
+    /** Plages par ligne (id → [début, fin) texte+saut) — ordre d'insertion. */
+    private final Map<Long, long[]> consoleRanges = new LinkedHashMap<>();
+
+    /** Plage de la note d'élagage (« … N lignes antérieures »), ou null. */
+    private long[] consoleNoteRange;
+
+    /** Rangées d'étapes par tâche (maj en place : ◐ devient ✔/✗). */
+    private final Map<String, StepRow> stepRows = new HashMap<>();
+
+    /** Une rangée d'étape vivante (marqueur + libellé, maj en place). */
+    private static final class StepRow {
+        final LinearLayout row;
+        final TextView marker;
+        final TextView label;
+
+        StepRow(LinearLayout row, TextView marker, TextView label) {
+            this.row = row;
+            this.marker = marker;
+            this.label = label;
+        }
+    }
+
+    /** Compteurs réels du build courant (diagnostics par sévérité, tâches). */
+    private int buildErrorCount;
+    private int buildWarningCount;
+    private int buildTaskCount;
+    private int buildTasksTotal;
+
+    /** Instant de fin du dernier build (âge relatif de la barre) et verdict. */
+    private long lastBuildEnd;
+    private boolean lastBuildSuccess;
+
+    /** Build courant en cours (barre du dock en « ◐ build »). */
+    private boolean buildRunning;
+
+    /** Dernière progression vue (barre du dock « ◐ build · 3/12 »). */
+    private int buildTasksDone;
+
+    /** Pied du résumé des problèmes (« 2 erreurs · 1 avertissement »). */
+    private TextView problemsSummary;
 
     private void setupDock() {
         dockBehavior = com.google.android.material.bottomsheet.BottomSheetBehavior
                 .from(binding.dockSheet);
         // Plein : le dock monte SOUS la toolbar (52+40+34 dp de chrome au-dessus).
         dockBehavior.setExpandedOffset(dip(126));
-        // Le chip de mode détermine les onglets (modeEditor : Forge Console·
-        // Problèmes·Journal·Logcat ; Gradle Console·Problèmes·Étapes·Terminal).
         dockBehavior.setState(
                 com.google.android.material.bottomsheet.BottomSheetBehavior
                         .STATE_COLLAPSED);
@@ -1442,7 +1509,11 @@ public class WorkbenchFragment extends Fragment
                 .bottomsheet.BottomSheetBehavior.BottomSheetCallback() {
             @Override
             public void onStateChanged(@NonNull View sheet, int newState) {
-                // Les sections vivent : le contenu suit l'état, rien de figé.
+                // La barre rafraîchit son âge relatif quand la feuille
+                // s'ouvre (« ▶ build ok · il y a 3 min », jamais figé).
+                if (lastBuildEnd > 0) {
+                    renderDockBuildPill();
+                }
             }
 
             @Override
@@ -1450,9 +1521,21 @@ public class WorkbenchFragment extends Fragment
                 // Pas d'effet additionnel : le studio garde le dock sobre.
             }
         });
+        // Clavier logiciel : la feuille se replie, la barre revient avec lui
+        // (règle du preview — l'éditeur garde la place, pas la console).
+        ViewCompat.setOnApplyWindowInsetsListener(binding.mainContent, (v, insets) -> {
+            if (insets.isVisible(WindowInsetsCompat.Type.ime())
+                    && dockBehavior.getState() != com.google.android.material
+                            .bottomsheet.BottomSheetBehavior.STATE_COLLAPSED) {
+                dockBehavior.setState(com.google.android.material.bottomsheet
+                        .BottomSheetBehavior.STATE_COLLAPSED);
+            }
+            return insets;
+        });
 
-        // Toute la zone handle+barre déplie le dock (studio : data-a=dock sur
-        // la poignée ET le bouton check de la barre) ; le build achève l'ouverture.
+        // Toute la zone handle+barre déplie le dock (preview : la poignée ET
+        // la barre d'état déplient) ; un build ÉCHOUÉ ouvre la feuille, un
+        // build réussi ne vole jamais le focus.
         View.OnClickListener expand = v -> {
             int state = dockBehavior.getState();
             if (state == com.google.android.material.bottomsheet.BottomSheetBehavior
@@ -1484,18 +1567,21 @@ public class WorkbenchFragment extends Fragment
         // L7 : tiroir IA de l'atelier (module ai, conception §8) — pastille pc du dock.
         binding.aiButton.setOnClickListener(v -> openAiDrawer());
         binding.dotsButtonDock.setOnClickListener(v -> toggleSymbolBar());
-        // Onglets du mode actif, Console active (studio : modeEditor, 1er chip ON).
+        // Onglets du mode actif, Console active (preview : 1er chip ON —
+        // l'onglet des états vient AVANT les contenus).
         rebuildDockTabs();
-        showDockSection(1);
+        showDockSection(0);
+        renderDockBuildPill();
     }
 
-    /** Onglets du dock selon le mode (studio, modeEditor) : 4 chips 32dp. */
+    /** Onglets du dock selon le mode (preview : Forge Console/Gradle Console·
+     *  Problèmes·Journal·Logcat, ou ·Étapes·Terminal) : chips 32dp. */
     private void rebuildDockTabs() {
         boolean gradle = activeMode() == WorkMode.GRADLE;
         int[] labels = gradle
-                ? new int[]{R.string.section_console, R.string.section_problemes,
+                ? new int[]{R.string.section_console_gradle, R.string.section_problemes,
                         R.string.section_etapes, R.string.terminal_titre}
-                : new int[]{R.string.section_console, R.string.section_problemes,
+                : new int[]{R.string.section_console_forge, R.string.section_problemes,
                         R.string.section_journal, R.string.section_logcat};
         binding.dockTabs.removeAllViews();
         for (int i = 0; i < labels.length; i++) {
@@ -1559,38 +1645,192 @@ public class WorkbenchFragment extends Fragment
         }
     }
 
-    /** Copie la sortie console dans le presse-papiers (action réelle). */
+    /** Copie la sortie console dans le presse-papiers (sortie réelle +
+     *  note d'élagage — jamais un texte tronqué silencieusement). */
     private void copyConsole() {
+        String note = consoleBuffer.trimmedTotal() > 0
+                ? getString(R.string.atelier_console_masquees,
+                        consoleBuffer.trimmedTotal()) + "\n"
+                : "";
         android.content.ClipboardManager clipboard = (android.content.ClipboardManager)
                 requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
         clipboard.setPrimaryClip(android.content.ClipData.newPlainText(
-                getString(R.string.section_console), binding.consoleOutput.getText()));
+                getString(R.string.section_console), note + consoleBuffer.plainText()));
         toast(getString(R.string.diagnostic_copie_ok));
     }
 
-    /** Une rangée d'étape (studio : « compileJava — tâche terminée en 2,4 s »). */
-    private View stepRow(String text, int colorRes) {
+    // ---- Rendu de la console (preview bottom-sheet : lignes colorées par
+    //      nature, maj en place, auto-suivi sauf remontée manuelle) ----------
+
+    /** Rejoue les mutations du tampon sur le Spannable et rafraîchit la vue. */
+    private void renderConsole() {
+        List<ConsoleBuffer.Mutation> mutations = consoleBuffer.drain();
+        if (mutations.isEmpty()) {
+            return;
+        }
+        boolean follow = consoleAtBottom();
+        for (ConsoleBuffer.Mutation mutation : mutations) {
+            switch (mutation.type) {
+                case APPEND -> appendConsoleLine(mutation.entry);
+                case UPDATE -> updateConsoleLine(mutation.entry);
+                case TRIM -> trimConsoleLines(mutation.count);
+            }
+        }
+        renderConsoleNote();
+        binding.consoleOutput.setText(null);
+        binding.consoleOutput.setText(consoleText);
+        if (follow) {
+            binding.consoleSection.post(() ->
+                    binding.consoleSection.fullScroll(View.FOCUS_DOWN));
+        }
+    }
+
+    /** Ajoute une ligne stylée (couleur de nature, gras des bilans). */
+    private void appendConsoleLine(ConsoleBuffer.Entry entry) {
+        int start = consoleText.length();
+        consoleText.append(entry.text).append('\n');
+        styleConsoleLine(entry, start, start + entry.text.length());
+        consoleRanges.put(entry.id, new long[]{start, consoleText.length()});
+    }
+
+    /** Remplace une ligne en place (tâche ◐ → ✔, progression, bilan) et
+     *  décale les plages suivantes du delta de longueur. */
+    private void updateConsoleLine(ConsoleBuffer.Entry entry) {
+        long[] range = consoleRanges.get(entry.id);
+        if (range == null) {
+            appendConsoleLine(entry);
+            return;
+        }
+        int start = (int) range[0];
+        int oldEnd = (int) range[1];
+        String replacement = entry.text + "\n";
+        consoleText.replace(start, oldEnd, replacement);
+        styleConsoleLine(entry, start, start + entry.text.length());
+        int newEnd = start + replacement.length();
+        int delta = newEnd - oldEnd;
+        boolean passed = false;
+        for (var e : consoleRanges.entrySet()) {
+            if (passed) {
+                e.getValue()[0] += delta;
+                e.getValue()[1] += delta;
+            }
+            if (e.getKey() == entry.id) {
+                e.getValue()[1] = newEnd;
+                passed = true;
+            }
+        }
+    }
+
+    /** Supprime les n plus anciennes lignes (capacité bornée du tampon) —
+     *  après la note d'élagage, jamais à travers elle. */
+    private void trimConsoleLines(int count) {
+        int removed = 0;
+        var iterator = consoleRanges.entrySet().iterator();
+        for (int i = 0; i < count && iterator.hasNext(); i++) {
+            long[] range = iterator.next().getValue();
+            removed += range[1] - range[0];
+            iterator.remove();
+        }
+        if (removed > 0) {
+            int from = consoleNoteRange != null ? (int) consoleNoteRange[1] : 0;
+            consoleText.delete(from, from + removed);
+            for (long[] range : consoleRanges.values()) {
+                range[0] -= removed;
+                range[1] -= removed;
+            }
+        }
+    }
+
+    /** Note d'élagage en tête (« … N lignes antérieures masquées ») : créée
+     *  au premier élagage, puis son texte est remplacé en place. */
+    private void renderConsoleNote() {
+        int trimmed = consoleBuffer.trimmedTotal();
+        if (trimmed == 0) {
+            return;
+        }
+        String note = getString(R.string.atelier_console_masquees, trimmed) + "\n";
+        if (consoleNoteRange == null) {
+            consoleText.insert(0, note);
+            for (long[] range : consoleRanges.values()) {
+                range[0] += note.length();
+                range[1] += note.length();
+            }
+        } else {
+            int delta = note.length() - (int) (consoleNoteRange[1] - consoleNoteRange[0]);
+            consoleText.replace((int) consoleNoteRange[0],
+                    (int) consoleNoteRange[1], note);
+            if (delta != 0) {
+                for (long[] range : consoleRanges.values()) {
+                    range[0] += delta;
+                    range[1] += delta;
+                }
+            }
+        }
+        consoleNoteRange = new long[]{0, note.length()};
+        consoleText.setSpan(new ForegroundColorSpan(
+                        getResources().getColor(R.color.contour)),
+                0, note.length() - 1,
+                android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+    }
+
+    /** Couleur + graisse d'une ligne selon sa nature (jetons du studio). */
+    private void styleConsoleLine(ConsoleBuffer.Entry entry, int start, int end) {
+        int color;
+        switch (entry.kind) {
+            case TASK_OK, SUCCESS -> color = R.color.ok;
+            case TASK_FAILED, FAILURE, ERROR -> color = R.color.erreur;
+            case WARNING -> color = R.color.alerte;
+            case TASK_RUNNING, HEADER, INFO -> color = R.color.info;
+            default -> color = R.color.sur_var;
+        }
+        consoleText.setSpan(new ForegroundColorSpan(getResources().getColor(color)),
+                start, end, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (entry.kind == ConsoleBuffer.Kind.SUCCESS
+                || entry.kind == ConsoleBuffer.Kind.FAILURE
+                || entry.kind == ConsoleBuffer.Kind.HEADER) {
+            consoleText.setSpan(new StyleSpan(Typeface.BOLD),
+                    start, end, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+    }
+
+    /** L'utilisateur est-il en bas de la sortie ? (sinon : ne pas le tirer) */
+    private boolean consoleAtBottom() {
+        View child = binding.consoleSection.getChildAt(0);
+        return child == null || binding.consoleSection.getScrollY()
+                >= child.getHeight() - binding.consoleSection.getHeight() - dip(24);
+    }
+
+    /** Réinitialise le rendu après un clear() du modèle (nouveau build). */
+    private void resetConsoleView() {
+        consoleText.clear();
+        consoleRanges.clear();
+        consoleNoteRange = null;
+        binding.consoleOutput.setText("");
+    }
+
+    /** Une rangée d'étape (preview : ✔/◐/✗ + libellé), maj en place ensuite. */
+    private StepRow stepRow(String marker, String text, int markerColorRes,
+            int textColorRes) {
         LinearLayout row = new LinearLayout(requireContext());
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        TextView marker = new TextView(requireContext());
-        marker.setText("▸");
-        marker.setTextColor(getResources().getColor(colorRes));
-        marker.setTextSize(11.5f);
-        row.addView(marker, new LinearLayout.LayoutParams(
-                dip(12), ViewGroup.LayoutParams.WRAP_CONTENT));
+        TextView markerView = new TextView(requireContext());
+        markerView.setText(marker);
+        markerView.setTextColor(getResources().getColor(markerColorRes));
+        markerView.setTextSize(11.5f);
+        row.addView(markerView, new LinearLayout.LayoutParams(
+                dip(16), ViewGroup.LayoutParams.WRAP_CONTENT));
         TextView label = new TextView(requireContext());
         label.setText(text);
-        label.setTextColor(getResources().getColor(
-                colorRes == R.color.sur_var ? R.color.sur_var : R.color.sur));
+        label.setTextColor(getResources().getColor(textColorRes));
         label.setTextSize(11.5f);
-        label.setTypeface(android.graphics.Typeface.MONOSPACE);
+        label.setTypeface(Typeface.MONOSPACE);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         params.leftMargin = dip(8);
         label.setLayoutParams(params);
         row.addView(label);
-        return row;
+        return new StepRow(row, markerView, label);
     }
 
     // ---- Barre de symboles (studio : beige, Tab primaire + touches) ---------
@@ -1734,6 +1974,7 @@ public class WorkbenchFragment extends Fragment
         // Nouveau build : les diagnostics rendus à l'agent repartent de zéro.
         lastDiagnostics.clear();
         lastStructuredDiagnostics.clear();
+        beginBuildInDock();
         if (activeMode() == WorkMode.GRADLE) {
             runGradleBuild();
         } else {
@@ -1741,17 +1982,39 @@ public class WorkbenchFragment extends Fragment
         }
     }
 
+    /** Départ de build : console, étapes et problèmes repartent propres,
+     *  compteurs à zéro, barre du dock en « en cours » (preview). */
+    private void beginBuildInDock() {
+        consoleBuffer.clear();
+        resetConsoleView();
+        binding.stepsList.removeAllViews();
+        stepRows.clear();
+        binding.problemsList.removeAllViews();
+        problemsSummary = null;
+        buildErrorCount = 0;
+        buildWarningCount = 0;
+        buildTaskCount = 0;
+        buildTasksTotal = 0;
+        buildTasksDone = 0;
+        buildRunning = true;
+        binding.buildStateOk.setVisibility(View.GONE);
+        binding.buildStateErr.setVisibility(View.GONE);
+        binding.buildStateWarn.setVisibility(View.GONE);
+        renderDockBuildPill();
+    }
+
     private void runGradleBuild() {
         if (gradleBackend == null) {
             gradleBackend = new GradleBackend();
         }
         String buildId = "joide-" + System.currentTimeMillis();
-        appendToConsole(getString(R.string.atelier_build_gradle));
+        consoleBuffer.header(getString(R.string.atelier_console_entete,
+                getString(R.string.mode_gradle_nom), heure()));
+        renderConsole();
         gradleBackend.build(new BuildRequest(buildId, projectPath, false))
                 .whenComplete((session, failure) -> {
                     if (failure != null) {
-                        appendToConsole(failure.getMessage() != null
-                                ? failure.getMessage() : String.valueOf(failure));
+                        onBackendLaunchFailure(failure);
                     } else if (session != null) {
                         session.subscribe(this::onBuildEvent);
                     }
@@ -1777,110 +2040,340 @@ public class WorkbenchFragment extends Fragment
                             infos.totalMem / (1024L * 1024L)));
         }
         String buildId = "joide-" + System.currentTimeMillis();
-        appendToConsole(getString(R.string.atelier_build_debut));
+        consoleBuffer.header(getString(R.string.atelier_console_entete,
+                getString(R.string.mode_forge_nom), heure()));
+        renderConsole();
         forgeBackend.build(new BuildRequest(buildId, projectPath, false),
                 this::onBuildEvent)
                 .whenComplete((session, failure) -> {
                     if (failure != null) {
                         // Moteur non installé ou lancement refusé : Console honnête,
                         // pas d'échec muet (l'installation du moteur est L8).
-                        appendToConsole(failure.getMessage() != null
-                                ? failure.getMessage() : String.valueOf(failure));
+                        onBackendLaunchFailure(failure);
                     }
                 });
+    }
+
+    /** Heure locale HH:mm pour l'en-tête de run de la console. */
+    private String heure() {
+        return LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"));
+    }
+
+    /** Lancement impossible (moteur absent, refus…) : console rouge honnête,
+     *  barre en échec, feuille ouverte — jamais d'échec muet. */
+    private void onBackendLaunchFailure(Throwable failure) {
+        if (!isAdded()) {
+            return;
+        }
+        requireActivity().runOnUiThread(() -> {
+            buildRunning = false;
+            lastBuildEnd = System.currentTimeMillis();
+            lastBuildSuccess = false;
+            consoleBuffer.line(ConsoleBuffer.Kind.ERROR,
+                    failure.getMessage() != null ? failure.getMessage()
+                            : String.valueOf(failure));
+            renderConsole();
+            renderDockBuildPill();
+            dockBehavior.setState(com.google.android.material.bottomsheet
+                    .BottomSheetBehavior.STATE_HALF_EXPANDED);
+        });
     }
 
     /** Événement de build → dock (Console pour le flux, Problèmes pour les
      *  diagnostics, Étapes pour l'horloge des tâches ; pills d'état réelles). */
     private void onBuildEvent(BuildEvent event) {
+        if (!isAdded()) {
+            return;
+        }
         requireActivity().runOnUiThread(() -> {
             if (event instanceof BuildEvent.Log log) {
-                appendToConsole(log.message());
+                consoleBuffer.line(kindFor(log.level()), log.message());
             } else if (event instanceof BuildEvent.DiagnosticEvent diagnostic) {
-                binding.problemsList.addView(problemRow(diagnostic.diagnostic()));
-                // Diagnostic réel gardé pour le contexte de l'agent (Lot 0).
-                lastDiagnostics.add(diagnostic.diagnostic().file()
-                        + (diagnostic.diagnostic().line() > 0
-                                ? ":" + diagnostic.diagnostic().line() : "")
-                        + ": " + diagnostic.diagnostic().message());
-                // Lot 2 tiroir : la forme structurée nourrit les décorations.
-                lastStructuredDiagnostics.add(diagnostic.diagnostic());
+                addProblem(diagnostic.diagnostic());
             } else if (event instanceof BuildEvent.TaskState task) {
-                appendToConsole(task.task() + " : " + task.status());
-                binding.stepsList.addView(stepRow(
-                        getString(R.string.atelier_etape_tache, task.task(),
-                                "2,4"), R.color.sur_var));
+                onTaskState(task);
             } else if (event instanceof BuildEvent.Progress progress) {
-                appendToConsole(getString(R.string.atelier_progression,
+                buildTasksTotal = progress.tasksTotal();
+                buildTasksDone = progress.tasksDone();
+                consoleBuffer.progress(getString(R.string.atelier_progression,
                         progress.tasksDone(), progress.tasksTotal()));
+                renderDockBuildPill();
             } else if (event instanceof BuildEvent.Finished finished) {
-                appendToConsole(finished.success()
-                        ? getString(R.string.atelier_build_reussi)
-                        : getString(R.string.atelier_build_echoue,
-                                finished.failedTask() != null ? finished.failedTask() : "?"));
-                renderBuildPills(finished);
-                // Lot 2 tiroir : les décorations de l'arbre relisent les
-                // diagnostics (un seul événement par build, pas par diagnostic).
-                workspaceEvents.publish(
-                        new jo.joide.workbench.WorkspaceEvents.DiagnosticsChanged());
-                // Le build achevé pose le dock en half-expanded (studio : le
-                // contenu du dock répond, detent 60%).
-                dockBehavior.setState(com.google.android.material.bottomsheet
-                        .BottomSheetBehavior.STATE_HALF_EXPANDED);
+                onBuildFinished(finished);
             }
+            renderConsole();
         });
     }
 
-    /** Pills d'état réelles (studio : ok + err + warn, compteurs du build). */
-    private void renderBuildPills(BuildEvent.Finished finished) {
-        if (finished.success()) {
-            binding.buildStateOk.setVisibility(View.VISIBLE);
-            binding.buildStateOk.setText(getString(R.string.atelier_build_ok_pill));
-        } else {
-            binding.buildStateOk.setVisibility(View.GONE);
-        }
-        int errors = binding.problemsList.getChildCount();
-        if (errors > 0) {
-            binding.buildStateErr.setVisibility(View.VISIBLE);
-            binding.buildStateErr.setText(getString(
-                    R.string.atelier_nb_erreurs, errors));
-        } else {
-            binding.buildStateErr.setVisibility(View.GONE);
-        }
-        binding.buildStateWarn.setVisibility(View.GONE);
+    /** Nature de ligne console selon le niveau de journal du moteur. */
+    private ConsoleBuffer.Kind kindFor(BuildEvent.Log.Level level) {
+        return switch (level) {
+            case DEBUG -> ConsoleBuffer.Kind.DEBUG;
+            case INFO -> ConsoleBuffer.Kind.INFO;
+            case WARNING -> ConsoleBuffer.Kind.WARNING;
+            case ERROR -> ConsoleBuffer.Kind.ERROR;
+        };
     }
 
-    /** Une rangée de problème (studio : ✗/⚠ rouge/alerte + position cliquable). */
+    /** Tâche du graphe : une ligne console (remplacée en place) et une rangée
+     *  d'étape (◐ devient ✔/✗/○) — durées réelles, jamais de « 2,4 » factice. */
+    private void onTaskState(BuildEvent.TaskState task) {
+        String name = task.task();
+        String duree = task.durationMs() > 0
+                ? " · " + Durations.format(task.durationMs(), Locale.getDefault())
+                : "";
+        switch (task.status()) {
+            case STARTED -> {
+                consoleBuffer.task(name, ConsoleBuffer.Kind.TASK_RUNNING,
+                        "◐ " + name + " " + getString(R.string.atelier_console_en_cours));
+                upsertStepRow(name, "◐",
+                        getString(R.string.atelier_etape_debut, name),
+                        R.color.info, R.color.info);
+            }
+            case SUCCEEDED -> {
+                consoleBuffer.task(name, ConsoleBuffer.Kind.TASK_OK,
+                        "✔ " + name + duree);
+                upsertStepRow(name, "✔",
+                        task.durationMs() > 0
+                                ? getString(R.string.atelier_etape_tache, name,
+                                        Durations.format(task.durationMs(),
+                                                Locale.getDefault()))
+                                : getString(R.string.atelier_etape_sans_duree, name),
+                        R.color.ok, R.color.sur);
+            }
+            case FAILED -> {
+                consoleBuffer.task(name, ConsoleBuffer.Kind.TASK_FAILED,
+                        "✗ " + name + " " + getString(R.string.atelier_console_echec) + duree);
+                upsertStepRow(name, "✗",
+                        getString(R.string.atelier_etape_echouee, name),
+                        R.color.erreur, R.color.erreur);
+            }
+            case SKIPPED -> {
+                consoleBuffer.task(name, ConsoleBuffer.Kind.TASK_SKIPPED,
+                        "○ " + name + " " + getString(R.string.atelier_console_eludee));
+                upsertStepRow(name, "○",
+                        getString(R.string.atelier_etape_eludee, name),
+                        R.color.contour, R.color.sur_var);
+            }
+            case UP_TO_DATE -> {
+                consoleBuffer.task(name, ConsoleBuffer.Kind.TASK_UP_TO_DATE,
+                        "✔ " + name + " " + getString(R.string.atelier_console_a_jour));
+                upsertStepRow(name, "✔",
+                        getString(R.string.atelier_etape_a_jour, name),
+                        R.color.sur_var, R.color.sur_var);
+            }
+            default -> { }
+        }
+        // Le bilan « N tâches » compte les tâches terminées, pas les
+        // événements (STARTED + SUCCEEDED = UNE tâche, pas deux).
+        if (task.status() != BuildEvent.TaskState.Status.STARTED) {
+            buildTaskCount++;
+        }
+    }
+
+    /** Rangée d'étape vivante : créée au démarrage, remplacée au terminal. */
+    private void upsertStepRow(String task, String marker, String text,
+            int markerColorRes, int textColorRes) {
+        StepRow existing = stepRows.get(task);
+        if (existing == null) {
+            StepRow row = stepRow(marker, text, markerColorRes, textColorRes);
+            stepRows.put(task, row);
+            binding.stepsList.addView(row.row);
+        } else {
+            existing.marker.setText(marker);
+            existing.marker.setTextColor(getResources().getColor(markerColorRes));
+            existing.label.setText(text);
+            existing.label.setTextColor(getResources().getColor(textColorRes));
+        }
+        followBottom(binding.stepsSection);
+    }
+
+    /** Suit le bas d'une liste défilante sauf si l'utilisateur a remonté. */
+    private void followBottom(ScrollView scroll) {
+        View child = scroll.getChildAt(0);
+        if (child == null || scroll.getScrollY()
+                >= child.getHeight() - scroll.getHeight() - dip(24)) {
+            scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
+        }
+    }
+
+    /** Fin de build : bilan (durée + tâches réelles), pills, barre du dock,
+     *  résumé des problèmes ; échec → la feuille s'ouvre sur Problèmes,
+     *  réussite → la barre seule, jamais de vol de focus (preview). */
+    private void onBuildFinished(BuildEvent.Finished finished) {
+        buildRunning = false;
+        lastBuildEnd = System.currentTimeMillis();
+        lastBuildSuccess = finished.success();
+        String duree = Durations.format(finished.durationMs(), Locale.getDefault());
+        int taches = Math.max(buildTasksTotal, buildTaskCount);
+        if (finished.success()) {
+            consoleBuffer.finished(ConsoleBuffer.Kind.SUCCESS,
+                    "✔ " + getString(R.string.atelier_console_reussi, duree, taches));
+        } else {
+            String fautive = finished.failedTask() != null
+                    ? " · " + getString(R.string.atelier_console_tache_fautive,
+                            finished.failedTask())
+                    : "";
+            consoleBuffer.finished(ConsoleBuffer.Kind.FAILURE,
+                    "✗ " + getString(R.string.atelier_console_echoue, duree) + fautive);
+            if (finished.message() != null && !finished.message().isBlank()) {
+                consoleBuffer.line(ConsoleBuffer.Kind.ERROR, finished.message());
+            }
+        }
+        renderBuildPills();
+        renderDockBuildPill();
+        renderProblemsSummary();
+        // Lot 2 tiroir : les décorations de l'arbre relisent les
+        // diagnostics (un seul événement par build, pas par diagnostic).
+        workspaceEvents.publish(
+                new jo.joide.workbench.WorkspaceEvents.DiagnosticsChanged());
+        if (!finished.success()) {
+            showDockSection(1);
+            dockBehavior.setState(com.google.android.material.bottomsheet
+                    .BottomSheetBehavior.STATE_HALF_EXPANDED);
+        }
+    }
+
+    /** Pills d'état réelles (ok/err/warn — compteurs par sévérité, plus de
+     *  compte d'enfants qui confondait avertissements et erreurs). */
+    private void renderBuildPills() {
+        binding.buildStateOk.setVisibility(
+                lastBuildSuccess ? View.VISIBLE : View.GONE);
+        if (lastBuildSuccess) {
+            binding.buildStateOk.setText(getString(R.string.atelier_build_ok_pill));
+        }
+        binding.buildStateErr.setVisibility(
+                buildErrorCount > 0 ? View.VISIBLE : View.GONE);
+        if (buildErrorCount > 0) {
+            binding.buildStateErr.setText(getString(
+                    R.string.atelier_nb_erreurs, buildErrorCount));
+        }
+        binding.buildStateWarn.setVisibility(
+                buildWarningCount > 0 ? View.VISIBLE : View.GONE);
+        if (buildWarningCount > 0) {
+            binding.buildStateWarn.setText(getString(
+                    R.string.atelier_nb_avertissements, buildWarningCount));
+        }
+    }
+
+    /** Barre du dock : Prêt / ◐ en cours (compteur réel) / ▶ ok + âge /
+     *  ✗ échec — la couleur suit l'état, jamais figé (preview). */
+    private void renderDockBuildPill() {
+        TextView pill = binding.dockBuildState;
+        if (buildRunning) {
+            pill.setText(buildTasksTotal > 0
+                    ? getString(R.string.dock_etat_cours_nb, buildTasksDone,
+                            buildTasksTotal)
+                    : getString(R.string.dock_etat_cours));
+            pill.setBackgroundResource(R.drawable.fond_pill_info);
+            pill.setTextColor(getResources().getColor(R.color.info));
+        } else if (lastBuildEnd > 0 && lastBuildSuccess) {
+            pill.setText(getString(R.string.dock_etat_ok, relativeBuildAge()));
+            pill.setBackgroundResource(R.drawable.fond_pill_ok);
+            pill.setTextColor(getResources().getColor(R.color.ok));
+        } else if (lastBuildEnd > 0) {
+            pill.setText(getString(R.string.dock_etat_err));
+            pill.setBackgroundResource(R.drawable.fond_pill_err);
+            pill.setTextColor(getResources().getColor(R.color.erreur));
+        } else {
+            pill.setText(getString(R.string.dock_etat_pret));
+            pill.setBackgroundResource(R.drawable.fond_pill_sc_highest);
+            pill.setTextColor(getResources().getColor(R.color.sur_var));
+        }
+    }
+
+    /** Âge relatif du dernier build (« à l'instant », « il y a 3 min »…). */
+    private String relativeBuildAge() {
+        jo.joide.ai.RelativeTimes.Ago ago = jo.joide.ai.RelativeTimes.agoOf(
+                lastBuildEnd, System.currentTimeMillis());
+        return switch (ago.unit()) {
+            case MINUTES -> ago.value() <= 0
+                    ? getString(R.string.time_now)
+                    : getString(R.string.time_min_ago, ago.value());
+            case HOURS -> getString(R.string.time_hours_ago, ago.value());
+            case DAYS -> getString(R.string.time_days_ago, ago.value());
+        };
+    }
+
+    /** Diagnostic réel : rangée cliquable + compteurs par sévérité. */
+    private void addProblem(jo.joide.workbench.Diagnostic diagnostic) {
+        binding.problemsList.addView(problemRow(diagnostic));
+        if (diagnostic.severity() == jo.joide.workbench.Diagnostic.Severity.ERROR) {
+            buildErrorCount++;
+        } else if (diagnostic.severity()
+                == jo.joide.workbench.Diagnostic.Severity.WARNING) {
+            buildWarningCount++;
+        }
+        // Diagnostic réel gardé pour le contexte de l'agent (Lot 0).
+        lastDiagnostics.add(diagnostic.file()
+                + (diagnostic.line() > 0 ? ":" + diagnostic.line() : "")
+                + ": " + diagnostic.message());
+        // Lot 2 tiroir : la forme structurée nourrit les décorations.
+        lastStructuredDiagnostics.add(diagnostic);
+    }
+
+    /** Pied de la section Problèmes : « 2 erreurs · 2 avertissements »,
+     *  ou « Aucun problème — build propre » (preview). */
+    private void renderProblemsSummary() {
+        String resume = buildErrorCount == 0 && buildWarningCount == 0
+                ? getString(R.string.atelier_problemes_propre)
+                : getString(R.string.atelier_problemes_resume,
+                        buildErrorCount, buildWarningCount);
+        if (problemsSummary == null) {
+            problemsSummary = new TextView(requireContext());
+            problemsSummary.setTextSize(11f);
+            problemsSummary.setPadding(dip(2), dip(8), dip(2), dip(2));
+            problemsSummary.setTextColor(getResources().getColor(R.color.contour));
+            binding.problemsList.addView(problemsSummary);
+        }
+        problemsSummary.setText(resume);
+    }
+
+    /** Une rangée de problème (preview : ✗/⚠/▸ + position) — appui : ouvre
+     *  le fichier à la ligne ; appui long : « Expliquer avec l'agent IA »
+     *  (l'ancien code posait DEUX écouteurs, le second écrasait le dialogue
+     *  agent — il n'était jamais atteignable). */
     private View problemRow(jo.joide.workbench.Diagnostic diagnostic) {
         LinearLayout row = new LinearLayout(requireContext());
-        // Lot 8 : « Expliquer cette erreur » depuis les Problèmes — l'agent
-        // reçoit le diagnostic exact (fichier, ligne, message).
-        row.setOnClickListener(v ->
-                new com.google.android.material.dialog.MaterialAlertDialogBuilder(
-                        requireContext())
-                        .setTitle(R.string.problems_explain_title)
-                        .setMessage(diagnostic.file()
-                                + (diagnostic.line() > 0
-                                        ? ":" + diagnostic.line() : "")
-                                + "\n" + diagnostic.message())
-                        .setPositiveButton(R.string.problems_explain_action,
-                                (d, w) -> openAgentPanel(getString(
-                                        R.string.problems_explain_prompt,
-                                        diagnostic.file(),
-                                        diagnostic.line() > 0 ? ":" + diagnostic.line() : "",
-                                        diagnostic.message())))
-                        .setNegativeButton(R.string.commun_annuler, null)
-                        .show());
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        boolean error = diagnostic.severity() != jo.joide.workbench.Diagnostic.Severity.WARNING;
+        String position = diagnostic.file()
+                + (diagnostic.line() > 0 ? ":" + diagnostic.line() : "");
+        // Saut au fichier depuis la section Problèmes (fiche atelier J2).
+        row.setOnClickListener(v -> {
+            Path target = Paths.get(projectPath).resolve(diagnostic.file());
+            if (Files.isRegularFile(target)) {
+                openFile(target);
+            }
+        });
+        // Lot 8 : « Expliquer cette erreur » — l'agent reçoit le diagnostic
+        // exact (fichier, ligne, message).
+        row.setOnLongClickListener(v -> {
+            new com.google.android.material.dialog.MaterialAlertDialogBuilder(
+                    requireContext())
+                    .setTitle(R.string.problems_explain_title)
+                    .setMessage(position + "\n" + diagnostic.message())
+                    .setPositiveButton(R.string.problems_explain_action,
+                            (d, w) -> openAgentPanel(getString(
+                                    R.string.problems_explain_prompt,
+                                    diagnostic.file(),
+                                    diagnostic.line() > 0 ? ":" + diagnostic.line() : "",
+                                    diagnostic.message())))
+                    .setNegativeButton(R.string.commun_annuler, null)
+                    .show();
+            return true;
+        });
+        boolean error = diagnostic.severity()
+                == jo.joide.workbench.Diagnostic.Severity.ERROR;
+        boolean warning = diagnostic.severity()
+                == jo.joide.workbench.Diagnostic.Severity.WARNING;
         TextView marker = new TextView(requireContext());
-        marker.setText(error ? "✗" : "⚠");
+        marker.setText(error ? "✗" : warning ? "⚠" : "▸");
         marker.setTextColor(getResources().getColor(
-                error ? R.color.erreur : R.color.alerte));
+                error ? R.color.erreur : warning ? R.color.alerte : R.color.info));
         marker.setTextSize(11.5f);
         row.addView(marker, new LinearLayout.LayoutParams(
-                dip(12), ViewGroup.LayoutParams.WRAP_CONTENT));
+                dip(14), ViewGroup.LayoutParams.WRAP_CONTENT));
 
         LinearLayout text = new LinearLayout(requireContext());
         text.setOrientation(LinearLayout.VERTICAL);
@@ -1892,24 +2385,15 @@ public class WorkbenchFragment extends Fragment
         message.setText(diagnostic.message());
         message.setTextColor(getResources().getColor(R.color.sur));
         message.setTextSize(11.5f);
-        message.setTypeface(android.graphics.Typeface.MONOSPACE);
+        message.setTypeface(Typeface.MONOSPACE);
         text.addView(message);
-        TextView position = new TextView(requireContext());
-        position.setText(diagnostic.file()
-                + (diagnostic.line() > 0 ? ":" + diagnostic.line() : ""));
-        position.setTextColor(getResources().getColor(R.color.sur_var));
-        position.setTextSize(11.5f);
-        position.setTypeface(android.graphics.Typeface.MONOSPACE);
-        text.addView(position);
+        TextView positionView = new TextView(requireContext());
+        positionView.setText(position);
+        positionView.setTextColor(getResources().getColor(R.color.sur_var));
+        positionView.setTextSize(11.5f);
+        positionView.setTypeface(Typeface.MONOSPACE);
+        text.addView(positionView);
         row.addView(text);
-
-        // Saut au fichier depuis la section Problèmes (fiche atelier J2).
-        row.setOnClickListener(v -> {
-            Path target = Paths.get(projectPath).resolve(diagnostic.file());
-            if (Files.isRegularFile(target)) {
-                openFile(target);
-            }
-        });
         return row;
     }
 
@@ -1968,11 +2452,6 @@ public class WorkbenchFragment extends Fragment
     /** Ajoute une ligne au journal IDE (section Journal, jamais muet). */
     private void appendToJournal(String line) {
         binding.ideJournal.append(line + "\n");
-    }
-
-    /** Ajoute une ligne à la Console (section du build). */
-    private void appendToConsole(String line) {
-        binding.consoleOutput.append(line + "\n");
     }
 
     private String relativize(Path file) {

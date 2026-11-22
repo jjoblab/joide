@@ -6,6 +6,12 @@
 
 pluginManagement {
     repositories {
+        // Miroir optionnel (bac à sable limité en débit par Maven Central) :
+        // JOIDE_MIRROR=https://maven.aliyun.com/repository/public l’insère en tête.
+        val miroir = providers.environmentVariable("JOIDE_MIRROR").getOrElse("")
+        if (miroir.isNotEmpty()) {
+            maven { url = uri(miroir) }
+        }
         google()
         mavenCentral()
         gradlePluginPortal()
@@ -17,13 +23,23 @@ pluginManagement {
 }
 
 plugins {
-    // Provision automatique des JDK de chaîne (le bac à sable n'a qu'un JRE 21).
-    id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
+    // Provision automatique des JDK de chaîne (utile quand la machine n'a
+    // qu'un JRE). Résolution réseau au démarrage : contournable par
+    // JOIDE_NO_FOOJAY=1 quand un JDK local suffit (bac à sable hors-ligne,
+    // dépôt Maven limité en débit) — le toolchain JAVA_HOME prend le relais.
+    if (providers.environmentVariable("JOIDE_NO_FOOJAY").getOrElse("") != "1") {
+        id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
+    }
 }
 
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
+        // Miroir optionnel (même règle que pluginManagement ci-dessus).
+        val miroir = providers.environmentVariable("JOIDE_MIRROR").getOrElse("")
+        if (miroir.isNotEmpty()) {
+            maven { url = uri(miroir) }
+        }
         // Forge (ADR-001) : aucun paquet Maven jo.forge n'est publié sur un dépôt
         // distant ; Forge publie ses releases GitHub (zips + manifest.json) et,
         // depuis v0.2.24, ses modules bibliothèque sur mavenLocal.

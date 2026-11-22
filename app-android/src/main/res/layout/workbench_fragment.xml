@@ -2,8 +2,9 @@
 <!-- Éditeur (studio HTML, onglet « Éditeur », 1:1) : tiroir gauche push 320dp
      (switcher Files·Chercher·Structure), top bar 52dp (menu, nom, pill mode,
      save/undo/redo/play/dots), onglets fichiers 40dp, fil d'Ariane 34dp
-     (segment code/aperçu), zone code sc_lowest, dock à 3 detents (BuildDock.kt :
-     60dp collapse → 60% half → plein sous la toolbar), clavier symboles beige. -->
+     (segment code/aperçu), zone code sc_lowest, dock à 3 detents (preview
+     bottom-sheet : 60dp réduit → 60% half → plein sous la toolbar), clavier
+     symboles beige. -->
 <androidx.drawerlayout.widget.DrawerLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -339,9 +340,10 @@
             android:visibility="gone" />
     </LinearLayout>
 
-    <!-- Dock à 3 detents (BuildDock.kt : 60dp collapse → 60% half → plein).
-         fitToContents=false + maxHeight : le plein s'arrête SOUS la toolbar
-         (offsetTop 52dp + onglets 40dp + fil d'Ariane 34dp = 126dp du haut). -->
+    <!-- Dock à 3 detents (preview bottom-sheet : 60dp réduit → 60 % half →
+         plein). fitToContents=false : le plein s'arrête SOUS la toolbar
+         (offsetTop 52dp + onglets 40dp + fil d'Ariane 34dp = 126dp du haut).
+         Console = rendu du ConsoleBuffer (lignes colorées par nature). -->
     <FrameLayout
         android:id="@+id/dock_sheet"
         android:layout_width="match_parent"
@@ -408,14 +410,11 @@
                     android:layout_width="wrap_content"
                     android:layout_height="30dp"
                     android:gravity="center"
-                    android:background="@drawable/fond_pill_ok"
-                    android:drawableStart="@drawable/ic_check"
-                    android:drawablePadding="6dp"
-                    android:drawableTint="@color/ok"
-                    android:paddingStart="9dp"
+                    android:background="@drawable/fond_pill_sc_highest"
+                    android:paddingStart="12dp"
                     android:paddingEnd="12dp"
                     android:text="@string/dock_etat_pret"
-                    android:textColor="@color/ok"
+                    android:textColor="@color/sur_var"
                     android:textSize="12sp"
                     android:textStyle="bold" />
 
@@ -564,11 +563,12 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="vertical"
-                            android:padding="12dp"
+                            android:padding="10dp"
                             android:background="@drawable/fond_sortie_dock" />
                     </ScrollView>
 
-                    <!-- Console (sortie du build, mono) -->
+                    <!-- Console (sortie du build : lignes colorées par nature,
+                         preview bottom-sheet — mono 10.5/1.75 sur sc_lowest) -->
                     <ScrollView
                         android:id="@+id/console_section"
                         android:layout_width="match_parent"
@@ -580,11 +580,11 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:fontFamily="monospace"
-                            android:textSize="11.5sp"
-                            android:lineSpacingMultiplier="1.55"
-                            android:padding="12dp"
+                            android:textSize="10.5sp"
+                            android:lineSpacingMultiplier="1.75"
+                            android:padding="10dp"
                             android:background="@drawable/fond_sortie_dock"
-                            android:textColor="@color/sur" />
+                            android:textColor="@color/sur_var" />
                     </ScrollView>
 
                     <!-- Étapes (les tâches du build en rangées d'horloge, mode Gradle) -->
@@ -599,7 +599,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="vertical"
-                            android:padding="12dp"
+                            android:padding="10dp"
                             android:background="@drawable/fond_sortie_dock" />
                     </ScrollView>
 
@@ -615,9 +615,9 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:fontFamily="monospace"
-                            android:textSize="11.5sp"
-                            android:lineSpacingMultiplier="1.55"
-                            android:padding="12dp"
+                            android:textSize="10.5sp"
+                            android:lineSpacingMultiplier="1.75"
+                            android:padding="10dp"
                             android:background="@drawable/fond_sortie_dock"
                             android:textColor="@color/sur_var" />
                     </ScrollView>

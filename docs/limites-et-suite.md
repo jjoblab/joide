@@ -222,6 +222,24 @@ Deux bugs réels constatés sur appareil après l'écran d'installation du moteu
 Vérifié : tests JVM (`JOIDE_SKIP_ANDROID=1 ./gradlew test`, verts), APK debug
 assemblé, contrôles langue/dépendances/API 28 OK.
 
+### Dock (feuille du bas) conforme au preview validé (2026-11-22)
+`docs/mockups/bottom-sheet.html` **validé** → analyse
+(`docs/mockups/ecarts-bottom-sheet.md`) puis rapprochement : console de
+build rendue depuis un **`ConsoleBuffer`** nouveau (module workbench-spi,
+22 tests — lignes colorées par nature ✔/✗/◐/⚠ aux jetons, **tâches
+remplacées en place**, progression collante sans spam, capacité bornée à
+2000 lignes avec note d'élagage honnête, bilan « réussi · 18 s · 59
+tâches » aux durées réelles via `Durations` — fini le « 2,4 » codé en
+dur), auto-suivi sauf remontée manuelle, barre du dock vivante (« ◐
+build · 3/12 », « ▶ build ok · il y a 3 min », ✗ échec), pills par
+sévérité réelle, pied des Problèmes, étapes vivantes ◐→✔, **build
+échoué qui ouvre la feuille sur Problèmes** (un succès ne vole plus le
+focus — avant : ouverture systématique), repli sous le clavier, onglet
+Console actif au départ (faute d'indice corrigée), « Expliquer avec
+l'agent IA » de nouveau atteignable (double écouteur corrigé : appui =
+saut au fichier, appui long = explication). Consigné : badge IA en
+attente de l'état non-lus de l'agent.
+
 ### Contenu principal conforme au preview validé (2026-11-22)
 `docs/mockups/contenu-principal.html` **validé** → analyse
 (`docs/mockups/ecarts-contenu-principal.md`) puis rapprochement : boutons

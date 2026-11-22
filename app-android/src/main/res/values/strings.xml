@@ -46,8 +46,6 @@
     <string name="creation_echec">Création impossible : %s</string>
     <string name="atelier_construire">Construire</string>
     <string name="atelier_enregistrer_ok">Enregistré</string>
-    <string name="atelier_build_reussi">Build réussi</string>
-    <string name="atelier_build_echoue">Build échoué (tâche fautive : %s)</string>
     <string name="terminal_titre">Terminal</string>
     <string name="terminal_nouvelle_session">Nouvelle session</string>
     <string name="terminal_non_installe">Environnement Gradle non installé : le terminal arrive après l\'installation du mode Gradle (paramètres, lot L8).</string>
@@ -143,7 +141,6 @@
     <!-- Atelier : mode actif (chip, notice, visibilité selon le mode) -->
     <string name="atelier_notice_gradle">Mode Gradle actif · ce projet Forge s\'ouvre en lecture seule (capacités honnêtes du BuildBackend)</string>
     <string name="atelier_notice_forge">Mode Forge actif · chaud-rechargement disponible · terminal non fourni par ce mode</string>
-    <string name="atelier_build_gradle">— build Gradle (terminal) —</string>
     <string name="atelier_terminal_grise">Terminal indisponible en mode Forge</string>
     <!-- Tiroir IA : états de conversation (studio HTML, onglet Chat IA) -->
     <string name="ia_etat_reflexion">En réflexion…</string>
@@ -214,7 +211,6 @@
     <string name="atelier_menu_bientot">Menu de l\'atelier : bientôt (actions livrées au lot projet)</string>
     <string name="atelier_fil_point"> › onCreate</string>
     <string name="atelier_touche_tab">Tab</string>
-    <string name="atelier_build_debut">— build —</string>
     <string name="atelier_progression">progression : %1$d/%2$d</string>
     <string name="atelier_build_ok_pill">✓ BUILD RÉUSSI</string>
     <string name="atelier_recherche_bientot">Recherche : câblée au lot éditeur (brique céleris)</string>
@@ -245,10 +241,32 @@
     <string name="creation_desc_gradle">Projet AGP multi-modules — constructible quand le mode Gradle + terminal arrive</string>
     <string name="creation_nom_defaut">MonApplication</string>
     <string name="logcat_etat">Logcat : nécessite un appareil branché (lot diagnostic appareil) — cette section reste vide sans adb</string>
-    <string name="atelier_etape_tache">%1$s — tâche terminée en %2$s s</string>
+    <!-- Dock : console de build (preview bottom-sheet — affichage moderne des sorties) -->
+    <string name="section_console_forge">Forge Console</string>
+    <string name="section_console_gradle">Gradle Console</string>
+    <string name="atelier_console_entete">&gt; build %1$s · %2$s</string>
+    <string name="atelier_console_en_cours">— en cours…</string>
+    <string name="atelier_console_a_jour">· à jour</string>
+    <string name="atelier_console_eludee">· éludée</string>
+    <string name="atelier_console_echec">· échec</string>
+    <string name="atelier_console_reussi">build réussi · %1$s · %2$d tâches</string>
+    <string name="atelier_console_echoue">build échoué · %1$s</string>
+    <string name="atelier_console_tache_fautive">tâche fautive : %1$s</string>
+    <string name="atelier_console_masquees">… %1$d lignes antérieures masquées</string>
+    <string name="atelier_etape_tache">%1$s — terminée en %2$s</string>
+    <string name="atelier_etape_sans_duree">%1$s — terminée</string>
     <string name="atelier_etape_debut">%1$s — en cours…</string>
-    <string name="atelier_etape_init">initialisation — en cours…</string>
+    <string name="atelier_etape_a_jour">%1$s — à jour</string>
+    <string name="atelier_etape_eludee">%1$s — éludée</string>
+    <string name="atelier_etape_echouee">%1$s — échouée</string>
     <string name="atelier_nb_erreurs">%1$d erreurs</string>
+    <string name="atelier_nb_avertissements">%1$d avertissements</string>
+    <string name="atelier_problemes_resume">%1$d erreurs · %2$d avertissements</string>
+    <string name="atelier_problemes_propre">Aucun problème — build propre</string>
+    <string name="dock_etat_cours">◐ build en cours…</string>
+    <string name="dock_etat_cours_nb">◐ build · %1$d/%2$d</string>
+    <string name="dock_etat_ok">▶ build ok · %1$s</string>
+    <string name="dock_etat_err">✗ build échoué</string>
     <!-- Menu d'options de la barre de l'éditeur -->
     <string name="option_atelier_fichiers">Fichiers du projet</string>
     <string name="option_atelier_agent_ia">Agent IA</string>
