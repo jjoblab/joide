@@ -199,6 +199,29 @@ Deux nouveaux aperçus : `docs/mockups/contenu-principal.html` (zone
 éditeur) et `docs/mockups/bottom-sheet.html` (comportement du dock,
 démo interactive des trois états du BottomSheetBehavior).
 
+### Correctifs du premier lancement (2026-11-23)
+Deux bugs réels constatés sur appareil après l'écran d'installation du moteur :
+- **Gel de l'interface après l'installation** : `render()` appelait
+  `installState()` sur le fil UI, qui vérifie les sommes SHA-256 de TOUT le
+  moteur installé (des centaines de Mo) — juste après « Installation
+  terminée », l'écran gelait et même le bouton retour ne répondait plus. La
+  vérification vit désormais hors fil UI (cache `volatile` + vol unique), le
+  rendu reste instantané et raffine les chips quand le résultat arrive.
+- **Retour mort au premier lancement** : l'assistant pousse l'écran
+  d'installation SANS l'empiler — `popBackStack()` ne faisait rien et aucune
+  sortie n'existait. Le retour (bouton de barre ET bouton système, via
+  `OnBackPressedDispatcher`) dépile désormais s'il y a une entrée, ferme la
+  popup de désinstallation si ouverte, et mène à l'accueil sinon ; une
+  installation réussie au premier lancement poursuit automatiquement vers
+  l'accueil.
+- **Galerie de modèles vide** : le champ de recherche de l'écran de création
+  était un `TextView` non éditable dont le libellé (« Chercher un modèle… »)
+  était pris pour la requête de filtre — aucun titre de modèle ne le
+  contient, la galerie restait vide. Le champ est un vrai `EditText` (le
+  libellé vit dans le hint, la recherche devient réellement saisissable).
+Vérifié : tests JVM (`JOIDE_SKIP_ANDROID=1 ./gradlew test`, verts), APK debug
+assemblé, contrôles langue/dépendances/API 28 OK.
+
 ### Contenu principal conforme au preview validé (2026-11-22)
 `docs/mockups/contenu-principal.html` **validé** → analyse
 (`docs/mockups/ecarts-contenu-principal.md`) puis rapprochement : boutons

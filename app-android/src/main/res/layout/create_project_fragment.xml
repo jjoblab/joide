@@ -60,15 +60,21 @@
                 android:orientation="vertical"
                 android:paddingTop="12dp">
 
-                <TextView
+                <!-- Champ de recherche ÉDITABLE : le libellé vit dans le hint —
+                     un TextView non éditable ferait de « Chercher un modèle… »
+                     une requête de filtre permanente (galerie vide, bug réel). -->
+                <EditText
                     android:id="@+id/create_search"
                     style="@style/Champ"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="10dp"
                     android:gravity="center_vertical"
-                    android:text="@string/creation_chercher"
-                    android:textColor="@color/sur_var" />
+                    android:importantForAutofill="no"
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:hint="@string/creation_chercher"
+                    android:textColorHint="@color/sur_var" />
 
                 <HorizontalScrollView
                     android:layout_width="match_parent"
