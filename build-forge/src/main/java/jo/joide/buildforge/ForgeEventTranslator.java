@@ -85,6 +85,9 @@ public final class ForgeEventTranslator {
             case FAILED -> jo.joide.workbench.BuildEvent.TaskState.Status.FAILED;
             case SKIPPED -> jo.joide.workbench.BuildEvent.TaskState.Status.SKIPPED;
             case UP_TO_DATE -> jo.joide.workbench.BuildEvent.TaskState.Status.UP_TO_DATE;
+            // Forge v0.2.16+ : tâche relue du cache de build partagé (D-18) — le
+            // moteur l'assimile à « rien à faire », l'atelier l'affiche à jour.
+            case FROM_CACHE -> jo.joide.workbench.BuildEvent.TaskState.Status.UP_TO_DATE;
         };
     }
 }

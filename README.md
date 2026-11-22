@@ -24,11 +24,16 @@ ViewBinding), `minSdk 28`, `targetSdk 28` (ADR-009).
 
 ```sh
 ./tools/setup-local.sh                        # hooks git + liste locale des termes interdits
-git clone --depth 1 --branch v0.2.13 https://github.com/jjoblab/forge.git ../forge
-./tools/forge-mavenlocal.sh ../forge 0.2.13   # publication locale des modules Forge (ADR-001)
+git clone https://github.com/jjoblab/forge.git ../forge
+cd ../forge && ./gradlew publishToMavenLocal  # Forge v0.2.24+ publie nativement (ADR-001)
+cd ../joide
 ./gradlew build                              # complet (SDK Android requis pour app-android)
 JOIDE_SKIP_ANDROID=1 ./gradlew test          # cœur JVM uniquement, sans SDK
 ```
+
+Le mode de build actif est **Forge seul** (ADR-009) : le mode Gradle + terminal
+intégré est conçu et conservé (`build-gradle-core`, `terminal-core`) mais pas
+encore activé dans l’interface.
 
 ## Règles du dépôt
 

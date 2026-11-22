@@ -18,9 +18,10 @@ import jo.joide.workbench.WorkMode;
  * {@link BuildBackend} (conception §4). L'installation du moteur réutilise le canal
  * signé et l'installateur de Forge (module {@code setup}).
  *
- * <p>Limites affichées honnêtement (capacités) : AAR et ViewBinding non supportés
- * tant que Forge ne les livre pas (docs/DEMANDES-FORGE.md F-05/F-06) ; les composants
- * aapt2 et plateformes ne sont pas publiés par Forge en v0.2.x (F-02).</p>
+ * <p>Capacités honnêtes (Forge v0.2.24) : AAR et ViewBinding SONT livrés
+ * (demandes F-05/F-06 closes), les composants aapt2 et plateformes sont publiés
+ * (F-02 close). Restent des limites réelles : la signature n'utilise que la clé
+ * de débogage par projet et la minimisation R8 n'est pas proposée.</p>
  *
  * <p>La racine ForgeHome (appareil : {@code filesDir/forge}) et le lanceur de VM
  * ({@code DeviceVmLauncher} sur appareil) sont fournis par la coquille Android ;
@@ -37,7 +38,21 @@ public final class ForgeBackend implements BuildBackend {
      * @param launcher  lanceur du moteur (appareil : {@code DeviceVmLauncher}).
      */
     public ForgeBackend(Path forgeRoot, VmLauncher launcher) {
-        this.engineManager = new ForgeEngineManager(forgeRoot, launcher);
+        this.engineManager = new ForgeEngineManager(forgeRoot, launcher,
+                ForgeEngineManager.DeviceProfile.jvm());
+    }
+
+    /**
+     * Backend Forge avec le profil de l'appareil (ABI, RAM — le moteur en a besoin
+     * pour ses composants natifs et son budget mémoire).
+     *
+     * @param forgeRoot racine ForgeHome.
+     * @param launcher  lanceur du moteur.
+     * @param device    profil de l'appareil hôte.
+     */
+    public ForgeBackend(Path forgeRoot, VmLauncher launcher,
+            ForgeEngineManager.DeviceProfile device) {
+        this.engineManager = new ForgeEngineManager(forgeRoot, launcher, device);
     }
 
     @Override
@@ -47,10 +62,12 @@ public final class ForgeBackend implements BuildBackend {
 
     @Override
     public Capabilities capabilities() {
-        return new Capabilities(true, false, false, false, false, List.of(
-                "AAR non supportés (demande F-05)",
-                "ViewBinding non supporté (demande F-06)",
-                "Composants Android (aapt2, plateformes) non publiés en v0.2.x (F-02)"));
+        // Forge v0.2.24 : AAR et ViewBinding livrés (F-05/F-06 closes), composants
+        // aapt2 + plateformes publiés (F-02 close). Limites restantes, affichées.
+        return new Capabilities(true, false, true, true, false, List.of(
+                "Signature : clé de débogage par projet (la clé de production reste à venir)",
+                "Minimisation R8 non proposée (débogage uniquement)",
+                "Les scripts Gradle ne sont pas exécutés (mode Gradle = terminal, à venir)"));
     }
 
     @Override
@@ -77,8 +94,8 @@ public final class ForgeBackend implements BuildBackend {
         return engineManager.startBuild(request, consumer);
     }
 
-    /** Installation du moteur depuis le canal signé (assistant des modes, L2/L3). */
-    public CompletableFuture<Void> installEngine(String abi, Consumer<Long> progress) {
-        return engineManager.installFromChannel(abi, progress);
+    /** Gestionnaire du moteur (assistant d'installation : manifeste, cache, états). */
+    public ForgeEngineManager engineManager() {
+        return engineManager;
     }
 }

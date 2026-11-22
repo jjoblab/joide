@@ -1,6 +1,7 @@
 package jo.joide.app;
 
 import android.content.Context;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -1759,9 +1760,21 @@ public class WorkbenchFragment extends Fragment
 
     private void runForgeBuild() {
         if (forgeBackend == null) {
+            // Lanceur APPAREIL (app_process + ART) — jamais le lanceur JVM (le binaire
+            // java n'existe pas sur Android) — et profil réel (ABI, RAM) : le moteur
+            // en a besoin pour ses composants natifs et son budget mémoire.
+            android.app.ActivityManager mémoire = (android.app.ActivityManager)
+                    requireContext().getSystemService(Context.ACTIVITY_SERVICE);
+            android.app.ActivityManager.MemoryInfo infos =
+                    new android.app.ActivityManager.MemoryInfo();
+            mémoire.getMemoryInfo(infos);
             forgeBackend = new ForgeBackend(
                     requireContext().getFilesDir().toPath().resolve("forge"),
-                    new jo.forge.client.JavaVmLauncher());
+                    new jo.forge.client.DeviceVmLauncher(),
+                    new jo.joide.buildforge.ForgeEngineManager.DeviceProfile(
+                            Build.SUPPORTED_ABIS.length > 0
+                                    ? Build.SUPPORTED_ABIS[0] : "all",
+                            infos.totalMem / (1024L * 1024L)));
         }
         String buildId = "joide-" + System.currentTimeMillis();
         appendToConsole(getString(R.string.atelier_build_debut));

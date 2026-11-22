@@ -24,10 +24,11 @@ plugins {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        // Forge (ADR-001) : aucun paquet Maven jo.forge n'est publié (ni GitHub Packages,
-        // ni JitPack) ; Forge ne publie que des releases GitHub (zips + manifest.json).
-        // Les bibliothèques jo.forge:*:0.2.13 viennent donc d'un mavenLocal alimenté par
-        // tools/forge-mavenlocal.sh <chemin-forge> 0.2.13.
+        // Forge (ADR-001) : aucun paquet Maven jo.forge n'est publié sur un dépôt
+        // distant ; Forge publie ses releases GitHub (zips + manifest.json) et,
+        // depuis v0.2.24, ses modules bibliothèque sur mavenLocal.
+        // Les bibliothèques jo.forge:*:0.2.24 viennent donc d'un mavenLocal alimenté
+        // par ./gradlew publishToMavenLocal dans le dépôt Forge.
         mavenLocal()
         google()
         mavenCentral()

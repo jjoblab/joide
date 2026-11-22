@@ -28,6 +28,7 @@ import org.junit.jupiter.api.io.TempDir;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -82,7 +83,8 @@ class ForgeInstallerTest {
         ForgeInstaller installer = new ForgeInstaller(forgeRoot, componentsDirectory);
 
         assertEquals(InstallState.NOT_INSTALLED, installer.installState());
-        installer.install(manifest, "all", null);
+        installer.install(manifest, "all", null,
+                new jo.forge.setup.download.CancellationToken());
 
         // Installation visible : répertoire engines/<version> + état lisible.
         assertEquals(InstallState.INSTALLED, installer.installState());
@@ -99,7 +101,8 @@ class ForgeInstallerTest {
     void tamperedInstalledFileIsBROKENNotSilent() throws Exception {
         EngineManifest manifest = buildLocalComponents("0.2.6");
         ForgeInstaller installer = new ForgeInstaller(forgeRoot, componentsDirectory);
-        installer.install(manifest, "all", null);
+        installer.install(manifest, "all", null,
+                new jo.forge.setup.download.CancellationToken());
         assertEquals(InstallState.INSTALLED, installer.installState());
 
         // Altération d'un fichier installé : l'état passe à CASSE (vérification
@@ -122,7 +125,8 @@ class ForgeInstallerTest {
     void uninstallRemovesEverything() throws Exception {
         EngineManifest manifest = buildLocalComponents("0.2.6");
         ForgeInstaller installer = new ForgeInstaller(forgeRoot, componentsDirectory);
-        installer.install(manifest, "all", null);
+        installer.install(manifest, "all", null,
+                new jo.forge.setup.download.CancellationToken());
         assertTrue(installer.uninstall());
         assertEquals(InstallState.NOT_INSTALLED, installer.installState());
         assertFalse(Files.exists(forgeRoot.resolve("engines/0.2.6")));
@@ -158,5 +162,61 @@ class ForgeInstallerTest {
         assertEquals(InstallState.NOT_INSTALLED, installer.installState());
         assertFalse(Files.exists(forgeRoot.resolve("engines/0.2.6")),
                 "rien ne doit être installé pour une ABI non ciblée");
+    }
+
+    /**
+     * Anti-recul (Forge v0.2.24) : une fois une séquence installée, un manifeste
+     * signé plus ancien est REFUSÉ (miroir périmé, canal compromis) ; la
+     * réinstallation de la même séquence (réparation) et la mise à jour passent.
+     */
+    @Test
+    void olderSignedManifestIsRefusedAntiRollback() throws Exception {
+        ForgeInstaller installer = new ForgeInstaller(forgeRoot, componentsDirectory);
+        installer.install(buildLocalComponents("0.2.24"), "all", null,
+                new jo.forge.setup.download.CancellationToken());
+
+        // Sans verrou posé (séquence 0 installée) : aucun refus.
+        assertNull(installer.rollbackRefusal(buildLocalComponents("0.2.25")));
+
+        // Installation séquencée : le verrou est mémorisé.
+        EngineManifest sequenced = new EngineManifest(1, "0.2.24", 1, "2026-11-22",
+                List.of(buildLocalComponents("0.2.24").components().get(0)), 42);
+        installer.install(sequenced, "all", null,
+                new jo.forge.setup.download.CancellationToken());
+
+        // Rejeu plus ancien : refusé, avant tout téléchargement.
+        EngineManifest older = new EngineManifest(1, "0.2.23", 1, "2026-11-21",
+                List.of(sequenced.components().get(0)), 41);
+        String refusal = installer.rollbackRefusal(older);
+        assertNotNull(refusal, "le rejeu d'un manifeste plus ancien est refusé");
+        assertTrue(refusal.contains("41"), "le refus cite la séquence : " + refusal);
+
+        // Même séquence (réparation) et plus récente (mise à jour) : acceptées.
+        assertNull(installer.rollbackRefusal(sequenced));
+        assertNull(installer.rollbackRefusal(new EngineManifest(1, "0.2.25", 1,
+                "2026-11-22", List.of(sequenced.components().get(0)), 43)));
+    }
+
+    /**
+     * Réparation au démarrage (Forge v0.2.24) : une installation interrompue —
+     * moteur mis à l'écart (.old-*) jamais remplacé — est rétablie automatiquement.
+     */
+    @Test
+    void interruptedInstallIsRecoveredAtStartup() throws Exception {
+        ForgeInstaller installer = new ForgeInstaller(forgeRoot, componentsDirectory);
+        installer.install(buildLocalComponents("0.2.24"), "all", null,
+                new jo.forge.setup.download.CancellationToken());
+        Path engine = forgeRoot.resolve("engines/0.2.24");
+
+        // Simuler le meurtre : l'ancien moteur mis à l'écart, jamais remplacé.
+        Path aside = forgeRoot.resolve("engines/.old-simulé");
+        Files.move(engine, aside);
+        assertFalse(Files.exists(engine), "précondition : le moteur est absent");
+
+        assertTrue(installer.recoverInterruptedInstall(),
+                "l'ancien moteur doit être rétabli");
+        assertTrue(Files.exists(engine), "le moteur est de retour à sa place");
+        assertEquals(InstallState.INSTALLED, installer.installState());
+        assertFalse(Files.exists(aside), "la mise à l'écart est consommée");
     }
 }

@@ -90,8 +90,15 @@ final class ForgeBuildSession implements BuildSession {
     }
 
     /** Requête de build Forge pour ce projet (racine = dossier contenant forge.json). */
-    static BuildRequest forgeRequest(String buildId, String projectRoot, boolean clean) {
+    static BuildRequest forgeRequest(String buildId, String projectRoot, boolean clean,
+            ForgeEngineManager.DeviceProfile device) {
+        // Options fixées par la coquille (Forge) : parallélisme 2 comme la coquille
+        // de Forge, mode basse mémoire sous 2,5 Go, ABI réelle pour les composants
+        // natifs — jamais devinés par le moteur.
+        boolean lowMemory = device.totalRamMb() > 0
+                && device.totalRamMb() < ForgeEngineManager.LOW_MEMORY_THRESHOLD_MB;
         return new BuildRequest(buildId, projectRoot,
-                new jo.forge.api.BuildOptions(1, false, clean, false, 0, "jvm"));
+                new jo.forge.api.BuildOptions(2, lowMemory, false, false,
+                        device.totalRamMb(), device.abi()));
     }
 }
