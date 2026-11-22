@@ -25,7 +25,7 @@ ViewBinding), `minSdk 28`, `targetSdk 28` (ADR-009).
 ```sh
 ./tools/setup-local.sh                        # hooks git + liste locale des termes interdits
 git clone https://github.com/jjoblab/forge.git ../forge
-cd ../forge && ./gradlew publishToMavenLocal  # Forge v0.2.24+ publie nativement (ADR-001)
+cd ../forge && ./gradlew publishToMavenLocal  # Forge v0.2.25+ publie nativement (ADR-001)
 cd ../joide
 ./gradlew build                              # complet (SDK Android requis pour app-android)
 JOIDE_SKIP_ANDROID=1 ./gradlew test          # cœur JVM uniquement, sans SDK

@@ -27,7 +27,7 @@ dependencyResolutionManagement {
         // Forge (ADR-001) : aucun paquet Maven jo.forge n'est publié sur un dépôt
         // distant ; Forge publie ses releases GitHub (zips + manifest.json) et,
         // depuis v0.2.24, ses modules bibliothèque sur mavenLocal.
-        // Les bibliothèques jo.forge:*:0.2.24 viennent donc d'un mavenLocal alimenté
+        // Les bibliothèques jo.forge:*:0.2.25 viennent donc d'un mavenLocal alimenté
         // par ./gradlew publishToMavenLocal dans le dépôt Forge.
         mavenLocal()
         google()

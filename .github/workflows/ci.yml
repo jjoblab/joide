@@ -30,7 +30,7 @@ jobs:
         run: |
           # Forge publie nativement ses modules bibliothèque depuis v0.2.24
           # (maven-publish embarqué) — plus d'injection par script d'initialisation.
-          git clone --depth 1 --branch v0.2.24 https://github.com/jjoblab/forge.git /tmp/forge
+          git clone --depth 1 --branch v0.2.25 https://github.com/jjoblab/forge.git /tmp/forge
           cd /tmp/forge && ./gradlew --no-daemon publishToMavenLocal
       - name: Tests du coeur JVM (Forge integre, sans SDK Android)
         run: |
@@ -57,7 +57,7 @@ jobs:
           java-version: '17'
       - name: Forge v0.2.24 vers mavenLocal (ADR-001)
         run: |
-          git clone --depth 1 --branch v0.2.24 https://github.com/jjoblab/forge.git /tmp/forge
+          git clone --depth 1 --branch v0.2.25 https://github.com/jjoblab/forge.git /tmp/forge
           cd /tmp/forge && ./gradlew --no-daemon publishToMavenLocal
       - name: APK signe (cle stable des secrets)
         env:
