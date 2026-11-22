@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -53,11 +54,14 @@ public class ModeSetupFragment extends Fragment {
             provisionalSelection = WorkMode.FORGE;
             showPage(ModeSetupModel.Page.CONFIRM);
         });
-        // Page Gradle : apports et limites honnêtes, sélection possible.
-        binding.gradleSelectButton.setOnClickListener(v -> {
-            provisionalSelection = WorkMode.GRADLE;
-            showPage(ModeSetupModel.Page.CONFIRM);
-        });
+        // Page Gradle : présentée pour la transparence du portefeuille, mais le
+        // mode n'est pas encore actif (ADR-009 : Forge seul pour le moment — le
+        // terminal intégré et le serveur d'outils Gradle restent à venir). Le
+        // bouton informe au lieu d'installer : aucun contournement silencieux.
+        binding.gradleSelectButton.setOnClickListener(v ->
+                Toast.makeText(requireContext(),
+                        getString(R.string.assistant_gradle_bientot),
+                        Toast.LENGTH_SHORT).show());
         binding.gradleBackButton.setOnClickListener(v -> showPage(ModeSetupModel.Page.FORGE_PAGE));
         // Confirmation : persiste le choix puis bascule vers l'accueil.
         binding.confirmButton.setOnClickListener(v -> confirmSelection());

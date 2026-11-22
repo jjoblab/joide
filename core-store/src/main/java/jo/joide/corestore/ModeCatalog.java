@@ -37,15 +37,16 @@ public final class ModeCatalog {
     }
 
     /**
-     * Catalogue du mode Forge : composants du manifeste signé de la version 0.2.13
-     * (identifiants et tailles identiques à manifest.json de la release). Valeur de
-     * repli hors ligne ; l'écran peut le remplacer par {@link #forge(List)} dès que
-     * le manifeste du canal est téléchargé et vérifié (source de vérité).
+     * Catalogue du mode Forge : composants du manifeste signé de la version 0.2.24
+     * (identifiants et tailles du manifest.json de la release — 51,0 Mo au total).
+     * Valeur de repli HORS LIGNE uniquement : l'écran d'installation remplace ces
+     * valeurs par le manifeste vérifié du canal dès qu'il est joignable
+     * (source de vérité, jamais une taille inventée).
      */
     public static ModeCatalog forge() {
         return forge(List.of(
                 new Component("engine-core",
-                        "Cœur du moteur + journal", 118_714L),
+                        "Cœur du moteur + journal", 163_876L),
                 new Component("java-compiler",
                         "API java.compiler corrigée ART", 1_300_990L),
                 new Component("dexeur",
@@ -53,7 +54,7 @@ public final class ModeCatalog {
                 new Component("signeur",
                         "Signature APK", 168_961L),
                 new Component("kotlin-compiler",
-                        "Compilateur Kotlin (expérimental sur ART)", 19_038_728L),
+                        "Compilateur Kotlin (avec plugin Compose)", 19_606_962L),
                 new Component("aapt2-arm64-v8a",
                         "Outil de ressources aapt2 (arm64-v8a)", 2_002_090L),
                 new Component("platform-34",

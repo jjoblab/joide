@@ -26,10 +26,12 @@ jobs:
           ./tools/check-deps.sh
           ./tools/check-cablage-ia.sh
           ./tools/check-cablage-tiroir.sh
-      - name: Forge vers mavenLocal (ADR-001, demande F-01)
+      - name: Forge v0.2.24 vers mavenLocal (ADR-001, F-01 livré partie locale)
         run: |
-          git clone --depth 1 --branch v0.2.13 https://github.com/jjoblab/forge.git /tmp/forge
-          ./tools/forge-mavenlocal.sh /tmp/forge 0.2.13
+          # Forge publie nativement ses modules bibliothèque depuis v0.2.24
+          # (maven-publish embarqué) — plus d'injection par script d'initialisation.
+          git clone --depth 1 --branch v0.2.24 https://github.com/jjoblab/forge.git /tmp/forge
+          cd /tmp/forge && ./gradlew --no-daemon publishToMavenLocal
       - name: Tests du coeur JVM (Forge integre, sans SDK Android)
         run: |
           chmod +x gradlew
@@ -53,10 +55,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Forge vers mavenLocal (ADR-001)
+      - name: Forge v0.2.24 vers mavenLocal (ADR-001)
         run: |
-          git clone --depth 1 --branch v0.2.13 https://github.com/jjoblab/forge.git /tmp/forge
-          ./tools/forge-mavenlocal.sh /tmp/forge 0.2.13
+          git clone --depth 1 --branch v0.2.24 https://github.com/jjoblab/forge.git /tmp/forge
+          cd /tmp/forge && ./gradlew --no-daemon publishToMavenLocal
       - name: APK signe (cle stable des secrets)
         env:
           JOIDE_KEYSTORE_B64: ${{ secrets.JOIDE_KEYSTORE_B64 }}

@@ -1,6 +1,8 @@
 package jo.joide.app.install;
 
+import android.content.Context;
 import android.os.Bundle;
+import android.os.StatFs;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,36 +16,38 @@ import androidx.fragment.app.Fragment;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import jo.forge.setup.download.CancellationToken;
+import jo.forge.setup.manifest.ComponentManifest;
+import jo.forge.setup.manifest.EngineManifest;
 import jo.joide.app.R;
 import jo.joide.app.databinding.InstallFragmentBinding;
-import jo.joide.corestore.ModeCatalog;
+import jo.joide.app.ModeSetupFragment;
+import jo.joide.buildforge.ForgeBackend;
+import jo.joide.buildforge.ForgeEngineManager;
+import jo.joide.buildforge.ForgeInstaller;
 import jo.joide.corestore.ModeManager;
 import jo.joide.corestore.ModePreferences;
-import jo.joide.app.ModeSetupFragment;
+import jo.joide.workbench.InstallState;
 import jo.joide.workbench.WorkMode;
 
 /**
- * Écran « Installation du mode » — reconstruction exacte du studio HTML
- * (onglet Installation) : barre (back + t-xl + pill mode), choix du mode en
- * 2 cartes flex (pastille 30 primaire/sc_highest, bord primaire 2dp si
- * sélectionné, fond pc), carte canal (pastille 34 ic_down + pill ✓ SIG +
- * champ mono 11sp), carte composants (rangées label 13.5sp + body-s + pill
- * mono taille sc_high/sur_var) + rangée espace libre (pill info
- * « SUFFISANT »), carte avertissement warn_soft (ic_bell alerte +
- * SwitchCompat), CTA asymétrique primaire, 2 chips 44dp (réparation /
- * désinstallation err), carte progression (spinner 14dp, barre 6dp sc_high +
- * remplissage primaire, chip Annuler 36dp), carte phases vérifiées Gradle,
- * popup désinstallation (bottom dialog style carte).
+ * Écran « Installation du moteur » — le design du studio HTML (barre, cartes,
+ * pills, CTA asymétrique) branché sur le VRAI canal Forge : manifeste signé
+ * téléchargé et vérifié à l'entrée (clé épinglée, anti-recul v0.2.24),
+ * composants et tailles réels, badge « déjà téléchargé » du cache local,
+ * progression en octets réelle, annulation qui conserve les octets, réparation
+ * (réinstallation atomique) et désinstallation réelles.
  *
- * <p>Les tailles et composants viennent de {@link ModeCatalog} réel
- * (boucle sur catalog.components()) — les valeurs du studio ne servent que
- * d'exemple de rendu. La progression est simulée honnêtement en v1 (aucun
- * réseau ici) mais l'annulation et le marquage installé s'arrêtent sur
- * l'état réel ({@link ModeManager}).</p>
+ * <p>Mode Forge seul (ADR-009) : la carte Gradle reste affichée pour la
+ * transparence du portefeuille mais marquée « à venir » — le terminal intégré
+ * et le serveur d'outils Gradle ne sont pas encore activés.</p>
  */
 public class InstallFragment extends Fragment {
 
-    /** Instance pré-positionnée sur un mode (depuis les paramètres). */
+    /** Instance pré-positionnée sur un mode (depuis les paramètres ; Forge actif). */
     public static InstallFragment forMode(WorkMode mode) {
         InstallFragment fragment = new InstallFragment();
         Bundle args = new Bundle();
@@ -54,21 +58,27 @@ public class InstallFragment extends Fragment {
 
     private InstallFragmentBinding binding;
     private ModeManager modes;
-    private WorkMode selected = WorkMode.FORGE;
-    private boolean running;
-    private int percent;
-    private Thread worker;
+    private ForgeBackend backend;
+    private CancellationToken installToken;
+
+    /** Manifeste vérifié du canal (null tant que non chargé : catalogue de repli). */
+    private EngineManifest manifest;
+    /** Composants du manifeste déjà dans le cache local (badge, économie). */
+    private Set<String> cachedIds = Set.of();
+    /** Téléchargement du manifeste en cours (évite le double clic CTA). */
+    private CompletableFuture<Void> manifestFuture;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
             @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         binding = InstallFragmentBinding.inflate(inflater, container, false);
-        if (getArguments() != null && getArguments().getString("mode") != null) {
-            selected = WorkMode.valueOf(getArguments().getString("mode"));
-        }
         modes = new ModeManager(requireContext().getFilesDir().toPath().resolve("modes"),
                 new ModePreferences(ModeSetupFragment.preferencesFile(requireContext())));
+        backend = new ForgeBackend(
+                requireContext().getFilesDir().toPath().resolve("forge"),
+                new jo.forge.client.DeviceVmLauncher(),
+                deviceProfile());
 
         binding.installBackButton.setOnClickListener(v ->
                 requireActivity().getSupportFragmentManager().popBackStack());
@@ -79,37 +89,88 @@ public class InstallFragment extends Fragment {
         binding.installUninstallCancelButton.setOnClickListener(v -> hideUninstallPopup());
         binding.installUninstallConfirmButton.setOnClickListener(v -> {
             hideUninstallPopup();
-            uninstallSelected();
+            uninstallEngine();
         });
+        // L'installation ne part jamais sans l'accord explicite (interrupteur
+        // données mobiles du studio) : le CTA suit l'interrupteur.
+        binding.installWifiSwitch.setOnCheckedChangeListener((v, checked) ->
+                binding.installActionButton.setEnabled(checked && manifest != null));
 
+        binding.installChannelUrl.setText(ForgeInstaller.MANIFEST_CHANNEL_URL);
         render();
+        loadManifest();
         return binding.getRoot();
     }
 
-    // ---- Choix du mode : 2 cartes flex (pastille 30, bord primaire) ---------
+    /** Profil appareil réel : ABI principale + RAM totale (Mo). */
+    private ForgeEngineManager.DeviceProfile deviceProfile() {
+        android.app.ActivityManager manager = (android.app.ActivityManager)
+                requireContext().getSystemService(Context.ACTIVITY_SERVICE);
+        android.app.ActivityManager.MemoryInfo infos =
+                new android.app.ActivityManager.MemoryInfo();
+        manager.getMemoryInfo(infos);
+        return new ForgeEngineManager.DeviceProfile(
+                android.os.Build.SUPPORTED_ABIS.length > 0
+                        ? android.os.Build.SUPPORTED_ABIS[0] : "all",
+                infos.totalMem / (1024L * 1024L));
+    }
+
+    // ---- Manifeste du canal : signature + anti-recul ------------------------
+
+    /** Charge le manifeste signé du canal (fond) : composants et tailles réels. */
+    private void loadManifest() {
+        if (manifestFuture != null && !manifestFuture.isDone()) {
+            return;
+        }
+        binding.installSigBadge.setText(getString(R.string.install_canal_chargement));
+        binding.installSigBadge.setBackgroundResource(R.drawable.fond_pill_sc_highest);
+        binding.installSigBadge.setTextColor(color(R.color.sur_var));
+        manifestFuture = CompletableFuture.runAsync(() -> {
+            try {
+                ForgeEngineManager.ChannelManifest canal =
+                        backend.engineManager().downloadManifestForAssistant();
+                manifest = canal.manifest();
+                cachedIds = canal.cachedComponentIds();
+            } catch (IOException | RuntimeException e) {
+                // Canal injoignable, signature invalide ou anti-recul : l'écran
+                // reste honnête — catalogue de repli + message visible, jamais
+                // une taille inventée.
+                manifest = null;
+                requireActivity().runOnUiThread(() -> {
+                    binding.installSigBadge.setText(getString(R.string.install_canal_sig_ko));
+                    binding.installSigBadge.setBackgroundResource(R.drawable.fond_pill_err);
+                    binding.installSigBadge.setTextColor(color(R.color.erreur));
+                    toast(getString(R.string.install_echec,
+                            e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
+                });
+            }
+            requireActivity().runOnUiThread(this::render);
+        });
+    }
+
+    // ---- Rendu (design studio, données réelles) ------------------------------
 
     private void render() {
-        binding.installModePicker.removeAllViews();
-        for (WorkMode mode : WorkMode.values()) {
-            binding.installModePicker.addView(modeCard(mode));
-        }
-        binding.installModeBadge.setText(modeLabel(selected));
+        renderModeCards();
+        binding.installModeBadge.setText(getString(R.string.mode_forge_nom));
         renderComponents();
-        renderPhases();
+        // Phases vérifiées : concept du mode Gradle (installé = vérifié par
+        // commandes) — le moteur Forge vérifie par sommes SHA-256, la carte
+        // n'a rien à afficher en mode Forge.
+        binding.installPhasesCard.setVisibility(View.GONE);
+        renderInstallState();
     }
 
-    /** Libellé du mode (carte et pill de la barre) — ressources, jamais en dur. */
-    private String modeLabel(WorkMode mode) {
-        return getString(mode == WorkMode.FORGE
-                ? R.string.install_mode_card_forge : R.string.install_mode_card_gradle);
+    /** Cartes de mode : Forge sélectionnée ; Gradle affichée « à venir » (ADR-009). */
+    private void renderModeCards() {
+        binding.installModePicker.removeAllViews();
+        binding.installModePicker.addView(modeCard(WorkMode.FORGE, true));
+        binding.installModePicker.addView(modeCard(WorkMode.GRADLE, false));
     }
 
-    /** Carte de choix d'un mode : pastille 30 + label t-sm + « X Mo téléchargés ». */
-    private View modeCard(WorkMode mode) {
-        ModeCatalog catalog = catalog(mode);
-        boolean active = selected == mode;
-
-        // Carte : fond sc_low (ou pc si sélectionnée) + bord primaire 2dp si active.
+    /** Carte de mode : active (sélectionnable) ou différée (« à venir »). */
+    private View modeCard(WorkMode mode, boolean active) {
+        boolean forge = mode == WorkMode.FORGE;
         LinearLayout card = new LinearLayout(requireContext());
         card.setOrientation(LinearLayout.VERTICAL);
         int padH = dp(14);
@@ -118,31 +179,36 @@ public class InstallFragment extends Fragment {
         android.graphics.drawable.GradientDrawable background =
                 new android.graphics.drawable.GradientDrawable();
         background.setCornerRadius(dp(26));
-        background.setColor(color(active ? R.color.conteneur_primaire : R.color.sc_low));
-        background.setStroke(dp(2),
-                color(active ? R.color.primaire : R.color.sc_low));
+        background.setColor(color(active && forge
+                ? R.color.conteneur_primaire : R.color.sc_low));
+        background.setStroke(dp(2), color(active && forge
+                ? R.color.primaire : R.color.sc_low));
         card.setBackground(background);
+        card.setAlpha(active ? 1f : 0.55f);
 
-        // Rangée : pastille 30 + label.
         LinearLayout head = new LinearLayout(requireContext());
         head.setOrientation(LinearLayout.HORIZONTAL);
         head.setGravity(android.view.Gravity.CENTER_VERTICAL);
         ImageView pastille = new ImageView(requireContext());
-        pastille.setImageResource(mode == WorkMode.FORGE ? R.drawable.ic_code : R.drawable.ic_gear);
-        pastille.setColorFilter(color(active ? R.color.sur_primaire : R.color.sur_var));
+        pastille.setImageResource(forge ? R.drawable.ic_code : R.drawable.ic_terminal);
+        pastille.setColorFilter(color(forge && active
+                ? R.color.sur_primaire : R.color.sur_var));
         LinearLayout.LayoutParams pastilleParams = new LinearLayout.LayoutParams(dp(30), dp(30));
         android.graphics.drawable.GradientDrawable pastilleBg =
                 new android.graphics.drawable.GradientDrawable();
         pastilleBg.setShape(android.graphics.drawable.GradientDrawable.OVAL);
-        pastilleBg.setColor(color(active ? R.color.primaire : R.color.sc_highest));
+        pastilleBg.setColor(color(forge && active
+                ? R.color.primaire : R.color.sc_highest));
         pastille.setBackground(pastilleBg);
         int pad = dp(7);
         pastille.setPadding(pad, pad, pad, pad);
         head.addView(pastille, pastilleParams);
 
         TextView label = new TextView(requireContext());
-        label.setText(modeLabel(mode));
-        label.setTextColor(color(active ? R.color.sur_conteneur_primaire : R.color.sur));
+        label.setText(getString(forge
+                ? R.string.mode_forge_nom : R.string.install_gradle_bientot));
+        label.setTextColor(color(forge && active
+                ? R.color.sur_conteneur_primaire : R.color.sur));
         applyText(label, 15, true);
         LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -150,20 +216,23 @@ public class InstallFragment extends Fragment {
         head.addView(label, labelParams);
         card.addView(head);
 
-        // « 102,4 Mo téléchargés » (body-s).
         TextView size = new TextView(requireContext());
-        size.setText(getString(R.string.install_modele_total, catalog.humanTotal()));
-        size.setTextColor(color(active ? R.color.sur_conteneur_primaire : R.color.sur_var));
+        size.setText(forge
+                ? getString(R.string.install_modele_total, humanBytes(totalBytes()))
+                : getString(R.string.install_gradle_desc));
+        size.setTextColor(color(forge && active
+                ? R.color.sur_conteneur_primaire : R.color.sur_var));
         applyText(size, 12.5f, false);
         LinearLayout.LayoutParams sizeParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         sizeParams.topMargin = dp(6);
         card.addView(size, sizeParams);
 
-        card.setOnClickListener(v -> {
-            selected = mode;
-            render();
-        });
+        if (active) {
+            // La carte Forge est déjà l'unique mode actif : la pression re-rend
+            // (retour visuel) sans rien changer — Gradle reste informatif.
+            card.setOnClickListener(v -> render());
+        }
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         params.rightMargin = dp(5);
@@ -171,55 +240,108 @@ public class InstallFragment extends Fragment {
         return card;
     }
 
-    // ---- Composants (données réelles de ModeCatalog) -------------------------
-
-    private void renderComponents() {
-        ModeCatalog catalog = catalog(selected);
-        binding.installTotalText.setText(catalog.humanTotal());
-        binding.installComponentsList.removeAllViews();
-        List<ModeCatalog.Component> components = catalog.components();
-        for (int i = 0; i < components.size(); i++) {
-            binding.installComponentsList.addView(componentRow(components.get(i)));
-            if (i < components.size() - 1) {
-                binding.installComponentsList.addView(divInset());
-            }
+    /** Total réel à télécharger : manifeste vérifié, sinon catalogue de repli. */
+    private long totalBytes() {
+        if (manifest != null) {
+            return ForgeInstaller.downloadSize(manifest, deviceAbi());
         }
-        binding.installComponentsList.addView(spaceRow(catalog));
+        return fallbackCatalog().totalBytes();
     }
 
-    /** Rangée composant : label 13.5sp + body-s desc + pill mono taille sc_high. */
-    private View componentRow(ModeCatalog.Component component) {
+    /** ABI de l'appareil (composants natifs : aapt2-arm64-v8a). */
+    private String deviceAbi() {
+        return android.os.Build.SUPPORTED_ABIS.length > 0
+                ? android.os.Build.SUPPORTED_ABIS[0] : "all";
+    }
+
+    /** Catalogue de repli hors ligne (tailles de la release publiée). */
+    private jo.joide.corestore.ModeCatalog fallbackCatalog() {
+        return jo.joide.corestore.ModeCatalog.forge();
+    }
+
+    /** Composants réels du manifeste (ou repli), avec badge cache et espace libre. */
+    private void renderComponents() {
+        binding.installTotalText.setText(humanBytes(totalBytes()));
+        binding.installMobileText.setText(getString(
+                R.string.install_mobiles, humanBytes(Math.max(0, totalBytes()
+                        - cachedBytes()))));
+        binding.installComponentsList.removeAllViews();
+
+        if (manifest != null) {
+            List<ComponentManifest> components = manifest.forAbi(deviceAbi());
+            for (int i = 0; i < components.size(); i++) {
+                binding.installComponentsList.addView(
+                        componentRow(components.get(i)));
+                if (i < components.size() - 1) {
+                    binding.installComponentsList.addView(divInset());
+                }
+            }
+        } else {
+            // Catalogue de repli (canal injoignable) : composants de la dernière
+            // release connue, honnêtement marqués.
+            List<jo.joide.corestore.ModeCatalog.Component> components =
+                    fallbackCatalog().components();
+            for (int i = 0; i < components.size(); i++) {
+                binding.installComponentsList.addView(componentRow(components.get(i)));
+                if (i < components.size() - 1) {
+                    binding.installComponentsList.addView(divInset());
+                }
+            }
+        }
+        binding.installComponentsList.addView(spaceRow());
+    }
+
+    /** Octets déjà dans le cache local (économisés — badge et avertissement). */
+    private long cachedBytes() {
+        if (manifest == null) {
+            return 0;
+        }
+        long total = 0;
+        for (ComponentManifest component : manifest.forAbi(deviceAbi())) {
+            if (cachedIds.contains(component.id())) {
+                total += component.size();
+            }
+        }
+        return total;
+    }
+
+    /** Rangée composant (manifeste réel) : id + taille + badge cache éventuel. */
+    private View componentRow(ComponentManifest component) {
+        LinearLayout row = baseComponentRow(component.id(), component.size());
+        if (cachedIds.contains(component.id())) {
+            row.addView(pill(getString(R.string.install_en_cache),
+                    R.drawable.fond_pill_ok, R.color.ok, false));
+        }
+        return row;
+    }
+
+    /** Rangée composant (catalogue de repli). */
+    private View componentRow(jo.joide.corestore.ModeCatalog.Component component) {
+        return baseComponentRow(component.id(), component.bytes());
+    }
+
+    /** Rangée composant commune : label + taille mono. */
+    private LinearLayout baseComponentRow(String id, long bytes) {
         LinearLayout row = new LinearLayout(requireContext());
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(android.view.Gravity.CENTER_VERTICAL);
         row.setPadding(dp(16), dp(11), dp(16), dp(11));
 
-        LinearLayout text = new LinearLayout(requireContext());
-        text.setOrientation(LinearLayout.VERTICAL);
-        TextView id = new TextView(requireContext());
-        id.setText(component.id());
-        id.setTextColor(color(R.color.sur));
-        applyText(id, 13.5f, true);
-        text.addView(id);
-        TextView description = new TextView(requireContext());
-        description.setText(component.description());
-        description.setTextColor(color(R.color.sur_var));
-        applyText(description, 12.5f, false);
-        LinearLayout.LayoutParams descriptionParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        descriptionParams.topMargin = dp(1);
-        text.addView(description, descriptionParams);
-        row.addView(text, new LinearLayout.LayoutParams(0,
+        TextView name = new TextView(requireContext());
+        name.setText(id);
+        name.setTextColor(color(R.color.sur));
+        applyText(name, 13.5f, true);
+        row.addView(name, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
-        TextView size = pill(component.humanSize(), R.drawable.fond_pill_sc_highest,
-                R.color.sur_var, true);
+        TextView size = pill(humanBytes(bytes),
+                R.drawable.fond_pill_sc_highest, R.color.sur_var, true);
         row.addView(size);
         return row;
     }
 
-    /** Rangée « Espace libre requis » : label + « 210 Mo après installation » + pill SUFFISANT. */
-    private View spaceRow(ModeCatalog catalog) {
+    /** Rangée « Espace libre requis » : mesure RÉELLE du stockage (StatFs). */
+    private View spaceRow() {
         LinearLayout row = new LinearLayout(requireContext());
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(android.view.Gravity.CENTER_VERTICAL);
@@ -233,9 +355,7 @@ public class InstallFragment extends Fragment {
         applyText(label, 13.5f, true);
         text.addView(label);
         TextView after = new TextView(requireContext());
-        after.setText(getString(R.string.install_disk_required,
-                String.format(Locale.FRANCE, "%.0f Mo",
-                        catalog.freeBytesRequired() / 1024.0 / 1024.0)));
+        after.setText(getString(R.string.install_espace_apres));
         after.setTextColor(color(R.color.sur_var));
         applyText(after, 12.5f, false);
         LinearLayout.LayoutParams afterParams = new LinearLayout.LayoutParams(
@@ -245,8 +365,16 @@ public class InstallFragment extends Fragment {
         row.addView(text, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
-        row.addView(pill(getString(R.string.install_espace_ok),
-                R.drawable.fond_pill_info, R.color.info, false));
+        // Espace libre réel du stockage privé + marge : le moteur installé
+        // pèse environ le double du téléchargement (archives + contenu extrait).
+        StatFs stat = new StatFs(requireContext().getFilesDir().getAbsolutePath());
+        long libre = stat.getAvailableBytes();
+        long requis = (long) (totalBytes() * 2.2);
+        boolean suffisant = libre > requis;
+        row.addView(pill(getString(suffisant
+                        ? R.string.install_espace_ok : R.string.install_espace_ko),
+                suffisant ? R.drawable.fond_pill_info : R.drawable.fond_pill_err,
+                suffisant ? R.color.info : R.color.erreur, false));
         return row;
     }
 
@@ -263,117 +391,92 @@ public class InstallFragment extends Fragment {
         return divider;
     }
 
-    // ---- Phases vérifiées (installé = vérifié) — mode Gradle ------------------
+    // ---- État d'installation (moteur réel) -----------------------------------
 
-    private void renderPhases() {
-        List<ModeCatalog.Phase> phases = catalog(selected).phases();
-        binding.installPhasesCard.setVisibility(
-                phases.isEmpty() ? View.GONE : View.VISIBLE);
-        binding.installPhasesList.removeAllViews();
-        // Studio : les phases cochent pendant l'installation (2 premières ✓ à 34 %).
-        int doneCount = running ? Math.min(phases.size(),
-                percent * phases.size() / 100 + 2) : 0;
-        for (int i = 0; i < phases.size(); i++) {
-            binding.installPhasesList.addView(phaseRow(phases.get(i), i < doneCount));
+    /** Rafraîchit version installée / CTA / chips selon l'état réel du moteur. */
+    private void renderInstallState() {
+        InstallState state = backend.installState();
+        String version = backend.engineManager().installer().currentState()
+                .map(s -> s.engineVersion()).orElse(null);
+        String detail;
+        if (state == InstallState.INSTALLED) {
+            detail = getString(R.string.install_version_installee, version);
+        } else if (state == InstallState.BROKEN) {
+            detail = getString(R.string.install_version_casse, version);
+        } else {
+            detail = getString(R.string.install_version_aucune);
         }
+        binding.installActionButton.setEnabled(
+                binding.installWifiSwitch.isChecked() && manifest != null);
+        // Le libellé du CTA vit dans son TextView interne (le conteneur est le
+        // LinearLayout cliquable du studio) : « Installer » puis « Réinstaller ».
+        TextView actionLabel = (TextView) ((LinearLayout) binding.installActionButton)
+                .getChildAt(1);
+        actionLabel.setText(getString(
+                state == InstallState.NOT_INSTALLED
+                        ? R.string.install_bouton : R.string.install_reparer));
+        binding.installRepairButton.setVisibility(
+                state == InstallState.NOT_INSTALLED ? View.GONE : View.VISIBLE);
+        binding.installUninstallButton.setVisibility(
+                state == InstallState.NOT_INSTALLED ? View.GONE : View.VISIBLE);
+        // Ligne d'état sous le badge du canal : version disponible / installée.
+        binding.installTotalText.setText(String.format(Locale.FRANCE, "%s · %s",
+                manifest != null
+                        ? getString(R.string.install_version_dispo,
+                                manifest.engineVersion()) : "—", detail));
     }
 
-    /** Rangée phase : pill (ok si ✓ sinon sc_high) + mono 10.5sp contour. */
-    private View phaseRow(ModeCatalog.Phase phase, boolean done) {
-        LinearLayout row = new LinearLayout(requireContext());
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        row.setPadding(0, dp(7), 0, dp(7));
-
-        TextView name = pill((done ? "✓ " : "") + phase.name(),
-                done ? R.drawable.fond_pill_ok : R.drawable.fond_pill_sc_highest,
-                done ? R.color.ok : R.color.sur_var, false);
-        row.addView(name);
-
-        TextView command = new TextView(requireContext());
-        command.setText(phase.verificationCommand());
-        command.setTypeface(android.graphics.Typeface.MONOSPACE);
-        command.setTextColor(color(R.color.contour));
-        applyText(command, 10.5f, false);
-        LinearLayout.LayoutParams commandParams = new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        commandParams.leftMargin = dp(10);
-        command.setSingleLine(true);
-        command.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        row.addView(command, commandParams);
-        return row;
-    }
-
-    // ---- Progression (annulable, octets conservés) ---------------------------
+    // ---- Installation réelle (progression en octets, annulable) --------------
 
     private void startInstall() {
-        if (running) {
+        if (manifest == null) {
+            loadManifest();
             return;
         }
-        running = true;
-        percent = 0;
+        installToken = new CancellationToken();
         binding.installProgressCard.setVisibility(View.VISIBLE);
-        ModeCatalog catalog = catalog(selected);
-        List<ModeCatalog.Component> components = catalog.components();
-        worker = new Thread(() -> {
-            while (running && percent < 100) {
-                percent = Math.min(100, percent + 9);
-                final int current = percent;
-                final String component = components.get(
-                        Math.min(components.size() - 1,
-                                current * components.size() / 100)).id();
-                requireActivity().runOnUiThread(() -> {
-                    binding.installProgressCard.setVisibility(View.VISIBLE);
-                    binding.installProgressBar.setProgress(current);
-                    binding.installPercentText.setText(current + " %");
-                    binding.installStepText.setText(getString(
-                            R.string.install_etape, component));
-                    binding.installMetaText.setText(getString(
-                            R.string.install_progress_meta,
-                            String.format(Locale.FRANCE, "%.1f Mo",
-                                    current / 100.0
-                                            * catalog.totalBytes() / 1024.0 / 1024.0),
-                            catalog.humanTotal(),
-                            Math.max(0, (100 - current) * 22 / 100)));
-                    renderPhases();
-                });
+        binding.installActionButton.setEnabled(false);
+        binding.installStepText.setText(getString(
+                R.string.install_etape, manifest.engineVersion()));
+        backend.engineManager().installFromChannel(progress -> {
+            long total = progress.bytesTotal() > 0 ? progress.bytesTotal() : 1;
+            int percent = (int) Math.min(100,
+                    progress.bytesReceived() * 100 / total);
+            requireActivity().runOnUiThread(() -> {
+                binding.installProgressBar.setProgress(percent);
+                binding.installPercentText.setText(percent + " %");
+                binding.installMetaText.setText(getString(R.string.install_telecharge,
+                        humanBytes(progress.bytesReceived()),
+                        humanBytes(progress.bytesTotal())));
+            });
+        }, installToken).whenComplete((rien, échec) -> requireActivity().runOnUiThread(() -> {
+            binding.installProgressCard.setVisibility(View.GONE);
+            if (échec instanceof CancellationException) {
+                toast(getString(R.string.install_annule));
+            } else if (échec != null) {
+                toast(getString(R.string.install_echec,
+                        échec.getMessage() != null ? échec.getMessage()
+                                : échec.getClass().getSimpleName()));
+            } else {
                 try {
-                    Thread.sleep(400);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    return;
-                }
-            }
-            if (running && percent >= 100) {
-                requireActivity().runOnUiThread(() -> {
-                    binding.installStepText.setText(
-                            getString(R.string.install_etape_verification));
-                    binding.installMetaText.setText(
-                            getString(R.string.install_verification_sous));
-                });
-                try {
-                    modes.modeDirectory(selected);
-                    modes.markInstalled(selected);
+                    modes.markInstalled(WorkMode.FORGE);
                 } catch (IOException e) {
-                    requireActivity().runOnUiThread(
-                            () -> toast(e.getMessage()));
+                    toast(e.getMessage());
                 }
-                requireActivity().runOnUiThread(this::render);
+                toast(getString(R.string.install_termine, manifest.engineVersion()));
             }
-            running = false;
-        }, "install-mode");
-        worker.start();
+            loadManifest();
+            render();
+        }));
     }
 
     private void cancelInstall() {
-        running = false;
-        if (worker != null) {
-            worker.interrupt();
+        if (installToken != null) {
+            installToken.cancel();
         }
-        binding.installProgressCard.setVisibility(View.GONE);
     }
 
-    // ---- Désinstallation : popup de confirmation (bottom dialog) ---------------
+    // ---- Désinstallation réelle -----------------------------------------------
 
     private void showUninstallPopup() {
         binding.installUninstallPopup.setVisibility(View.VISIBLE);
@@ -383,14 +486,20 @@ public class InstallFragment extends Fragment {
         binding.installUninstallPopup.setVisibility(View.GONE);
     }
 
-    private void uninstallSelected() {
-        try {
-            modes.uninstall(selected);
-            toast(getString(R.string.install_desinstalle));
-        } catch (IOException e) {
-            toast(e.getMessage());
-        }
-        render();
+    private void uninstallEngine() {
+        CompletableFuture.runAsync(() -> {
+            try {
+                backend.engineManager().installer().uninstall();
+                modes.uninstall(WorkMode.FORGE);
+            } catch (IOException e) {
+                requireActivity().runOnUiThread(() -> toast(e.getMessage()));
+            }
+            requireActivity().runOnUiThread(() -> {
+                toast(getString(R.string.install_desinstalle));
+                loadManifest();
+                render();
+            });
+        });
     }
 
     // ---- Petits composants (studio) -------------------------------------------
@@ -421,12 +530,17 @@ public class InstallFragment extends Fragment {
         return androidx.core.content.ContextCompat.getColor(requireContext(), res);
     }
 
-    private ModeCatalog catalog(WorkMode mode) {
-        return mode == WorkMode.GRADLE ? ModeCatalog.gradle() : ModeCatalog.forge();
+    /** Taille lisible (« 51,0 Mo » ; « 1,2 Go » au-delà du gigaoctet). */
+    private String humanBytes(long bytes) {
+        if (bytes >= 1024L * 1024 * 1024) {
+            return String.format(Locale.FRANCE, "%.1f Go",
+                    bytes / 1024.0 / 1024.0 / 1024.0);
+        }
+        return String.format(Locale.FRANCE, "%.1f Mo", bytes / 1024.0 / 1024.0);
     }
 
     private int dp(float value) {
-        return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
+        return (int) (value * getResources().getDisplayMetrics().density + 0.5);
     }
 
     private void toast(String message) {

@@ -31,6 +31,12 @@ public class MainActivity extends AppCompatActivity {
         });
         MainActivityBinding binding = MainActivityBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        // Réparation au démarrage (Forge v0.2.24) : une installation du moteur
+        // interrompue — moteur mis à l'écart par une réinstallation tuée entre
+        // deux renommages — est rétablie AVANT tout écran, sans action de
+        // l'utilisateur (l'ancien moteur reprend sa place).
+        new jo.joide.buildforge.ForgeInstaller(
+                getFilesDir().toPath().resolve("forge")).recoverInterruptedInstall();
         // Lot 2 : migration silencieuse des identifiants de fournisseur
         // historiques (« passerelle » → « custom ») avant tout écran IA.
         jo.joide.app.settings.SettingsIaPageFragment.migrateProviders(this);

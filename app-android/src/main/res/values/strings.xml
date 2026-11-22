@@ -29,10 +29,11 @@
     <string name="problems_explain_prompt">Explique cette erreur du dernier build et propose la correction minimale (relis le fichier, corrige, vérifie par un build) :\n%1$s%2$s\n%3$s</string>
     <string name="commun_annuler">Annuler</string>
     <string name="assistant_commencer">Commencer</string>
-    <string name="mode_forge_limites">Limites : AAR et ViewBinding non supportés ; les composants Android (aapt2, plateformes) ne sont pas encore publiés par Forge.</string>
+    <string name="mode_forge_limites">Limites : signature avec la clé de débogage du projet (pas de release signée) ; minimisation R8 non proposée ; scripts Gradle non exécutés.</string>
     <string name="mode_gradle_limites">Limites : plus lourd (environnement Linux complet à télécharger) ; le premier build est plus lent.</string>
     <string name="assistant_choisir_forge">Choisir Forge</string>
     <string name="assistant_choisir_gradle">Choisir Gradle</string>
+    <string name="assistant_gradle_bientot">Le mode Gradle + terminal intégré arrive bientôt — le mode Forge couvre le besoin aujourd\'hui (ADR-009).</string>
     <string name="assistant_poursuivre_gradle">Voir aussi le mode Gradle</string>
     <string name="assistant_retour_forge">Revenir au mode Forge</string>
     <string name="assistant_confirmation_titre">Confirmation du mode</string>
@@ -103,30 +104,42 @@
     <string name="git_absent_corps">Ouvrez-le dans un dépôt git (clonage depuis l\'accueil) pour voir le statut, le diff et l\'historique.</string>
     <string name="git_commit_ok">Commit %1$s créé</string>
     <string name="git_commit_vide">Le message de commit est vide</string>
-    <!-- Écran installation du mode (studio HTML, onglet Installation) -->
-    <string name="install_titre">Installer un mode</string>
+    <!-- Écran installation du moteur (studio HTML, onglet Installation) -->
+    <string name="install_titre">Installer le moteur</string>
     <string name="install_canal_titre">Canal vérifié</string>
     <string name="install_canal_sous">manifeste signé · clé épinglée</string>
     <string name="install_canal_sig">✓ SIG</string>
+    <string name="install_canal_sig_ko">✗ SIG</string>
+    <string name="install_canal_chargement">Lecture du canal…</string>
     <string name="install_section_composants">Composants</string>
+    <string name="install_version_dispo">Moteur %1$s disponible</string>
+    <string name="install_version_installee">installé : %1$s</string>
+    <string name="install_version_aucune">aucun moteur installé</string>
+    <string name="install_version_casse">installé : %1$s (fichiers altérés — réparer)</string>
+    <string name="install_en_cache">DÉJÀ TÉLÉCHARGÉ</string>
+    <string name="install_gradle_bientot">Terminal Gradle — à venir</string>
+    <string name="install_gradle_desc">Environnement Linux complet construit dans le terminal intégré. Pas encore actif : le mode Forge couvre le besoin.</string>
     <string name="install_espace_libre">Espace libre requis</string>
     <string name="install_espace_apres">après installation</string>
     <string name="install_espace_ok">SUFFISANT</string>
+    <string name="install_espace_ko">INSUFFISANT</string>
     <string name="install_mobiles">Le téléchargement consomme des données mobiles (≈ %1$s). L\'installation n\'est pas démarrée sans votre accord explicite.</string>
-    <string name="install_bouton">Installer ce mode</string>
+    <string name="install_bouton">Installer le moteur</string>
     <string name="install_reparer">Réinstaller (réparation)</string>
     <string name="install_desinstaller">Désinstaller</string>
-    <string name="install_etape">Téléchargement — %1$s</string>
+    <string name="install_etape">Téléchargement — moteur %1$s</string>
     <string name="install_etape_verification">Vérification de l\'installation…</string>
-    <string name="install_verification_sous">installé = vérifié : exécution réelle avant succès</string>
+    <string name="install_verification_sous">installé = vérifié : sommes SHA-256 de chaque fichier avant succès</string>
     <string name="install_annuler">Annuler — les octets déjà téléchargés sont conservés</string>
+    <string name="install_annule">Installation annulée — les octets déjà téléchargés sont conservés pour la reprise.</string>
     <string name="install_section_phases">Phases vérifiées — « installé = vérifié »</string>
     <string name="install_uninstall_titre">Désinstaller le moteur ?</string>
     <string name="install_uninstall_corps">Le moteur installé et ses composants seront supprimés de l\'appareil. Les projets et réglages sont conservés.</string>
     <string name="install_uninstall_action">Désinstaller</string>
-    <string name="install_desinstalle">Mode désinstallé</string>
-    <string name="install_termine">%1$s installé.</string>
+    <string name="install_desinstalle">Moteur désinstallé</string>
+    <string name="install_termine">Moteur %1$s installé et vérifié.</string>
     <string name="install_telecharge">%1$s sur %2$s</string>
+    <string name="install_echec">Installation impossible : %1$s</string>
     <!-- Atelier : mode actif (chip, notice, visibilité selon le mode) -->
     <string name="atelier_notice_gradle">Mode Gradle actif · ce projet Forge s\'ouvre en lecture seule (capacités honnêtes du BuildBackend)</string>
     <string name="atelier_notice_forge">Mode Forge actif · chaud-rechargement disponible · terminal non fourni par ce mode</string>
