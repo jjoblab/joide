@@ -212,6 +212,7 @@
                     style="@style/Txt.Label" />
 
                 <LinearLayout
+                    android:id="@+id/create_r8_row"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"

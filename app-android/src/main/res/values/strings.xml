@@ -230,10 +230,19 @@
     <string name="creation_derivation_note">Dérivation auto du paquet tant que non modifié · validation inline</string>
     <string name="creation_vues_xml">Vues XML</string>
     <string name="creation_vues_compose">Compose</string>
-    <string name="creation_template_desc_forge">Projet Java + forge.json, prêt à construire</string>
-    <string name="creation_template_desc_gradle">Projet AGP multi-modules construit par le mode Gradle embarqué</string>
-    <string name="creation_template_forge">Application Forge</string>
-    <string name="creation_template_gradle">Application Gradle</string>
+    <!-- Portefeuille réel des modèles (ProjectTemplates) -->
+    <string name="creation_titre_java">Bibliothèque Java</string>
+    <string name="creation_desc_java">Java pur + main() — compilé et empilé en jar par le moteur Forge</string>
+    <string name="creation_titre_kotlin">Bibliothèque Kotlin</string>
+    <string name="creation_desc_kotlin">Kotlin pur + main() — compilation jointe Java/Kotlin par Forge</string>
+    <string name="creation_titre_android_xml">Application Android (vues XML)</string>
+    <string name="creation_desc_android_xml">Java · ViewBinding + BuildConfig générés · manifeste et ressources · APK signé</string>
+    <string name="creation_titre_compose">Application Compose</string>
+    <string name="creation_desc_compose">Kotlin · Material 3 · plugin compilateur Compose de Forge · APK signé</string>
+    <string name="creation_titre_multimodule">Multi-modules Android</string>
+    <string name="creation_desc_multimodule">core (bibliothèque Java) + app (Android, ViewBinding) — dépendance de projet</string>
+    <string name="creation_titre_gradle">Application Gradle (à venir)</string>
+    <string name="creation_desc_gradle">Projet AGP multi-modules — constructible quand le mode Gradle + terminal arrive</string>
     <string name="creation_nom_defaut">MonApplication</string>
     <string name="logcat_etat">Logcat : nécessite un appareil branché (lot diagnostic appareil) — cette section reste vide sans adb</string>
     <string name="atelier_etape_tache">%1$s — tâche terminée en %2$s s</string>

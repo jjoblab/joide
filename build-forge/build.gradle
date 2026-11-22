@@ -17,6 +17,10 @@ dependencies {
     api "jo.forge:client:0.2.24"
     api "jo.forge:setup:0.2.24"
     testImplementation "jo.forge:engine:0.2.24" // moteur factice (--fake) : intégration JVM
+    // Les modèles de création (core-store) sont validés contre le VRAI codec
+    // du moteur Forge (ForgeTemplateModelTest) : un modèle qui ne se parserait
+    // pas produirait un projet inconstructible (critère L4).
+    testImplementation project(":core-store")
     testImplementation platform("org.junit:junit-bom:5.11.4")
     testImplementation "org.junit.jupiter:junit-jupiter"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
