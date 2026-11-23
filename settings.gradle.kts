@@ -69,6 +69,7 @@ rootProject.name = "joide"
 
 include(":core-model")
 include(":core-store")
+include(":core-index")
 include(":terminal-core")
 include(":ai")
 include(":workbench-spi")

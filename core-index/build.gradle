@@ -1,0 +1,17 @@
+// Module JVM pur : indexation du projet à l'ouverture (lot L10).
+// Dépend de core-outline (l'analyseur tolérant de symboles) et de
+// workbench-spi (BuildActivity — l'arrière-plan cède au build).
+plugins { id "java-library" }
+group = "jo.joide"
+version = "0.1.0"
+java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
+
+tasks.withType(JavaCompile).configureEach { options.encoding = "UTF-8"; options.release = 17 }
+tasks.withType(Test).configureEach { useJUnitPlatform() }
+dependencies {
+    api project(":core-outline")
+    api project(":workbench-spi")
+    testImplementation platform("org.junit:junit-bom:5.11.4")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}

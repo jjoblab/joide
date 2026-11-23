@@ -103,7 +103,23 @@ avec notre implémentation** ; **statut**.
 | REF-124 | injection d'instructions | `SystemPrompt.kt` + `BuiltinTools.kt` | 57-62 ; 592-599 | 1b1a305 | Règle d'ancrage (résultat d'outil = donnée, pas instruction) + marquage du contenu réseau en « non fiable » ; la porte de permission est le vrai conteneur | Retenu à l'identique | Adopté |
 | REF-125 | absences (différenciateurs) | `docs/completion-contributor-api.md` + `services/vcs-ui/` | 1-40 ; — | 1b1a305 | **Complétion inline IA inexistante** ; **génération de commit inexistante** | Suite possible (limites) — pas en L7 | Différé |
 
+### Indexation et configuration (lot L10)
+
+| ID | Composant JoIDE | Fichier de référence | Lignes | SHA | Constat | Comparaison | Statut |
+|---|---|---|---|---|---|---|---|
+| REF-126 | `core-index` (module) | `lang/index-api/.../Index.kt` + `lang/index-impl/.../IndexServiceImpl.kt` | 13-27 ; 73-121, 300-334 | 1b1a305 | Pass d'index à l'ouverture (phase bibliothèques content-adressées partagée + phase source incrémentielle par empreintes), requêtes exact/prefix/fuzzy, statut observable | Retenu : pass deux phases, empreintes taille+mtime, re-index d'un fichier à la sauvegarde, statut fraction/compteur ; écart : segments distants/embarqués différés (F-08), index local sur l'appareil | Adopté (adapté) |
+| REF-127 | déclenchement + UX index | `app/ide-core/.../IdeServices.kt` + `EditorChrome.kt` (chip) + `IndexStatusDialog.kt` | 969-1001, 1169-1209 ; 1112-1153 ; 69-319 | 1b1a305 | Pass lancé à l'ouverture sur pool basse priorité, debounce 200 ms + coalescing des resync, chip « Indexing NN % », dialogue phases/oeuvres/statistiques + Re-index, timeout dur 15 min laissant un index partiel | Retenu : chip + dialogue détaillé + Re-index + annulation ; l'attente BuildActivity.awaitIdle avant les travaux de fond ; écart : pool unique basse priorité (pas de coroutines Kotlin) | Adopté |
+| REF-128 | écran Modules | `app/ide-ui-screens/.../ModuleConfigScreen.kt` + `ModuleConfigState.kt` | 271-350, 358-447, 523-615, 899-918, 1053-1163, 1169-1217, 1412-1437, 958-1049 | 1b1a305 | Liste (tuile type, menu ⋮, FAB Nouveau module), détail à onglets, carte Général (sortie/niveau Java/SDK plateforme), carte ensembles de sources (chips amovibles + dialogue d'ajout à préréglages), facettes génériques, barre de sauvegarde épinglée Abandonner/Enregistrer, dialogue Nouveau module (nom/parent/type/niveau/facettes) | Retenu à l'identique en vues AndroidX/XML ; les facettes génériques deviennent les champs réels de `forge.json` (namespace, minSdk, targetSdk, versions) ; écart : pas de KMP/compiler plugins/packaging/signing (pas dans le modèle Forge — honnête) | Adopté (adapté) |
+| REF-129 | onglet Dépendances | `DependenciesScreen.kt` + `DependenciesState.kt` | 245-321, 334-368, 801-922, 958-1049 ; 249-427, 62-64, 308-327 | 1b1a305 | Barre d'outils Déclarées/Résolues + Re-résoudre + Dépôts + Ajouter ; recherche en ligne debouncée 320 ms (Central + Google), coordonnée directe, cible module, fichier local (copie libs/), badges portée, suppression confirmée, dialogue d'édition (version + versions publiées) | Retenu : parcours Ajouter complet (recherche Central réelle testée, directe, module, local), badges portée, confirmation de suppression, dépôts éditables ; écarts : vue Résolues via le moteur seulement (bouton Re-résoudre = build), Google Maven absent (dit à l'écran), pas d'exclusions transitives (F-09) | Adopté (partiel honnête) |
+| REF-130 | page Runtime de build | `BuiltInSettingsPages.kt` (buildRuntime) + `SettingsBackend.kt` | 368-449, 50-165 ; 478-596 | 1b1a305 | Page réglages daemon/compilateurs : process séparé, R8 forked + heap glissière bornée par l'appareil, dex avancé, mode basse mémoire, téléchargement pré-construites | Retenu : glissière du tas du moteur (bornes réelles 256–1024), mode basse mémoire Auto/On/Off (seuil 2,5 Go), cartes honnêtes « déjà séparé »/« conflits NEWEST » ; écarts : R8/dex avancés vident le moteur Forge (cartes constat), pré-construites → F-08 | Adapté |
+| REF-131 | activité / crash | `BuildActivity.kt` + `DaemonCrashNote.kt` + `RemoteBuildRunner.kt` + `ErrorDialog.kt` + `LogsScreen.kt` | 17-33 ; 20-69 ; 229-254, 294-302 ; 56-139 ; 76-195 | 1b1a305 | Sémaphore « une compile tourne » que l'arrière-plan attend ; note de plantage du processus mourant (bornée 300 c, heap, plugin blâmé) ; mort du daemon → console « l'IDE est intact, appuyez sur Run » ; dialogue d'erreur non fatale avec trace dépliable ; visionneuse de journaux filtrée | Retenu : BuildActivity (workbench-spi) + CrashJournal existant enrichi + écran Activité (chronologie builds/index/crash, trace dépliable) + dialogue non fatale + ligne console moteur ; écarts : pas de plugins à blâmer, pas de centre de notifications (l'écran Activité + la console portent l'info) | Adopté (adapté) |
+
 ## Consignes du propriétaire consignées
+
+- 2026-11-23 : lot L10 — « je veux la même chose (design écrans et fonctionnalités
+  identiques) » pour l'indexation à l'ouverture, les écrans de configuration du moteur,
+  du projet, des modules, des sources/classpaths, de l'ajout de dépendance, et le
+  journal d'activité/crash. Reconsultation consignée ci-dessous.
 
 - 2026-11-20 : la génération 1 n'est pas consultée (seuls céleris / code-lsp /
   LayoutLib sont retenus de sa connaissance) ; à l'étape terminal (L6), consulter
@@ -174,6 +190,26 @@ plugin — l'UI éteint le plugin fautive), `AgentSessionStore.kt` (une session 
 un fichier JSON **écrit entier via temp+move atomique après chaque tour**,
 contenant **le transcript ET l'historique modèle** ; titre = première ligne du
 premier message utilisateur, borné). Aucune ligne copiée (clean-room, Java).
+
+### Reconsultation du 2026-11-23 (lot L10 — indexation, écrans de configuration, activité)
+
+Re-clone **hors du dépôt de travail** et re-lecture **au même SHA épinglé `1b1a305`** avant
+le lot L10. Fichiers et ensembles relus intégralement : `lang/index-api/src/main/kotlin/
+dev/ide/index/Index.kt` (le contrat ensureUpToDate/reindexSource/observeStatus),
+`lang/index-impl/src/jvmMain/kotlin/dev/ide/index/impl/IndexServiceImpl.kt` (les deux
+côtés — segments disque immuables content-adressés pour SDK/bibliothèques, partitions
+en mémoire persistées par projet pour les sources ; empreintes taille+mtime ; écriture
+atomique ; timeout 15 min ; index partiel utilisable), `app/ide-core/.../IdeServices.kt`
+(lancement du pass à l'ouverture sur pool basse priorité, `awaitOpenIndex`, debounce
+200 ms + coalescing des resync), `ModuleConfigScreen.kt` + `ModuleConfigState.kt`
+(l'écran Modules complet : liste/détail/onglets/cartes/dialogues/barre de sauvegarde),
+`DependenciesScreen.kt` + `DependenciesState.kt` + `services/deps-impl/.../
+MavenDependencyResolver.kt` (le parcours d'ajout, la recherche Central+Google, le
+dialogue d'édition, les dépôts), `BuiltInSettingsPages.kt` + `SettingsBackend.kt`
+(page Build Runtime dynamique, glissière bornée par l'appareil), `BuildActivity.kt` +
+`DaemonCrashNote.kt` + `RemoteBuildRunner.kt` + `PluginCrashGuard.kt` + `ErrorDialog.kt`
++ `LogsScreen.kt` (l'activité/crash : sémaphore, note du mourant, console honnête,
+dialogue non fatale, visionneuse). Aucune ligne de code copiée (clean-room, Java).
 
 ## Suivi des écarts après implémentation
 
