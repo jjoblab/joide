@@ -50,10 +50,16 @@ jobs:
         env:
           JOIDE_GH_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # lsp-host 1.15.0 (minCompileSdk 37.2) exige la plateforme 37 : le
-          # SDK de l'exécutant ne l'embarque pas encore, sdkmanager l'installe.
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
-            "platforms;android-37" > /dev/null || true
+          # lsp-host 1.15.0 (minCompileSdk 37.2) exige la plateforme 37 — AGP 8.7
+          # y cherche « platforms/android-37 » : le dépôt Google publie la
+          # plateforme sous « platforms;android-37.0 » (schéma mineur), qui
+          # s'installe en android-37.0 invisible d'AGP 8.7. Le zip officiel
+          # est déroulé à la main, renommé, et son package.xml (versionné dans
+          # tools/) posé — même montage que le bac à sable local.
+          curl -sL -o /tmp/p37.zip https://dl.google.com/android/repository/platform-37.0_r02.zip
+          unzip -qo /tmp/p37.zip -d "$ANDROID_HOME/platforms/"
+          mv "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          cp tools/platform-37-package.xml "$ANDROID_HOME/platforms/android-37/package.xml"
           chmod +x gradlew
           ./gradlew --no-daemon :app-android:assembleDebug
       - uses: actions/upload-artifact@v4
@@ -87,8 +93,10 @@ jobs:
           # Keystore reconstitué depuis le secret (base64 PKCS12), puis build
           # release signé (même clé pour toutes les mises à jour).
           echo "$JOIDE_KEYSTORE_B64" | base64 -d > app-android/joide-ci.keystore
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
-            "platforms;android-37" > /dev/null || true
+          curl -sL -o /tmp/p37.zip https://dl.google.com/android/repository/platform-37.0_r02.zip
+          unzip -qo /tmp/p37.zip -d "$ANDROID_HOME/platforms/"
+          mv "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          cp tools/platform-37-package.xml "$ANDROID_HOME/platforms/android-37/package.xml"
           chmod +x gradlew
           ./gradlew --no-daemon :app-android:assembleRelease
           rm -f app-android/joide-ci.keystore
