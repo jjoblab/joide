@@ -166,7 +166,6 @@ public class CloneSheet extends BottomSheetDialogFragment {
             return;
         }
         enCours = true;
-        reconnuDéjàOuvert = false;
         binding.cloneUrlField.setEnabled(false);
         binding.cloneDossierField.setEnabled(false);
         binding.cloneBouton.setAlpha(0.5f);

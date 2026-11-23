@@ -450,7 +450,8 @@ public class WorkbenchFragment extends Fragment
                 indexExecutor.execute(() -> {
                     try {
                         index.reindexSource(fichierIndexé,
-                                Files.readString(fichierIndexé, StandardCharsets.UTF_8));
+                                new String(Files.readAllBytes(fichierIndexé),
+                                        StandardCharsets.UTF_8));
                     } catch (IOException | RuntimeException illisible) {
                         // binaire/illisible : rien à indexer — honnête.
                     }
@@ -2205,7 +2206,7 @@ public class WorkbenchFragment extends Fragment
                         return;
                     }
                     consoleBuffer.line(ConsoleBuffer.Kind.INFO,
-                            statut.prêt()
+                            statut.ready()
                                     ? getString(R.string.atelier_index_pret,
                                             statut.stats().symboles(),
                                             statut.stats().classes(),
@@ -2214,7 +2215,7 @@ public class WorkbenchFragment extends Fragment
                     renderConsole();
                     journalActivité().record(
                             jo.joide.corestore.ActivityLog.Kind.INDEX,
-                            statut.prêt()
+                            statut.ready()
                                     ? getString(R.string.activite_index_pret,
                                             statut.stats().symboles(),
                                             statut.stats().classes())

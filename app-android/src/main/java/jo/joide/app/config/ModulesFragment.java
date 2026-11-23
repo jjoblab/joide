@@ -170,14 +170,14 @@ public class ModulesFragment extends Fragment implements ModelHost {
         rangée.setPadding(dip(12), dip(14), dip(8), dip(14));
         rangée.setOnClickListener(v -> ouvrirDétail(module.name()));
 
-        boolean android = module.android().isPresent();
+        boolean estAndroid = module.android().isPresent();
         ImageView pastille = new ImageView(requireContext());
         pastille.setBackground(getResources().getDrawable(
-                android ? R.drawable.fond_pastille_tertiaire
+                estAndroid ? R.drawable.fond_pastille_tertiaire
                         : R.drawable.fond_pastille_sc_highest));
-        pastille.setImageResource(android ? R.drawable.ic_wb : R.drawable.ic_code);
+        pastille.setImageResource(estAndroid ? R.drawable.ic_wb : R.drawable.ic_code);
         pastille.setColorFilter(getResources().getColor(
-                android ? R.color.sur_conteneur_tertiaire : R.color.sur_var));
+                estAndroid ? R.color.sur_conteneur_tertiaire : R.color.sur_var));
         rangée.addView(pastille, new LinearLayout.LayoutParams(dip(40), dip(40)));
 
         LinearLayout textes = new LinearLayout(requireContext());

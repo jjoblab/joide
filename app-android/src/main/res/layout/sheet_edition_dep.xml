@@ -21,6 +21,7 @@
         android:textStyle="bold" />
 
     <TextView
+        android:id="@+id/editeur_dep_sous_titre"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"

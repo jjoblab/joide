@@ -11,6 +11,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
@@ -149,13 +150,16 @@ public class NewModuleSheet extends BottomSheetDialogFragment {
         if (Files.exists(manifeste)) {
             return;
         }
-        Files.writeString(manifeste, """
+        // Files.writeString est Java 11 — la toolchain Android s'arrête à
+        // Java 8 : on écrit les octets UTF-8 soi-même, même effet.
+        String manifesteXml = """
                 <?xml version="1.0" encoding="utf-8"?>
                 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
                         package="%s">
                     <application android:label="@string/app_name" />
                 </manifest>
-                """.formatted(namespace));
+                """.formatted(namespace);
+        Files.write(manifeste, manifesteXml.getBytes(StandardCharsets.UTF_8));
     }
 
     /** Namespace dérivé du nom (minuscules, segments sûrs). */
