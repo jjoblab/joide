@@ -86,6 +86,18 @@ public class WorkbenchFragment extends Fragment
 
     private WorkbenchFragmentBinding binding;
     private boolean noticeDismissed;
+
+    /** Avis de build masqué par l'utilisateur (bandeau unifié, session seule). */
+    private boolean avisBuildMasqué;
+
+    /** Avis d'index masqué par l'utilisateur (bandeau unifié, session seule). */
+    private boolean avisIndexMasqué;
+
+    /** Dernier statut d'index vu non-prêt après une passe (avis honnête). */
+    private boolean indexInterrompu;
+
+    /** Bandeau unifié déplié (plusieurs avis, référence EditorNoticeStrip). */
+    private boolean avisDépliés;
     private String projectPath;
 
     /** Instance sur un projet (chemin absolu du dossier racine du projet). */
@@ -154,9 +166,25 @@ public class WorkbenchFragment extends Fragment
                 onBufferEdited();
             }
         });
-        // Segments Code / Aperçu (preview : le filaire XML et les images).
-        binding.segmentCode.setOnClickListener(v -> showCodeView());
-        binding.segmentApercu.setOnClickListener(v -> showPreviewView());
+        // Segments Code / Aperçu / Scindé (référence ViewModeToggle : le
+        // scindé n'existe que pour un fichier prévisualisable textuel).
+        binding.segmentCode.setOnClickListener(v -> renderVue(VueMode.CODE));
+        binding.segmentApercu.setOnClickListener(v -> montrerApercu(VueMode.APERCU));
+        binding.segmentScinde.setOnClickListener(v -> montrerApercu(VueMode.SCINDE));
+        // Fil d'Ariane : le texte ouvre la Structure (référence), les flèches
+        // suivent l'historique de navigation des fichiers.
+        binding.breadcrumb.setOnClickListener(v -> {
+            binding.drawerLayout.openDrawer(androidx.core.view.GravityCompat.START);
+            androidx.fragment.app.Fragment drawer = getChildFragmentManager()
+                    .findFragmentById(R.id.left_drawer_container);
+            if (drawer instanceof jo.joide.app.drawer.LeftDrawerFragment leftDrawer) {
+                leftDrawer.openTab(R.id.drawer_tab_structure);
+            }
+        });
+        binding.filRetour.setOnClickListener(v -> naviguer(-1));
+        binding.filAvant.setOnClickListener(v -> naviguer(1));
+        // Puce d'indexation : le détail du pass (référence IndexStatusChip).
+        binding.indexChip.setOnClickListener(v -> montrerDétailIndex());
         setupKeyboardFold();
     }
 
@@ -216,31 +244,39 @@ public class WorkbenchFragment extends Fragment
                         : jo.celeris.core.syntax.scope.ScopeThemes.light());
     }
 
-    // ---- Segments Code / Aperçu (preview contenu-principal) ------------------
+    // ---- Segments Code / Aperçu / Scindé (référence EditorViewMode) ---------
+
+    /** Modes de vue du fichier actif (référence : Text / Preview / Split). */
+    private enum VueMode { CODE, APERCU, SCINDE }
+
+    /** Mode courant (scindé = empilé sur téléphone, comme la référence). */
+    private VueMode vueMode = VueMode.CODE;
+
+    /** Un fichier a-t-il un aperçu (XML filaire ou image) ? */
+    private static boolean aperçuPossible(String name) {
+        return name.endsWith(".xml") || isImageName(name);
+    }
 
     /** Retour au Code : l'éditeur céleris reprend la place. */
     private void showCodeView() {
-        if (activeFile != null && !activeTextual) {
-            return; // binaire : le Code n'a rien à montrer, on reste en Aperçu
-        }
-        binding.apercuZone.setVisibility(View.GONE);
-        binding.etatVide.setVisibility(View.GONE);
-        if (editorView != null) {
-            editorView.setVisibility(View.VISIBLE);
-        }
-        styleSegments(false);
+        renderVue(VueMode.CODE);
     }
 
-    /** Aperçu : filaire XML (tampon vivant) ou message honnête. */
-    private void showPreviewView() {
+    /** Aperçu ou scindé : rend le contenu d'aperçu PUIS bascule la vue. */
+    private void montrerApercu(VueMode cible) {
         if (activeFile == null) {
             appendToJournal(getString(R.string.atelier_apercu_indisponible));
             return;
         }
+        // Scindé sans code possible (binaire/image) : aperçu seul, honnête.
+        if (cible == VueMode.SCINDE && !activeTextual) {
+            appendToJournal(getString(R.string.atelier_apercu_indisponible));
+            cible = VueMode.APERCU;
+        }
         String name = activeFile.getFileName().toString().toLowerCase(Locale.ROOT);
         if (name.endsWith(".xml")) {
             String content = editor != null && editor.session() != null
-                    && editorView != null && editorView.getVisibility() == View.VISIBLE
+                    && editorView != null
                     ? editor.session().text() : null;
             if (content == null) {
                 try {
@@ -253,12 +289,14 @@ public class WorkbenchFragment extends Fragment
                 }
             }
             renderXmlWireframe(content);
+            renderVue(cible);
             return;
         }
         // Images : l'état binaire EST l'aperçu (déjà rendu si binaire).
         if (isImageName(name)) {
             try {
                 showBinaryState(activeFile, Files.size(activeFile));
+                renderVue(VueMode.APERCU);
             } catch (IOException e) {
                 appendToJournal(getString(R.string.atelier_apercu_indisponible));
             }
@@ -280,10 +318,6 @@ public class WorkbenchFragment extends Fragment
      */
     private void renderXmlWireframe(String content) {
         binding.etatVide.setVisibility(View.GONE);
-        if (editorView != null) {
-            editorView.setVisibility(View.GONE);
-        }
-        binding.apercuZone.setVisibility(View.VISIBLE);
         binding.apercuZone.removeAllViews();
         try {
             org.xmlpull.v1.XmlPullParser parser = android.util.Xml.newPullParser();
@@ -314,11 +348,10 @@ public class WorkbenchFragment extends Fragment
                 event = parser.next();
             }
             binding.apercuZone.addView(root);
-            styleSegments(true);
         } catch (Exception e) {
             // XML invalide (en cours de frappe) : honnête, pas de filaire figé.
             appendToJournal(getString(R.string.atelier_apercu_indisponible));
-            showCodeView();
+            renderVue(VueMode.CODE);
         }
     }
 
@@ -341,7 +374,7 @@ public class WorkbenchFragment extends Fragment
         label.setTextColor(getResources().getColor(R.color.sur_var));
         box.addView(label);
         box.setOnClickListener(v -> {
-            showCodeView();
+            renderVue(VueMode.CODE);
             if (editor != null && editor.session() != null) {
                 String text = editor.session().text();
                 int offset = offsetOf(text, line, 1);
@@ -356,18 +389,87 @@ public class WorkbenchFragment extends Fragment
         return box;
     }
 
-    /** Style des segments : l'actif sur la pastille primaire (studio). */
-    private void styleSegments(boolean previewOn) {
-        binding.segmentCode.setBackground(previewOn
-                ? null : getResources().getDrawable(R.drawable.fond_segment_actif));
-        binding.segmentCode.setColorFilter(previewOn
-                ? getResources().getColor(R.color.sur_var)
-                : getResources().getColor(R.color.sur_conteneur_primaire));
-        binding.segmentApercu.setBackground(previewOn
+    /**
+     * Rend la vue demandée (référence ViewModeToggle + EditorCenter) : CODE =
+     * l'éditeur seul ; APERCU = le filaire seul ; SCINDE = les deux empilés
+     * (code dessus, aperçu dessous — téléphone). Les segments suivent, le
+     * scindé n'apparaît que pour un fichier prévisualisable textuel.
+     */
+    private void renderVue(VueMode cible) {
+        if (binding == null) {
+            return;
+        }
+        vueMode = cible;
+        binding.etatVide.setVisibility(View.GONE);
+        boolean code = cible == VueMode.CODE || cible == VueMode.SCINDE;
+        boolean aperçu = cible == VueMode.APERCU || cible == VueMode.SCINDE;
+        // L'aperçu ne se montre que s'il a du contenu (le filaire vient d'y
+        // être rendu par montrerApercu ; les images passent par l'état binaire).
+        boolean aperçuPrêt = binding.apercuZone.getChildCount() > 0
+                || (activeFile != null && !activeTextual);
+        aperçu = aperçu && (aperçuPrêt || cible != VueMode.SCINDE);
+        if (editorView != null) {
+            editorView.setVisibility(activeFile != null && activeTextual && code
+                    ? View.VISIBLE : View.GONE);
+        }
+        binding.apercuZone.setVisibility(aperçu ? View.VISIBLE : View.GONE);
+        // Scindé : deux moitiés empilées (code dessus, aperçu dessous).
+        if (cible == VueMode.SCINDE && aperçu) {
+            binding.apercuZone.post(() -> {
+                if (binding == null) {
+                    return;
+                }
+                int hauteur = Math.max(1, binding.editorArea.getHeight() / 2);
+                android.widget.FrameLayout.LayoutParams demiAperçu =
+                        new android.widget.FrameLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT, hauteur,
+                                android.view.Gravity.BOTTOM);
+                binding.apercuZone.setLayoutParams(demiAperçu);
+                if (editorView != null) {
+                    android.widget.FrameLayout.LayoutParams demiCode =
+                            new android.widget.FrameLayout.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT, hauteur,
+                                    android.view.Gravity.TOP);
+                    editorView.setLayoutParams(demiCode);
+                }
+            });
+        } else {
+            android.widget.FrameLayout.LayoutParams plein =
+                    new android.widget.FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT);
+            binding.apercuZone.setLayoutParams(plein);
+            if (editorView != null) {
+                editorView.setLayoutParams(new android.widget.FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT));
+            }
+        }
+        // Segments : l'actif sur la pastille primaire (studio).
+        styleSegment(binding.segmentCode, cible == VueMode.CODE);
+        styleSegment(binding.segmentApercu, cible == VueMode.APERCU);
+        styleSegment(binding.segmentScinde, cible == VueMode.SCINDE);
+        // Visibilité des segments (référence : Preview/Split seulement si
+        // le fichier se prévisualise ; Split exige en plus du code).
+        boolean possible = activeFile != null
+                && aperçuPossible(activeFile.getFileName().toString().toLowerCase(Locale.ROOT));
+        binding.segmentApercu.setVisibility(possible ? View.VISIBLE : View.GONE);
+        binding.segmentScinde.setVisibility(
+                possible && activeTextual ? View.VISIBLE : View.GONE);
+        if (cible == VueMode.SCINDE && !possible && activeFile != null) {
+            // Rien à prévisualiser : le scindé retombe sur le code, honnête.
+            vueMode = VueMode.CODE;
+            styleSegment(binding.segmentCode, true);
+            styleSegment(binding.segmentScinde, false);
+        }
+    }
+
+    /** Style d'un segment : actif sur la pastille primaire (studio). */
+    private void styleSegment(android.widget.ImageButton segment, boolean actif) {
+        segment.setBackground(actif
                 ? getResources().getDrawable(R.drawable.fond_segment_actif) : null);
-        binding.segmentApercu.setColorFilter(previewOn
-                ? getResources().getColor(R.color.sur_conteneur_primaire)
-                : getResources().getColor(R.color.sur_var));
+        segment.setColorFilter(getResources().getColor(actif
+                ? R.color.sur_conteneur_primaire : R.color.sur_var));
     }
 
     /** Bascule la barre de symboles sous l'éditeur (v2 : via le menu ⋯ ou le ⋯ du dock). */
@@ -492,12 +594,34 @@ public class WorkbenchFragment extends Fragment
 
     @Override
     public void openFile(Path file) {
+        ouvrirFichier(file, true);
+    }
+
+    /**
+     * Ouverture réelle : tampon en cache, historique de navigation (flèches du
+     * fil d'Ariane, référence navHistory) et récents (état vide) — sauf en
+     * navigation programme (retour/avant), qui déplace le curseur sans pousser.
+     */
+    private void ouvrirFichier(Path file, boolean pousserHistorique) {
         // Le tampon quitté vit en cache : revenir retrouve les modifications.
         snapshotCurrentBuffer();
         activeFile = file;
         if (!openTabs.contains(file)) {
             openTabs.add(file);
         }
+        if (pousserHistorique) {
+            // Historique de navigation (référence navHistory) : on tronque
+            // l'avant, on pousse, le curseur d'historique suit.
+            if (navPosition >= 0 && navPosition < historiqueNav.size() - 1) {
+                historiqueNav.subList(navPosition + 1, historiqueNav.size()).clear();
+            }
+            if (historiqueNav.isEmpty()
+                    || !historiqueNav.get(historiqueNav.size() - 1).equals(file)) {
+                historiqueNav.add(file);
+            }
+            navPosition = historiqueNav.size() - 1;
+        }
+        mémoriserRécent(file);
         String cached = modifiedBuffers.get(file);
         if (cached != null) {
             attachEditor(file.getFileName().toString(), cached);
@@ -505,9 +629,38 @@ public class WorkbenchFragment extends Fragment
         } else {
             openFromDisk(file);
         }
+        // Un fichier textuel ouvert part du code (référence : Text à
+        // l'ouverture) ; un binaire garde son état-aperçu (showBinaryState).
+        if (activeTextual) {
+            renderVue(VueMode.CODE);
+        }
         rebuildTabs();
         refreshFileChrome();
         checkSafetyCopy(file);
+    }
+
+    /** Recule d'un cran dans l'historique de navigation (flèche ←). */
+    private void naviguer(int delta) {
+        int cible = navPosition + delta;
+        if (cible < 0 || cible >= historiqueNav.size()) {
+            return;
+        }
+        navPosition = cible;
+        Path fichier = historiqueNav.get(cible);
+        // Déplacement dans l'historique : pas de nouveau cran poussé.
+        if (!fichier.equals(activeFile)) {
+            ouvrirFichier(fichier, false);
+        }
+        refreshFileChrome();
+    }
+
+    /** Mémoire des récents (état vide — référence NoOpenFilesView : 5 max). */
+    private void mémoriserRécent(Path file) {
+        récents.remove(file);
+        récents.addFirst(file);
+        while (récents.size() > 5) {
+            récents.removeLast();
+        }
     }
 
     /** Lecture disque avec états honnêtes : binaire, volumineux, texte. */
@@ -607,7 +760,7 @@ public class WorkbenchFragment extends Fragment
                 caption.setPadding(0, dip(8), 0, 0);
                 card.addView(caption);
                 binding.apercuZone.addView(card);
-                styleSegments(true);
+                renderVue(VueMode.APERCU);
                 return;
             }
         }
@@ -625,7 +778,7 @@ public class WorkbenchFragment extends Fragment
         detail.setPadding(0, dip(4), 0, 0);
         card.addView(detail);
         binding.apercuZone.addView(card);
-        styleSegments(true);
+        renderVue(VueMode.APERCU);
     }
 
     /** « 4,2 Kio » — taille lisible (jamais d'octets bruts en UI). */
@@ -639,17 +792,72 @@ public class WorkbenchFragment extends Fragment
         return String.format(Locale.ROOT, "%.1f Mio", bytes / 1048576.0);
     }
 
-    /** Fil d'Ariane + sous-titre (branche · fichier actif) à chaque ouverture. */
+    /**
+     * Fil d'Ariane + sous-titre (branche · fichier actif) à chaque ouverture.
+     * Le fil suit ensuite le curseur (màjFilAriane, anti-rebond 200 ms comme
+     * la référence) ; les flèches suivent l'historique de navigation.
+     */
     private void refreshFileChrome() {
-        binding.breadcrumb.setText(relativize(
-                activeFile != null ? activeFile : Paths.get(projectPath))
-                .replace('/', '›') + getString(R.string.atelier_fil_point));
+        màjFilAriane();
         binding.projectSubtitle.setText(subtitleBranch != null && activeFile != null
                 ? subtitleBranch + " · " + activeFile.getFileName()
                 : subtitleBranch != null ? subtitleBranch
                 : activeFile != null ? activeFile.getFileName().toString() : "");
         binding.projectSubtitle.setVisibility(
                 binding.projectSubtitle.getText().length() > 0 ? View.VISIBLE : View.GONE);
+        màjFlèchesNav();
+    }
+
+    /** Flèches du fil d'Ariane : visibles dès qu'un retour/avant existe. */
+    private void màjFlèchesNav() {
+        boolean peutReculer = navPosition > 0;
+        boolean peutAvancer = navPosition >= 0 && navPosition < historiqueNav.size() - 1;
+        binding.filRetour.setVisibility(peutReculer ? View.VISIBLE : View.GONE);
+        binding.filAvant.setVisibility(peutAvancer ? View.VISIBLE : View.GONE);
+        binding.filRetour.setAlpha(peutReculer ? 1f : 0.35f);
+        binding.filAvant.setAlpha(peutAvancer ? 1f : 0.35f);
+    }
+
+    /**
+     * Le fil d'Ariane suit le curseur (référence BreadcrumbBar : module ›
+     * symboles englobants, anti-rebond 200 ms, repli honnête sur le chemin
+     * du fichier hors de tout symbole).
+     */
+    private void màjFilAriane() {
+        if (binding == null) {
+            return;
+        }
+        String repli = (activeFile != null ? relativize(activeFile) : relativize(Paths.get(projectPath)))
+                .replace('/', '›') + getString(R.string.atelier_fil_point);
+        if (editor == null || editor.session() == null || currentPlan.isEmpty()
+                || activeFile == null) {
+            binding.breadcrumb.setText(repli);
+            return;
+        }
+        List<Integer> carets = editor.session().selection().carets();
+        int offset = carets.isEmpty() ? -1 : carets.get(carets.size() - 1);
+        List<String> noms = new ArrayList<>();
+        for (jo.celeris.core.syntax.structure.OutlineEntry entry : currentPlan) {
+            if (offset >= entry.startOffset() && offset <= entry.endOffset()) {
+                noms.add(entry.name());
+            }
+        }
+        if (noms.isEmpty()) {
+            binding.breadcrumb.setText(repli);
+            return;
+        }
+        String dossier = relativize(activeFile.getParent() != null
+                ? activeFile.getParent() : activeFile).replace('/', '›');
+        binding.breadcrumb.setText(dossier + "›" + String.join("›", noms));
+    }
+
+    /** Anti-rebond du fil d'Ariane (référence : 200 ms après le dernier déplacement). */
+    private void màjFilArianeDifférée() {
+        if (filTâche != null) {
+            filHandler.removeCallbacks(filTâche);
+        }
+        filTâche = this::màjFilAriane;
+        filHandler.postDelayed(filTâche, 200);
     }
 
     @Nullable
@@ -905,10 +1113,30 @@ public class WorkbenchFragment extends Fragment
         binding.drawerLayout.openDrawer(androidx.core.view.GravityCompat.END);
     }
 
-    /** Menu d'options de la barre (⋯) : actions réelles de l'atelier. */
+    /**
+     * Menu d'options de la barre (⋯), structuré comme la référence
+     * (EditorOverflowMenu) : action du fichier actif, bascules à ÉTAT (cochées
+     * quand actives), navigation, puis le mode en dernier. Le Run reste inline
+     * dans la barre — la référence ne le met jamais ici.
+     */
     private void showOptionsMenu(View anchor) {
         android.widget.PopupMenu menu = new android.widget.PopupMenu(requireContext(), anchor);
         menu.inflate(R.menu.workbench_options);
+        // États des bascules calculés à l'ouverture (jamais figés).
+        boolean iaOuvert = binding.drawerLayout.isDrawerOpen(
+                androidx.core.view.GravityCompat.END);
+        boolean consoleOuverte = dockBehavior != null && dockBehavior.getState()
+                != com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_COLLAPSED;
+        boolean symbolesVisibles = binding.symbolBar.getVisibility() == View.VISIBLE;
+        boolean aperçuActif = vueMode == VueMode.APERCU;
+        menu.getMenu().findItem(R.id.option_refaire)
+                .setVisible(activeFile != null && activeTextual);
+        menu.getMenu().findItem(R.id.option_agent_ia).setChecked(iaOuvert);
+        menu.getMenu().findItem(R.id.option_console).setChecked(consoleOuverte);
+        menu.getMenu().findItem(R.id.option_symboles).setChecked(symbolesVisibles);
+        menu.getMenu().findItem(R.id.option_apercu).setChecked(aperçuActif);
+        menu.getMenu().findItem(R.id.option_apercu).setVisible(activeFile != null
+                && aperçuPossible(activeFile.getFileName().toString().toLowerCase(Locale.ROOT)));
         menu.setOnMenuItemClickListener(item -> {
             int id = item.getItemId();
             if (id == R.id.option_fichiers) {
@@ -923,18 +1151,27 @@ public class WorkbenchFragment extends Fragment
                         .addToBackStack(null)
                         .commit();
             } else if (id == R.id.option_agent_ia) {
-                openAiDrawer();
-            } else if (id == R.id.option_construire) {
-                binding.buildButton.performClick();
+                if (iaOuvert) {
+                    binding.drawerLayout.closeDrawer(androidx.core.view.GravityCompat.END);
+                } else {
+                    openAiDrawer();
+                }
             } else if (id == R.id.option_terminal) {
                 binding.terminalButton.performClick();
             } else if (id == R.id.option_recherche) {
                 binding.dockSearch.performClick();
             } else if (id == R.id.option_console) {
-                dockBehavior.setState(com.google.android.material.bottomsheet
-                        .BottomSheetBehavior.STATE_HALF_EXPANDED);
+                dockBehavior.setState(consoleOuverte
+                        ? com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_COLLAPSED
+                        : com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_HALF_EXPANDED);
             } else if (id == R.id.option_symboles) {
                 toggleSymbolBar();
+            } else if (id == R.id.option_apercu) {
+                if (aperçuActif) {
+                    renderVue(VueMode.CODE);
+                } else {
+                    montrerApercu(VueMode.APERCU);
+                }
             } else if (id == R.id.option_mode) {
                 binding.modeChip.performClick();
             } else if (id == R.id.option_refaire) {
@@ -948,6 +1185,15 @@ public class WorkbenchFragment extends Fragment
     // ---- Onglets de fichiers (studio : 32dp sc2, point alerte, ×) ----------
 
     private final List<Path> openTabs = new ArrayList<>();
+
+    /** Historique de navigation des fichiers (référence navHistory — flèches). */
+    private final List<Path> historiqueNav = new ArrayList<>();
+
+    /** Curseur dans l'historique (−1 : rien). */
+    private int navPosition = -1;
+
+    /** Récents (état vide — référence NoOpenFilesView : 5 derniers, tape = rouvre). */
+    private final java.util.ArrayDeque<Path> récents = new java.util.ArrayDeque<>();
 
     /** Fichier actif de l'éditeur (contexte vivant de l'agent — Lot 0). */
     private Path activeFile;
@@ -1017,72 +1263,114 @@ public class WorkbenchFragment extends Fragment
         } else {
             showEmptyState();
         }
+        // Chevron de débordement : le menu de tous les fichiers ouverts.
+        binding.ongletsDebordement.setOnClickListener(v -> montrerOngletsDébordement());
     }
 
-    /** Reconstruit la rangée d'onglets : ✱ réel par tampon, ＋, état vide. */
+    /**
+     * Reconstruit la rangée d'onglets (référence TabsStrip : ✱ par tampon,
+     * croix, PAS de bouton ＋ — la création vit dans l'arbre du tiroir) ;
+     * le chevron de débordement n'apparaît que si les onglets débordent.
+     */
     private void rebuildTabs() {
         binding.filesTabs.removeAllViews();
         for (Path file : openTabs) {
             binding.filesTabs.addView(fileTab(file, file.equals(activeFile)));
         }
-        TextView plus = new TextView(requireContext());
-        plus.setText("＋");
-        plus.setTextSize(15f);
-        plus.setGravity(android.view.Gravity.CENTER);
-        plus.setTextColor(getResources().getColor(R.color.sur_var));
-        plus.setPadding(dip(12), 0, dip(8), 0);
-        plus.setOnClickListener(v -> askNewFile());
-        binding.filesTabs.addView(plus, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, dip(32)));
+        // Chevron épinglé si (et seulement si) la strip déborde (référence).
+        binding.ongletsDefile.post(() -> {
+            if (binding == null) {
+                return;
+            }
+            boolean déborde = binding.ongletsDefile.canScrollHorizontally(-1)
+                    || binding.ongletsDefile.canScrollHorizontally(1);
+            binding.ongletsDebordement.setVisibility(
+                    déborde && !openTabs.isEmpty() ? View.VISIBLE : View.GONE);
+            binding.ongletsSep.setVisibility(
+                    déborde && !openTabs.isEmpty() ? View.VISIBLE : View.GONE);
+        });
     }
 
-    /** ＋ : crée un vrai fichier à la racine du projet et l'ouvre. */
-    private void askNewFile() {
-        android.widget.EditText input = new android.widget.EditText(requireContext());
-        input.setHint(R.string.atelier_onglet_nom_indice);
-        input.setTextSize(13f);
-        input.setPadding(dip(20), dip(8), dip(20), 0);
-        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                .setTitle(R.string.atelier_onglet_nouveau)
-                .setView(input)
-                .setPositiveButton(R.string.atelier_onglet_nouveau,
-                        (dialog, which) -> {
-                            String name = input.getText().toString().trim();
-                            if (name.isEmpty() || name.contains("/")
-                                    || name.contains("\\")) {
-                                toast(getString(R.string.atelier_onglet_nom_invalide));
-                                return;
-                            }
-                            Path created = Paths.get(projectPath).resolve(name);
-                            if (Files.exists(created)) {
-                                toast(getString(R.string.atelier_onglet_nom_invalide));
-                                return;
-                            }
-                            try {
-                                Files.write(created, new byte[0]);
-                            } catch (IOException e) {
-                                appendToJournal(getString(
-                                        R.string.atelier_lecture_impossible,
-                                        e.getMessage() != null ? e.getMessage() : ""));
-                                return;
-                            }
-                            appendToJournal(getString(
-                                    R.string.atelier_onglet_cree_ok, name));
-                            openFile(created);
-                        })
-                .setNegativeButton(R.string.tiroir_action_annuler, null)
-                .show();
+    /** Chevron de débordement : le menu de TOUS les fichiers ouverts. */
+    private void montrerOngletsDébordement() {
+        androidx.appcompat.widget.PopupMenu menu =
+                new androidx.appcompat.widget.PopupMenu(requireContext(),
+                        binding.ongletsDebordement);
+        for (int i = 0; i < openTabs.size(); i++) {
+            Path file = openTabs.get(i);
+            android.view.MenuItem item = menu.getMenu().add(0, i, i,
+                    file.getFileName().toString());
+            if (file.equals(activeFile)) {
+                item.setTitle("• " + file.getFileName().toString());
+            }
+        }
+        menu.setOnMenuItemClickListener(item -> {
+            int index = item.getItemId();
+            if (index >= 0 && index < openTabs.size()) {
+                openFile(openTabs.get(index));
+            }
+            return true;
+        });
+        menu.show();
     }
 
-    /** État honnête sans fichier : la zone dit quoi faire, jamais muette. */
+    /**
+     * État honnête sans fichier : la zone dit quoi faire, et les récents
+     * rouvrent en une tape (référence NoOpenFilesView : 5 derniers, dossier
+     * au-dessous, jamais une zone muette).
+     */
     private void showEmptyState() {
         if (editorView != null) {
             editorView.setVisibility(View.GONE);
         }
         binding.apercuZone.setVisibility(View.GONE);
         binding.etatVide.setVisibility(View.VISIBLE);
+        binding.etatVideRecents.removeAllViews();
+        if (!récents.isEmpty()) {
+            binding.etatVideRecents.setVisibility(View.VISIBLE);
+            TextView titre = new TextView(requireContext());
+            titre.setText(R.string.atelier_recents_titre);
+            titre.setTextSize(12f);
+            titre.setTypeface(titre.getTypeface(), android.graphics.Typeface.BOLD);
+            titre.setTextColor(getResources().getColor(R.color.sur_var));
+            titre.setPadding(0, 0, 0, dip(6));
+            binding.etatVideRecents.addView(titre);
+            for (Path récent : récents) {
+                binding.etatVideRecents.addView(rangéeRécent(récent));
+            }
+        } else {
+            binding.etatVideRecents.setVisibility(View.GONE);
+        }
         binding.breadcrumb.setText(relativize(Paths.get(projectPath))
                 .replace('/', '›') + getString(R.string.atelier_fil_point));
+        màjFlèchesNav();
+    }
+
+    /** Une rangée de récent : nom + dossier relatif, tape = rouvre. */
+    private View rangéeRécent(Path file) {
+        LinearLayout rangée = new LinearLayout(requireContext());
+        rangée.setOrientation(LinearLayout.VERTICAL);
+        rangée.setPadding(dip(12), dip(8), dip(12), dip(8));
+        rangée.setBackground(getResources().getDrawable(R.drawable.fond_carte_bas));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.topMargin = dip(6);
+        rangée.setLayoutParams(params);
+        TextView nom = new TextView(requireContext());
+        nom.setText(file.getFileName().toString());
+        nom.setTextSize(13.5f);
+        nom.setTypeface(nom.getTypeface(), android.graphics.Typeface.BOLD);
+        nom.setTextColor(getResources().getColor(R.color.sur));
+        rangée.addView(nom);
+        String dossier = relativize(file.getParent() != null
+                ? file.getParent() : file).replace('/', '›');
+        TextView chemin = new TextView(requireContext());
+        chemin.setText(getString(R.string.atelier_recents_dossier, dossier));
+        chemin.setTextSize(11f);
+        chemin.setTextColor(getResources().getColor(R.color.contour));
+        rangée.addView(chemin);
+        rangée.setOnClickListener(v -> openFile(file));
+        return rangée;
     }
 
     /** Un onglet : icône fichier + nom + point d'alerte (1er) + fermeture. */
@@ -1147,30 +1435,100 @@ public class WorkbenchFragment extends Fragment
         return tab;
     }
 
-    /** Menu d'onglet (preview : appui long). */
+    /**
+     * Menu d'onglet, appui long (référence EditorTab : Fermer · Fermer les
+     * autres · Fermer à droite · Fermer à gauche · Tout fermer · Copier le
+     * chemin — les entrées impossibles sont absentes, pas grisées-fantômes).
+     */
     private void showTabMenu(Path file, View anchor) {
         androidx.appcompat.widget.PopupMenu menu =
                 new androidx.appcompat.widget.PopupMenu(requireContext(), anchor);
-        menu.getMenu().add(0, 1, 0, R.string.atelier_onglet_fermer);
-        menu.getMenu().add(0, 2, 1, R.string.atelier_onglet_fermer_autres);
-        menu.getMenu().add(0, 3, 2, R.string.atelier_onglet_copier_chemin);
+        int index = openTabs.indexOf(file);
+        int ordre = 0;
+        menu.getMenu().add(0, 1, ordre++, R.string.atelier_onglet_fermer);
+        if (openTabs.size() > 1) {
+            menu.getMenu().add(0, 2, ordre++, R.string.atelier_onglet_fermer_autres);
+        }
+        if (index >= 0 && index < openTabs.size() - 1) {
+            menu.getMenu().add(0, 4, ordre++, R.string.atelier_onglet_fermer_droite);
+        }
+        if (index > 0) {
+            menu.getMenu().add(0, 5, ordre++, R.string.atelier_onglet_fermer_gauche);
+        }
+        if (openTabs.size() > 1) {
+            menu.getMenu().add(0, 6, ordre++, R.string.atelier_onglet_tout_fermer);
+        }
+        menu.getMenu().add(0, 3, ordre, R.string.atelier_onglet_copier_chemin);
+        final int position = index;
         menu.setOnMenuItemClickListener(item -> {
-            if (item.getItemId() == 1) {
-                closeTab(file);
-            } else if (item.getItemId() == 2) {
-                closeOtherTabs(file);
-            } else if (item.getItemId() == 3) {
-                android.content.ClipboardManager clipboard =
-                        (android.content.ClipboardManager) requireContext()
-                                .getSystemService(Context.CLIPBOARD_SERVICE);
-                clipboard.setPrimaryClip(android.content.ClipData.newPlainText(
-                        getString(R.string.atelier_onglet_copier_chemin),
-                        file.toString()));
-                toast(getString(R.string.atelier_chemin_copie));
+            switch (item.getItemId()) {
+                case 1 -> closeTab(file);
+                case 2 -> closeOtherTabs(file);
+                case 3 -> {
+                    android.content.ClipboardManager clipboard =
+                            (android.content.ClipboardManager) requireContext()
+                                    .getSystemService(Context.CLIPBOARD_SERVICE);
+                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText(
+                            getString(R.string.atelier_onglet_copier_chemin),
+                            file.toString()));
+                    toast(getString(R.string.atelier_chemin_copie));
+                }
+                case 4 -> fermerCôté(position, 1);
+                case 5 -> fermerCôté(position, -1);
+                case 6 -> toutFermer();
+                default -> { }
             }
             return true;
         });
         menu.show();
+    }
+
+    /**
+     * Ferme tout ce qui est d'un côté de l'onglet (référence closeToRight/
+     * closeToLeft) ; jamais de perte silencieuse — confirmation si modifiés.
+     */
+    private void fermerCôté(int position, int direction) {
+        List<Path> cibles = new ArrayList<>();
+        if (direction > 0) {
+            for (int i = openTabs.size() - 1; i > position; i--) {
+                cibles.add(openTabs.get(i));
+            }
+        } else {
+            for (int i = 0; i < position && i < openTabs.size(); i++) {
+                cibles.add(openTabs.get(i));
+            }
+        }
+        fermerEnsemble(cibles);
+    }
+
+    /** Ferme tous les onglets ouverts (référence closeAll). */
+    private void toutFermer() {
+        fermerEnsemble(new ArrayList<>(openTabs));
+    }
+
+    /** Fermeture d'un ensemble : confirmation honnête si des tampons sont modifiés. */
+    private void fermerEnsemble(List<Path> cibles) {
+        long modifiés = cibles.stream()
+                .filter(f -> modifiedBuffers.containsKey(f)
+                        || (f.equals(activeFile) && currentDirty))
+                .count();
+        if (modifiés == 0) {
+            for (Path file : cibles) {
+                removeTab(file);
+            }
+            return;
+        }
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setMessage(getString(R.string.atelier_onglet_autres_modifiees,
+                        (int) modifiés))
+                .setPositiveButton(R.string.atelier_onglet_ignorer,
+                        (dialog, which) -> {
+                            for (Path file : cibles) {
+                                removeTab(file);
+                            }
+                        })
+                .setNegativeButton(R.string.tiroir_action_annuler, null)
+                .show();
     }
 
     /** Fermeture d'onglet : confirmation si le tampon est modifié (preview). */
@@ -1234,6 +1592,7 @@ public class WorkbenchFragment extends Fragment
         modifiedBuffers.remove(file);
         deleteSafetyCopy(file);
         openTabs.remove(file);
+        mémoriserRécent(file);
         if (file.equals(activeFile)) {
             activeFile = null;
             currentDirty = false;
@@ -1527,8 +1886,17 @@ public class WorkbenchFragment extends Fragment
                     this::onBufferEdited);
 
     private final jo.celeris.core.text.SelectionListener sessionSelection =
-            selection -> requireActivity().runOnUiThread(
-                    this::updateSymbolPath);
+            selection -> requireActivity().runOnUiThread(() -> {
+                updateSymbolPath();
+                màjFilArianeDifférée();
+            });
+
+    /** Fil (anti-rebond) du fil d'Ariane — 200 ms comme la référence. */
+    private final android.os.Handler filHandler =
+            new android.os.Handler(android.os.Looper.getMainLooper());
+
+    /** Tâche anti-rebond en cours du fil d'Ariane. */
+    private Runnable filTâche;
 
     // ---- Dock à 3 detents (preview bottom-sheet : 60dp réduit → 60 % mi-hauteur
     //      → plein calé sous la toolbar) ------------------------------------
@@ -1610,8 +1978,9 @@ public class WorkbenchFragment extends Fragment
     private void setupDock() {
         dockBehavior = com.google.android.material.bottomsheet.BottomSheetBehavior
                 .from(binding.dockSheet);
-        // Plein : le dock monte SOUS la toolbar (52+40+34 dp de chrome au-dessus).
-        dockBehavior.setExpandedOffset(dip(126));
+        // Plein : PLEIN ÉCRAN comme la référence (la console couvre tout,
+        // seule la poignée — ou un glissé — replie).
+        dockBehavior.setExpandedOffset(0);
         dockBehavior.setState(
                 com.google.android.material.bottomsheet.BottomSheetBehavior
                         .STATE_COLLAPSED);
@@ -1631,12 +2000,24 @@ public class WorkbenchFragment extends Fragment
                 // Pas d'effet additionnel : le studio garde le dock sobre.
             }
         });
-        // Clavier logiciel : la feuille se replie, la barre revient avec lui
-        // (règle du preview — l'éditeur garde la place, pas la console).
+        // Ligne de progression fine sur le bord supérieur (référence BuildDock
+        // : 2dp, accent ; déterminée si le total est connu, indéterminée sinon).
+        binding.dockProgression.setProgressTintList(
+                android.content.res.ColorStateList.valueOf(
+                        getResources().getColor(R.color.primaire)));
+        binding.dockProgression.setProgressBackgroundTintList(
+                android.content.res.ColorStateList.valueOf(android.graphics.Color.TRANSPARENT));
+        // Clavier logiciel (référence : le dock se CACHE pendant la frappe,
+        // la barre de symboles prend le slot du bas) — et le padding bas de
+        // la colonne part avec lui : le dock replié ne masque JAMAIS le bas
+        // de l'éditeur, clavier ou pas.
         ViewCompat.setOnApplyWindowInsetsListener(binding.mainContent, (v, insets) -> {
-            if (insets.isVisible(WindowInsetsCompat.Type.ime())
-                    && dockBehavior.getState() != com.google.android.material
-                            .bottomsheet.BottomSheetBehavior.STATE_COLLAPSED) {
+            boolean clavier = insets.isVisible(WindowInsetsCompat.Type.ime());
+            int replié = getResources().getDimensionPixelSize(R.dimen.dock_replie_hauteur);
+            binding.colonnePrincipale.setPadding(0, 0, 0, clavier ? 0 : replié);
+            binding.dockSheet.setVisibility(clavier ? View.GONE : View.VISIBLE);
+            if (clavier && dockBehavior.getState() != com.google.android.material
+                    .bottomsheet.BottomSheetBehavior.STATE_COLLAPSED) {
                 dockBehavior.setState(com.google.android.material.bottomsheet
                         .BottomSheetBehavior.STATE_COLLAPSED);
             }
@@ -2197,14 +2578,25 @@ public class WorkbenchFragment extends Fragment
         } catch (RuntimeException racineInvalide) {
             return; // projet illisible : pas d'index, honnête.
         }
-        // Statut observable : le verdict va au journal d'activité (L10) et à
-        // la console (une ligne honnête, pas de spam de progression).
+        // Statut observable : la puce de la barre suit le pass (référence
+        // IndexStatusChip — visible PENDANT, verdict au journal/console/avis).
         index.observe(statut -> {
+            if (binding != null) {
+                binding.getRoot().post(() -> {
+                    if (binding == null) {
+                        return;
+                    }
+                    màjPuceIndex(statut);
+                });
+            }
             if (!statut.building() && binding != null) {
                 binding.getRoot().post(() -> {
                     if (binding == null || statut.stats().ms() <= 0) {
                         return;
                     }
+                    // Avis honnête si la passe s'est faite couper (référence).
+                    indexInterrompu = !statut.ready();
+                    rendreAvis();
                     consoleBuffer.line(ConsoleBuffer.Kind.INFO,
                             statut.ready()
                                     ? getString(R.string.atelier_index_pret,
@@ -2225,6 +2617,55 @@ public class WorkbenchFragment extends Fragment
             }
         });
         relancerIndexation();
+    }
+
+    /**
+     * Puce d'indexation (référence IndexStatusChip, barre compacte) : visible
+     * seulement pendant un pass — spinner + pourcentage — puis disparaît.
+     */
+    private void màjPuceIndex(jo.joide.index.IndexService.Status statut) {
+        if (!statut.building()) {
+            binding.indexChip.setVisibility(View.GONE);
+            return;
+        }
+        binding.indexChip.setVisibility(View.VISIBLE);
+        if (statut.fraction() >= 0 && statut.fraction() <= 1) {
+            binding.indexChipTexte.setText(getString(R.string.atelier_index_pourcent,
+                    (int) Math.round(statut.fraction() * 100)));
+        } else {
+            binding.indexChipTexte.setText(R.string.atelier_index_en_cours);
+        }
+    }
+
+    /** Détail de l'index (référence IndexStatusDialog) : phase, compteurs, réindexer. */
+    private void montrerDétailIndex() {
+        if (index == null) {
+            return;
+        }
+        jo.joide.index.IndexService.Status statut = index.status();
+        StringBuilder détail = new StringBuilder();
+        if (statut.message() != null && !statut.message().isBlank()) {
+            détail.append(statut.message()).append("\n\n");
+        }
+        if (statut.phase() != null) {
+            détail.append(statut.phase() == jo.joide.index.IndexService.Phase.LIBRAIRIES
+                    ? getString(R.string.atelier_index_dialogue_phase_librairies)
+                    : getString(R.string.atelier_index_dialogue_phase_sources))
+                    .append(" · ")
+                    .append(statut.processed()).append('/').append(statut.total())
+                    .append("\n");
+        }
+        détail.append(statut.ready()
+                ? getString(R.string.activite_index_pret, statut.stats().symboles(),
+                        statut.stats().classes())
+                : getString(R.string.atelier_index_interrompu));
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle(R.string.atelier_index_dialogue_titre)
+                .setMessage(détail.toString())
+                .setPositiveButton(R.string.atelier_index_dialogue_reindexer,
+                        (dialog, which) -> relancerIndexation())
+                .setNegativeButton(R.string.atelier_index_dialogue_fermer, null)
+                .show();
     }
 
     /** Une passe d'index sur le périmètre RÉEL du projet (L10). */
@@ -2309,7 +2750,42 @@ public class WorkbenchFragment extends Fragment
         binding.buildStateOk.setVisibility(View.GONE);
         binding.buildStateErr.setVisibility(View.GONE);
         binding.buildStateWarn.setVisibility(View.GONE);
+        // Fine ligne de progression sur le bord du dock (référence) + indice
+        // d'apprentissage : le premier build avec le dock replié fait sauter
+        // la barre (une fois, persisté) — le geste se découvre tout seul.
+        binding.dockProgression.setVisibility(View.VISIBLE);
+        binding.dockProgression.setIndeterminate(true);
+        montrerIndiceDock();
         renderDockBuildPill();
+    }
+
+    /**
+     * Indice du dock (référence BuildDock.hint) : une seule fois, si le dock
+     * est replié, la barre monte de 18dp et retombe — le geste se voit.
+     */
+    private void montrerIndiceDock() {
+        android.content.SharedPreferences préfs = requireContext()
+                .getSharedPreferences("joide.atelier", android.content.Context.MODE_PRIVATE);
+        if (préfs.getBoolean("dock_indice_vu", false)) {
+            return;
+        }
+        if (dockBehavior.getState() != com.google.android.material.bottomsheet
+                .BottomSheetBehavior.STATE_COLLAPSED) {
+            return;
+        }
+        préfs.edit().putBoolean("dock_indice_vu", true).apply();
+        android.animation.ValueAnimator saut =
+                android.animation.ValueAnimator.ofFloat(0f, 1f);
+        saut.setDuration(540);
+        saut.addUpdateListener(animation -> {
+            float t = (float) animation.getAnimatedValue();
+            // Montée douce, redescente amortie (220/320 ms comme la référence).
+            float montée = Math.min(1f, t / 0.4f);
+            float redescente = Math.max(0f, (t - 0.4f) / 0.6f);
+            float hauteur = (montée - montée * redescente) * dip(18);
+            binding.dockSheet.setTranslationY(-hauteur);
+        });
+        saut.start();
     }
 
     private void runGradleBuild() {
@@ -2413,6 +2889,8 @@ public class WorkbenchFragment extends Fragment
             buildActivity.set(false);
             lastBuildEnd = System.currentTimeMillis();
             lastBuildSuccess = false;
+            binding.dockProgression.setVisibility(View.GONE);
+            rendreAvis();
             consoleBuffer.line(ConsoleBuffer.Kind.ERROR,
                     failure.getMessage() != null ? failure.getMessage()
                             : String.valueOf(failure));
@@ -2866,6 +3344,8 @@ public class WorkbenchFragment extends Fragment
         buildActivity.set(false);
         lastBuildEnd = System.currentTimeMillis();
         lastBuildSuccess = finished.success();
+        binding.dockProgression.setVisibility(View.GONE);
+        rendreAvis();
         String duree = Durations.format(finished.durationMs(), Locale.getDefault());
         int taches = Math.max(buildTasksTotal, buildTaskCount);
         // Mort anormale du moteur (la session se clôt sans fin de build) :
@@ -2974,6 +3454,14 @@ public class WorkbenchFragment extends Fragment
             pill.setText(getString(R.string.dock_etat_pret));
             pill.setBackgroundResource(R.drawable.fond_pill_sc_highest);
             pill.setTextColor(getResources().getColor(R.color.sur_var));
+        }
+        // Ligne fine du bord : déterminée quand le total est connu (référence).
+        if (binding.dockProgression.getVisibility() == View.VISIBLE) {
+            binding.dockProgression.setIndeterminate(buildTasksTotal <= 0);
+            if (buildTasksTotal > 0) {
+                binding.dockProgression.setProgress(
+                        Math.round(buildTasksDone * 100f / buildTasksTotal));
+            }
         }
     }
 
@@ -3107,18 +3595,11 @@ public class WorkbenchFragment extends Fragment
                         .commit());
     }
 
-    /** Rendu chrome selon le mode : notice, chip, terminal (studio, modeEditor). */
+    /** Rendu chrome selon le mode : chip, avis unifiés, terminal (studio, modeEditor). */
     private void renderModeChrome(WorkMode mode) {
         binding.modeChip.setText(mode == WorkMode.GRADLE
                 ? getString(R.string.mode_gradle_nom) : getString(R.string.mode_forge_nom));
-        binding.modeNoticeBar.setVisibility(noticeDismissed ? View.GONE : View.VISIBLE);
-        binding.noticeClose.setOnClickListener(v -> {
-            noticeDismissed = true;
-            binding.modeNoticeBar.setVisibility(View.GONE);
-        });
-        binding.modeNotice.setText(mode == WorkMode.GRADLE
-                ? getString(R.string.atelier_notice_gradle)
-                : getString(R.string.atelier_notice_forge));
+        rendreAvis();
         // Onglets du dock selon le mode (studio, modeEditor) : Forge Console·
         // Problèmes·Journal·Logcat ; Gradle Console·Problèmes·Étapes·Terminal.
         rebuildDockTabs();
@@ -3140,6 +3621,130 @@ public class WorkbenchFragment extends Fragment
                 toast(getString(R.string.atelier_terminal_grise));
             }
         });
+    }
+
+    // ---- Bandeau unifié des avis (référence EditorNoticeStrip) ---------------
+
+    /** Un avis vivant : texte, action unique, masquable. */
+    private static final class Avis {
+        final String texte;
+        final String action;
+        final Runnable auClic;
+        final Runnable auMasquage;
+
+        Avis(String texte, String action, Runnable auClic, Runnable auMasquage) {
+            this.texte = texte;
+            this.action = action;
+            this.auClic = auClic;
+            this.auMasquage = auMasquage;
+        }
+    }
+
+    /**
+     * UN bandeau pour tous les avis du projet (référence EditorNoticeStrip) :
+     * un avis = sa rangée ; plusieurs = « N avis demandent votre attention »
+     * dépliable. Teinte alerte à 10 %, action à droite, croix pour masquer.
+     * Les avis sont RÉELS : notice du mode, index interrompu, build échoué.
+     */
+    private void rendreAvis() {
+        if (binding == null) {
+            return;
+        }
+        List<Avis> vivants = new ArrayList<>();
+        if (!noticeDismissed) {
+            vivants.add(new Avis(
+                    activeMode() == WorkMode.GRADLE
+                            ? getString(R.string.atelier_notice_gradle)
+                            : getString(R.string.atelier_notice_forge),
+                    null, null, () -> {
+                        noticeDismissed = true;
+                        rendreAvis();
+                    }));
+        }
+        if (indexInterrompu && !avisIndexMasqué) {
+            vivants.add(new Avis(getString(R.string.atelier_avis_index),
+                    null, null, () -> {
+                        avisIndexMasqué = true;
+                        rendreAvis();
+                    }));
+        }
+        if (lastBuildEnd > 0 && !lastBuildSuccess && !avisBuildMasqué) {
+            vivants.add(new Avis(
+                    getString(R.string.atelier_avis_build_echoue,
+                            Math.max(1, buildErrorCount)),
+                    getString(R.string.atelier_avis_action_console),
+                    () -> dockBehavior.setState(com.google.android.material.bottomsheet
+                            .BottomSheetBehavior.STATE_HALF_EXPANDED),
+                    () -> {
+                        avisBuildMasqué = true;
+                        rendreAvis();
+                    }));
+        }
+        if (vivants.isEmpty()) {
+            binding.noticeStrip.setVisibility(View.GONE);
+            return;
+        }
+        int teinte = getResources().getColor(R.color.alerte);
+        binding.noticeStrip.setVisibility(View.VISIBLE);
+        binding.noticeStrip.setBackgroundColor(
+                (teinte & 0x00FFFFFF) | 0x1A000000); // 10 % comme la référence
+        boolean plusieurs = vivants.size() > 1;
+        binding.noticeResume.setVisibility(plusieurs ? View.VISIBLE : View.GONE);
+        if (plusieurs) {
+            binding.noticeCompte.setText(
+                    getString(R.string.atelier_avis_plusieurs, vivants.size()));
+            binding.noticeCaret.setImageResource(avisDépliés
+                    ? R.drawable.ic_chevd : R.drawable.ic_chevr);
+            binding.noticeResume.setOnClickListener(v -> {
+                avisDépliés = !avisDépliés;
+                rendreAvis();
+            });
+        }
+        binding.noticeRangees.removeAllViews();
+        if (plusieurs && !avisDépliés) {
+            return; // replié : le résumé seul se voit (référence)
+        }
+        for (Avis avis : vivants) {
+            binding.noticeRangees.addView(rangéeAvis(avis));
+        }
+    }
+
+    /** Une rangée d'avis : texte (2 lignes max) · action · masquer. */
+    private View rangéeAvis(Avis avis) {
+        LinearLayout rangée = new LinearLayout(requireContext());
+        rangée.setOrientation(LinearLayout.HORIZONTAL);
+        rangée.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        rangée.setPadding(dip(14), dip(8), dip(6), dip(8));
+        TextView texte = new TextView(requireContext());
+        texte.setText(avis.texte);
+        texte.setTextSize(12.5f);
+        texte.setTextColor(getResources().getColor(R.color.sur_var));
+        texte.setMaxLines(2);
+        texte.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        rangée.addView(texte, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        if (avis.action != null && avis.auClic != null) {
+            TextView action = new TextView(requireContext());
+            action.setText(avis.action);
+            action.setTextSize(12.5f);
+            action.setTypeface(action.getTypeface(), android.graphics.Typeface.BOLD);
+            action.setTextColor(getResources().getColor(R.color.alerte));
+            action.setPadding(dip(8), dip(2), dip(8), dip(2));
+            action.setOnClickListener(v -> avis.auClic.run());
+            rangée.addView(action);
+        }
+        if (avis.auMasquage != null) {
+            ImageButton masquer = new ImageButton(requireContext());
+            masquer.setBackground(null);
+            masquer.setImageResource(R.drawable.ic_x);
+            masquer.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+            masquer.setColorFilter(getResources().getColor(R.color.sur_var));
+            masquer.setContentDescription(getString(R.string.option_atelier_masquer_notice));
+            masquer.setPadding(dip(6), dip(6), dip(6), dip(6));
+            masquer.setOnClickListener(v -> avis.auMasquage.run());
+            rangée.addView(masquer, new LinearLayout.LayoutParams(dip(32), dip(32)));
+        }
+        return rangée;
     }
 
     // ---- Journal --------------------------------------------------------------

@@ -1,15 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Menu d'options de la barre de l'éditeur (⋯). -->
+<!-- Menu d'options de la barre de l'éditeur (⋯), structuré comme la
+     référence (EditorOverflowMenu) : actions du fichier actif, puis les
+     bascules à état (agent, console, symboles, aperçu), puis la
+     navigation, et le mode en dernier. Le Run reste inline dans la
+     barre — jamais ici (référence). -->
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Actions du fichier actif -->
+    <item android:id="@+id/option_refaire" android:title="@string/option_atelier_refaire" />
+    <!-- Bascules (état coché rendu à l'ouverture) -->
+    <item android:id="@+id/option_agent_ia" android:title="@string/option_atelier_agent_ia"
+        android:checkable="true" />
+    <item android:id="@+id/option_console" android:title="@string/option_atelier_console"
+        android:checkable="true" />
+    <item android:id="@+id/option_symboles" android:title="@string/option_atelier_symboles"
+        android:checkable="true" />
+    <item android:id="@+id/option_apercu" android:title="@string/atelier_vue_apercu"
+        android:checkable="true" />
+    <!-- Navigation -->
     <item android:id="@+id/option_fichiers" android:title="@string/option_atelier_fichiers" />
+    <item android:id="@+id/option_recherche" android:title="@string/option_atelier_recherche" />
     <item android:id="@+id/option_modules" android:title="@string/option_atelier_modules" />
     <item android:id="@+id/option_activite" android:title="@string/option_atelier_activite" />
-    <item android:id="@+id/option_agent_ia" android:title="@string/option_atelier_agent_ia" />
-    <item android:id="@+id/option_console" android:title="@string/option_atelier_console" />
-    <item android:id="@+id/option_symboles" android:title="@string/option_atelier_symboles" />
-    <item android:id="@+id/option_mode" android:title="@string/option_atelier_mode" />
-    <item android:id="@+id/option_refaire" android:title="@string/option_atelier_refaire" />
-    <item android:id="@+id/option_construire" android:title="@string/option_atelier_construire" />
     <item android:id="@+id/option_terminal" android:title="@string/option_atelier_terminal" />
-    <item android:id="@+id/option_recherche" android:title="@string/option_atelier_recherche" />
+    <!-- Mode (référence : la variante ferme le menu) -->
+    <item android:id="@+id/option_mode" android:title="@string/option_atelier_mode" />
 </menu>

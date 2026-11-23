@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pilule de la puce d'indexation (référence IndexStatusChip :
+     conteneur_primaire, texte primaire) — visible pendant un pass. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@color/conteneur_primaire" />
+    <corners android:radius="13dp" />
+</shape>

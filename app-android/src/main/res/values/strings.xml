@@ -141,6 +141,12 @@
     <!-- Atelier : mode actif (chip, notice, visibilité selon le mode) -->
     <string name="atelier_notice_gradle">Mode Gradle actif · ce projet Forge s\'ouvre en lecture seule (capacités honnêtes du BuildBackend)</string>
     <string name="atelier_notice_forge">Mode Forge actif · chaud-rechargement disponible · terminal non fourni par ce mode</string>
+    <string name="atelier_avis_plusieurs">%1$d avis demandent votre attention</string>
+    <string name="atelier_avis_detail_montrer">Montrer les détails</string>
+    <string name="atelier_avis_detail_masquer">Masquer les détails</string>
+    <string name="atelier_avis_action_console">Ouvrir la console</string>
+    <string name="atelier_avis_index">Indexation interrompue · la recherche de symboles rend vide jusqu\'au prochain pass complet</string>
+    <string name="atelier_avis_build_echoue">Le dernier build a échoué · %1$d erreur(s)</string>
     <string name="atelier_terminal_grise">Terminal indisponible en mode Forge</string>
     <!-- Tiroir IA : états de conversation (studio HTML, onglet Chat IA) -->
     <string name="ia_etat_reflexion">En réflexion…</string>
@@ -196,8 +202,12 @@
     <string name="atelier_arborescence">Arborescence des fichiers</string>
     <string name="atelier_symbole_precedent">Symbole précédent</string>
     <string name="atelier_symbole_suivant">Symbole suivant</string>
+    <string name="atelier_nav_retour">Fichier précédent</string>
+    <string name="atelier_nav_avant">Fichier suivant</string>
     <string name="atelier_vue_code">Vue code</string>
     <string name="atelier_vue_apercu">Vue aperçu</string>
+    <string name="atelier_vue_scinde">Vue scindée (code et aperçu)</string>
+    <string name="atelier_fil_structure">Ouvrir la structure du fichier</string>
     <string name="atelier_recherche">Rechercher dans le projet</string>
     <string name="atelier_symboles">Barre de symboles</string>
     <string name="atelier_dock_badge">3</string>
@@ -285,7 +295,6 @@
     <!-- Menu d'options de la barre de l'éditeur -->
     <string name="option_atelier_fichiers">Fichiers du projet</string>
     <string name="option_atelier_agent_ia">Agent IA</string>
-    <string name="option_atelier_construire">Construire</string>
     <string name="option_atelier_terminal">Terminal</string>
     <string name="option_atelier_recherche">Rechercher</string>
     <string name="option_atelier_refaire">Rétablir</string>
@@ -294,6 +303,15 @@
     <string name="option_atelier_mode">Changer de mode</string>
     <string name="option_atelier_masquer_notice">Masquer la notice</string>
     <string name="dock_etat_pret">Prêt</string>
+    <string name="atelier_index_pourcent">Indexation · %1$d %%</string>
+    <string name="atelier_index_en_cours">Indexation…</string>
+    <string name="atelier_index_dialogue_titre">État de l\'index</string>
+    <string name="atelier_index_dialogue_reindexer">Réindexer</string>
+    <string name="atelier_index_dialogue_fermer">Fermer</string>
+    <string name="atelier_index_dialogue_phase_librairies">Phase librairies (classpath)</string>
+    <string name="atelier_index_dialogue_phase_sources">Phase sources du projet</string>
+    <string name="atelier_recents_titre">Récents</string>
+    <string name="atelier_recents_dossier">%1$s</string>
     <string name="git_sans_suivi">Aucune branche distante suivie</string>
     <string name="git_sync_bientot">Synchronisation distante : bientôt disponible</string>
     <!-- Tiroir gauche : arborescence (Lot 2) -->
@@ -518,12 +536,12 @@
     <string name="atelier_onglet_ignorer">Ignorer les modifications</string>
     <string name="atelier_onglet_fermer">Fermer</string>
     <string name="atelier_onglet_fermer_autres">Fermer les autres</string>
+    <string name="atelier_onglet_fermer_droite">Fermer à droite</string>
+    <string name="atelier_onglet_fermer_gauche">Fermer à gauche</string>
+    <string name="atelier_onglet_tout_fermer">Tout fermer</string>
+    <string name="atelier_onglets_debordement">Fichiers ouverts</string>
     <string name="atelier_onglet_autres_modifiees">%1$d autre(s) tampon(s) modifié(s) seront perdus</string>
     <string name="atelier_onglet_copier_chemin">Copier le chemin</string>
-    <string name="atelier_onglet_nouveau">Nouveau fichier</string>
-    <string name="atelier_onglet_nom_indice">nom du fichier (ex. Note.md)</string>
-    <string name="atelier_onglet_nom_invalide">Nom invalide ou déjà pris</string>
-    <string name="atelier_onglet_cree_ok">Créé et ouvert : %1$s</string>
     <string name="atelier_binaire_titre">Fichier binaire — non textuel</string>
     <string name="atelier_binaire_detail">%1$s · %2$s · l\'édition texte n\'a pas de sens ici</string>
     <string name="atelier_image_taille">%1$s · %2$d×%3$d</string>

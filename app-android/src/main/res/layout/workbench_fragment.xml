@@ -20,8 +20,11 @@
         android:layout_height="match_parent">
 
     <!-- Colonne principale : barre + onglets + fil d'Ariane + code (le dock
-         glisse par-dessus en bas, Behavior du panneau) -->
+         glisse par-dessus en bas, Behavior du panneau). Le padding bas réserve
+         la hauteur de la barre repliée du dock (référence : le dock replié ne
+         masque JAMAIS le bas de l'éditeur) — retiré pendant le clavier. -->
     <LinearLayout
+        android:id="@+id/colonne_principale"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
@@ -76,6 +79,37 @@
                     android:textColor="@color/sur_var"
                     android:textSize="11sp"
                     android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- Puce d'indexation (référence IndexStatusChip, compact : visible
+                 seulement pendant un pass — spinner + pourcentage, tap = détail) -->
+            <LinearLayout
+                android:id="@+id/index_chip"
+                android:layout_width="wrap_content"
+                android:layout_height="26dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/fond_pill_primaire"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:layout_marginEnd="6dp"
+                android:visibility="gone">
+
+                <ProgressBar
+                    android:id="@+id/index_chip_progress"
+                    android:layout_width="13dp"
+                    android:layout_height="13dp"
+                    android:indeterminate="true" />
+
+                <TextView
+                    android:id="@+id/index_chip_texte"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:textColor="@color/primaire"
+                    android:textSize="11.5sp"
+                    android:textStyle="bold"
+                    android:singleLine="true" />
             </LinearLayout>
 
             <TextView
@@ -144,59 +178,125 @@
                 app:tint="@color/sur_var" />
         </LinearLayout>
 
-        <!-- Notice de mode (v2 : bandeau sc2 masquable) -->
+        <!-- Bandeau unifié des avis (référence EditorNoticeStrip) : UN seul
+             bandeau pour tout — un avis = sa rangée ; plusieurs = « N avis »
+             dépliable. Teinte alerte 10 %, action à droite, masquable.
+             Remplace l'ancienne notice de mode seule. -->
         <LinearLayout
-            android:id="@+id/mode_notice_bar"
+            android:id="@+id/notice_strip"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="top"
-            android:background="@color/sc2"
-            android:paddingStart="14dp"
-            android:paddingEnd="8dp"
-            android:paddingTop="9dp"
-            android:paddingBottom="9dp"
+            android:orientation="vertical"
             android:visibility="gone">
 
-            <TextView
-                android:id="@+id/mode_notice"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textColor="@color/sur_sc2"
-                android:textSize="12.5sp"
-                android:lineSpacingMultiplier="1.1" />
-
-            <ImageButton
-                android:id="@+id/notice_close"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:background="@null"
-                android:contentDescription="@string/option_atelier_masquer_notice"
-                android:src="@drawable/ic_x"
-                android:scaleType="centerInside"
-                app:tint="@color/sur_sc2" />
-        </LinearLayout>
-
-        <!-- Onglets de fichiers 40dp (studio : 32dp sc2 + point alerte + x) -->
-        <HorizontalScrollView
-            android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:scrollbars="none"
-            android:background="@color/fond"
-            android:fillViewport="true">
-
+            <!-- Rangée résumé (plusieurs avis) -->
             <LinearLayout
-                android:id="@+id/files_tabs"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
+                android:id="@+id/notice_resume"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:paddingStart="12dp"
-                android:paddingEnd="8dp" />
-        </HorizontalScrollView>
+                android:paddingStart="14dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:visibility="gone">
 
-        <!-- Fil d'Ariane 34dp (studio : back/chevR + chemin mono + segment code/aperçu) -->
+                <ImageView
+                    android:id="@+id/notice_icone"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@drawable/ic_options"
+                    android:scaleType="centerInside"
+                    app:tint="@color/alerte" />
+
+                <TextView
+                    android:id="@+id/notice_compte"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:textColor="@color/alerte"
+                    android:textSize="12.5sp"
+                    android:textStyle="bold"
+                    android:singleLine="true"
+                    android:ellipsize="end" />
+
+                <ImageView
+                    android:id="@+id/notice_caret"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_chevr"
+                    android:scaleType="centerInside"
+                    app:tint="@color/alerte" />
+            </LinearLayout>
+
+            <!-- Les rangées d'avis (texte · action · masquer) -->
+            <LinearLayout
+                android:id="@+id/notice_rangees"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </LinearLayout>
+
+        <!-- Onglets de fichiers 40dp + chevron de débordement épinglé
+             (référence TabsStrip : LazyRow + chevron si débordement, hairline
+             sous la strip). Le chevron ouvre le menu de TOUS les fichiers. -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@color/fond">
+
+            <HorizontalScrollView
+                android:id="@+id/onglets_defile"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:scrollbars="none"
+                android:fillViewport="true">
+
+                <LinearLayout
+                    android:id="@+id/files_tabs"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="8dp" />
+            </HorizontalScrollView>
+
+            <!-- Filet séparant les onglets qui défilent du chevron épinglé -->
+            <View
+                android:id="@+id/onglets_sep"
+                android:layout_width="1dp"
+                android:layout_height="22dp"
+                android:background="@color/contour_var"
+                android:visibility="gone" />
+
+            <ImageButton
+                android:id="@+id/onglets_debordement"
+                style="@style/IconBtn"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginEnd="4dp"
+                android:contentDescription="@string/atelier_onglets_debordement"
+                android:src="@drawable/ic_chevd"
+                android:scaleType="centerInside"
+                app:tint="@color/sur_var"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- Hairline sous les onglets (référence : sous la strip, pas plus bas) -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/contour_var" />
+
+        <!-- Fil d'Ariane 34dp (référence BreadcrumbBar : flèches retour/avant
+             si historique, localisation qui suit le curseur — module › symboles
+             englobants — tap = Structure, segment code/aperçu/scindé à droite) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="34dp"
@@ -208,21 +308,23 @@
             android:baselineAligned="false">
 
             <ImageButton
+                android:id="@+id/fil_retour"
                 style="@style/IconBtn"
                 android:layout_width="34dp"
                 android:layout_height="34dp"
                 android:visibility="gone"
-                android:contentDescription="@string/atelier_symbole_precedent"
+                android:contentDescription="@string/atelier_nav_retour"
                 android:src="@drawable/ic_back"
                 android:scaleType="centerInside"
                 app:tint="@color/sur_var" />
 
             <ImageButton
+                android:id="@+id/fil_avant"
                 style="@style/IconBtn"
                 android:layout_width="34dp"
                 android:layout_height="34dp"
                 android:visibility="gone"
-                android:contentDescription="@string/atelier_symbole_suivant"
+                android:contentDescription="@string/atelier_nav_avant"
                 android:src="@drawable/ic_chevr"
                 android:scaleType="centerInside"
                 app:tint="@color/sur_var" />
@@ -266,13 +368,21 @@
                     android:src="@drawable/ic_wb"
                     android:scaleType="centerInside"
                     app:tint="@color/sur_var" />
+
+                <!-- Scindé (référence ViewModeToggle.Split) : code dessus,
+                     aperçu dessous — empilé sur téléphone. -->
+                <ImageButton
+                    android:id="@+id/segment_scinde"
+                    android:layout_width="30dp"
+                    android:layout_height="24dp"
+                    android:background="@null"
+                    android:contentDescription="@string/atelier_vue_scinde"
+                    android:src="@drawable/ic_scinde"
+                    android:scaleType="centerInside"
+                    app:tint="@color/sur_var"
+                    android:visibility="gone" />
             </LinearLayout>
         </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="@color/contour_var" />
 
         <!-- Zone code (studio : sc_lowest, mono 12.5, lignes numérotées ; céleris L5) -->
         <FrameLayout
@@ -294,7 +404,8 @@
                 android:padding="12dp" />
 
             <!-- État honnête : aucun fichier ouvert (preview : « ouvrez-en
-                 un depuis l'arbre ») — jamais une zone muette. -->
+                 un depuis l'arbre ») + fichiers récents (référence
+                 NoOpenFilesView : les 5 derniers, une tape pour rouvrir). -->
             <LinearLayout
                 android:id="@+id/etat_vide"
                 android:layout_width="match_parent"
@@ -325,6 +436,15 @@
                     android:text="@string/atelier_vide_detail"
                     android:textSize="12sp"
                     android:textColor="@color/contour" />
+
+                <!-- Récents (référence : rouvrir en une tape après tout fermer) -->
+                <LinearLayout
+                    android:id="@+id/etat_vide_recents"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:orientation="vertical"
+                    android:visibility="gone" />
             </LinearLayout>
         </FrameLayout>
 
@@ -341,8 +461,10 @@
     </LinearLayout>
 
     <!-- Dock à 3 detents (preview bottom-sheet : 60dp réduit → 60 % half →
-         plein). fitToContents=false : le plein s'arrête SOUS la toolbar
-         (offsetTop 52dp + onglets 40dp + fil d'Ariane 34dp = 126dp du haut).
+         PLEIN ÉCRAN comme la référence : la console couvre tout, seule la
+         poignée — ou un glissé — replie). La colonne principale réserve
+         dock_replie_hauteur en bas : replié, le dock ne masque jamais le bas
+         de l'éditeur.
          Console = rendu du ConsoleBuffer (lignes colorées par nature). -->
     <FrameLayout
         android:id="@+id/dock_sheet"
@@ -355,6 +477,18 @@
         app:behavior_hideable="false"
         app:behavior_skipCollapsed="false"
         app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
+
+        <!-- Fine ligne de progression sur le bord supérieur de la barre
+             repliée pendant un build (référence BuildDock : 2dp, accent) -->
+        <ProgressBar
+            android:id="@+id/dock_progression"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            android:layout_gravity="top"
+            android:max="100"
+            android:progress="0"
+            android:visibility="gone" />
 
         <LinearLayout
             android:layout_width="match_parent"
