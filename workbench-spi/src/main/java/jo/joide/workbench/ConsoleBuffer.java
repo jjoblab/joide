@@ -43,6 +43,8 @@ public final class ConsoleBuffer {
         INFO,
         /** Journal bavard, atténué. */
         DEBUG,
+        /** Ligne de vie composée par le MOTEUR (protocole 4) : tâche, verdict. */
+        LIFECYCLE,
         /** Avertissement. */
         WARNING,
         /** Erreur sans tâche fautive identifiée. */

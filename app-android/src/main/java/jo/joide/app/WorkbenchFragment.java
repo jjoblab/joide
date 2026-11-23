@@ -1494,6 +1494,29 @@ public class WorkbenchFragment extends Fragment
     /** Dernière progression vue (barre du dock « ◐ build · 3/12 »). */
     private int buildTasksDone;
 
+    /** Console composée par le MOTEUR (Forge v0.2.26, protocole 4 — décision
+     *  D-21) : les lignes reçues sont déjà rédigées et triées, l'atelier
+     *  AFFICHE et ne compose plus ses lignes de tâches ni son verdict (rien ne
+     *  double) ; faux face à un moteur plus ancien ou au mode Gradle (la
+     *  composition locale d'avant reste la règle). */
+    private volatile boolean consoleDuMoteur;
+
+    /** Niveau de console choisi (chips Essentiel/Détaillé/Tout) : l'ARGUMENT
+     *  envoyé au moteur avec la requête (l'équivalent des -q/-i/-d de Gradle —
+     *  le moteur trie à l'émission) ET le seuil d'affichage local (un build
+     *  lancé à un niveau ne peut que se RESSERRER en cours de route, jamais
+     *  s'élargir : ce que le moteur n'a pas émis n'existe plus). */
+    private BuildEvent.Log.Level niveauConsole = BuildEvent.Log.Level.LIFECYCLE;
+
+    /** Chips du niveau (même ordre que {@link #niveauxChips}). */
+    private final List<TextView> chipsNiveau = new ArrayList<>();
+
+    /** Niveau porté par chaque chip (Essentiel=LIFECYCLE, Détaillé=INFO, Tout=DEBUG). */
+    private final List<BuildEvent.Log.Level> niveauxChips = new ArrayList<>();
+
+    /** Dernière pulsation reçue (barre vivante « ◐ tâche · 45 s »), ou null. */
+    private BuildEvent.Heartbeat dernièrePulsation;
+
     /** Pied du résumé des problèmes (« 2 erreurs · 1 avertissement »). */
     private TextView problemsSummary;
 
@@ -1567,6 +1590,9 @@ public class WorkbenchFragment extends Fragment
         // L7 : tiroir IA de l'atelier (module ai, conception §8) — pastille pc du dock.
         binding.aiButton.setOnClickListener(v -> openAiDrawer());
         binding.dotsButtonDock.setOnClickListener(v -> toggleSymbolBar());
+        // Chips de niveau de console (Essentiel · Détaillé · Tout) : l'argument
+        // du moteur, présent avant les onglets — la console est leur cible.
+        setupConsoleFilter();
         // Onglets du mode actif, Console active (preview : 1er chip ON —
         // l'onglet des états vient AVANT les contenus).
         rebuildDockTabs();
@@ -1624,6 +1650,8 @@ public class WorkbenchFragment extends Fragment
         boolean gradle = activeMode() == WorkMode.GRADLE;
         binding.problemsSection.setVisibility(position == 1 ? View.VISIBLE : View.GONE);
         binding.consoleSection.setVisibility(position == 0 ? View.VISIBLE : View.GONE);
+        // Les chips de niveau vivent avec la console (elles la commandent).
+        binding.consoleFilterRow.setVisibility(position == 0 ? View.VISIBLE : View.GONE);
         binding.journalSection.setVisibility(
                 !gradle && position == 2 ? View.VISIBLE : View.GONE);
         binding.logcatSection.setVisibility(
@@ -1657,6 +1685,96 @@ public class WorkbenchFragment extends Fragment
         clipboard.setPrimaryClip(android.content.ClipData.newPlainText(
                 getString(R.string.section_console), note + consoleBuffer.plainText()));
         toast(getString(R.string.diagnostic_copie_ok));
+    }
+
+    // ---- Niveau de console (Essentiel · Détaillé · Tout — un ARGUMENT du
+    //      moteur, comme les -q/-i/-d de Gradle : le moteur trie à l'émission,
+    //      l'atelier demande ; le seuil local ne peut que resserrer) ---------
+
+    /** Fichier de préférences du niveau de console (mémorisé entre les runs). */
+    private static final String PRÉFÉRENCES_CONSOLE = "atelier_console";
+
+    /** Clé du niveau mémorisé. */
+    private static final String CLÉ_NIVEAU = "niveau";
+
+    /** Construit les chips de niveau (studio : chips 28dp, ON = sc2). Le choix
+     *  part avec la PROCHAINE requête de build ; le build courant ne peut que
+     *  se resserrer à l'affichage. */
+    private void setupConsoleFilter() {
+        chargerNiveauConsole();
+        BuildEvent.Log.Level[] niveaux = {
+                BuildEvent.Log.Level.LIFECYCLE,
+                BuildEvent.Log.Level.INFO,
+                BuildEvent.Log.Level.DEBUG };
+        int[] libellés = {
+                R.string.atelier_console_filtre_essentiel,
+                R.string.atelier_console_filtre_detaille,
+                R.string.atelier_console_filtre_tout };
+        chipsNiveau.clear();
+        niveauxChips.clear();
+        binding.consoleFilterRow.removeAllViews();
+        for (int i = 0; i < niveaux.length; i++) {
+            final BuildEvent.Log.Level niveau = niveaux[i];
+            TextView chip = new TextView(requireContext());
+            chip.setText(getString(libellés[i]));
+            chip.setTextSize(12.5f);
+            chip.setTypeface(chip.getTypeface(), android.graphics.Typeface.BOLD);
+            chip.setGravity(android.view.Gravity.CENTER);
+            chip.setPadding(dip(14), 0, dip(14), 0);
+            chip.setContentDescription(getString(R.string.atelier_console_filtre_cd)
+                    + " : " + getString(libellés[i]));
+            chip.setOnClickListener(v -> applyConsoleLevel(niveau));
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, dip(28));
+            params.rightMargin = dip(8);
+            chip.setLayoutParams(params);
+            chipsNiveau.add(chip);
+            niveauxChips.add(niveau);
+            binding.consoleFilterRow.addView(chip);
+        }
+        styliserChipsNiveau();
+    }
+
+    /** Applique le niveau choisi : mémorisé (prochaine requête) et seuil
+     *  d'affichage du build courant (resserré, jamais élargi). */
+    private void applyConsoleLevel(BuildEvent.Log.Level niveau) {
+        niveauConsole = niveau;
+        requireContext().getSharedPreferences(PRÉFÉRENCES_CONSOLE, Context.MODE_PRIVATE)
+                .edit().putString(CLÉ_NIVEAU, niveau.name()).apply();
+        styliserChipsNiveau();
+    }
+
+    /** Charge le niveau mémorisé (défaut : LIFECYCLE, la console de build
+     *  classique — lignes de tâches, verdict, avertissements, erreurs). */
+    private void chargerNiveauConsole() {
+        String mémorisé = requireContext()
+                .getSharedPreferences(PRÉFÉRENCES_CONSOLE, Context.MODE_PRIVATE)
+                .getString(CLÉ_NIVEAU, BuildEvent.Log.Level.LIFECYCLE.name());
+        try {
+            niveauConsole = BuildEvent.Log.Level.valueOf(mémorisé);
+        } catch (IllegalArgumentException inconnu) {
+            niveauConsole = BuildEvent.Log.Level.LIFECYCLE;
+        }
+    }
+
+    /** Une entrée de ce niveau s'affiche-t-elle ? (L'ordinal suit la sévérité :
+     *  DEBUG &lt; INFO &lt; LIFECYCLE &lt; WARNING &lt; ERROR — le seuil ne retient
+     *  que plus grave. Le moteur a déjà appliqué le niveau demandé à
+     *  l'émission ; ceci ne peut que RESSERRER l'affichage.) */
+    private boolean niveauAffiché(BuildEvent.Log.Level niveau) {
+        return niveau.ordinal() >= niveauConsole.ordinal();
+    }
+
+    /** Style des chips : la sélection prend le fond sc2 du studio. */
+    private void styliserChipsNiveau() {
+        for (int i = 0; i < chipsNiveau.size(); i++) {
+            TextView chip = chipsNiveau.get(i);
+            boolean on = niveauxChips.get(i) == niveauConsole;
+            chip.setBackground(getResources().getDrawable(
+                    on ? R.drawable.fond_chip_on : R.drawable.fond_chip));
+            chip.setTextColor(getResources().getColor(
+                    on ? R.color.sur_sc2 : R.color.sur));
+        }
     }
 
     // ---- Rendu de la console (preview bottom-sheet : lignes colorées par
@@ -1997,6 +2115,10 @@ public class WorkbenchFragment extends Fragment
         buildTasksTotal = 0;
         buildTasksDone = 0;
         buildRunning = true;
+        // Console inconnue jusqu'à preuve du contraire : la composition locale
+        // reste la règle ; le moteur protocole 4 la remplace à la session.
+        consoleDuMoteur = false;
+        dernièrePulsation = null;
         binding.buildStateOk.setVisibility(View.GONE);
         binding.buildStateErr.setVisibility(View.GONE);
         binding.buildStateWarn.setVisibility(View.GONE);
@@ -2043,13 +2165,19 @@ public class WorkbenchFragment extends Fragment
         consoleBuffer.header(getString(R.string.atelier_console_entete,
                 getString(R.string.mode_forge_nom), heure()));
         renderConsole();
-        forgeBackend.build(new BuildRequest(buildId, projectPath, false),
+        // Le niveau de console part AVEC la requête : un argument du moteur
+        // (l'équivalent des -q/-i/-d de Gradle) — c'est lui qui trie à l'émission.
+        forgeBackend.build(new BuildRequest(buildId, projectPath, false, niveauConsole),
                 this::onBuildEvent)
                 .whenComplete((session, failure) -> {
                     if (failure != null) {
                         // Moteur non installé ou lancement refusé : Console honnête,
                         // pas d'échec muet (l'installation du moteur est L8).
                         onBackendLaunchFailure(failure);
+                    } else if (session != null) {
+                        // Forge v0.2.26+ (protocole 4) : le moteur compose et trie
+                        // la console — l'atelier bascule en pur rendu (D-21).
+                        consoleDuMoteur = session.engineConsole();
                     }
                 });
     }
@@ -2080,14 +2208,40 @@ public class WorkbenchFragment extends Fragment
     }
 
     /** Événement de build → dock (Console pour le flux, Problèmes pour les
-     *  diagnostics, Étapes pour l'horloge des tâches ; pills d'état réelles). */
+     *  diagnostics, Étapes pour l'horloge des tâches ; pills d'état réelles).
+     *  Console du moteur (protocole 4) : les Log sont déjà composés et triés —
+     *  l'atelier affiche (au seuil demandé, resserré) et ne compose plus rien. */
     private void onBuildEvent(BuildEvent event) {
         if (!isAdded()) {
             return;
         }
         requireActivity().runOnUiThread(() -> {
             if (event instanceof BuildEvent.Log log) {
-                consoleBuffer.line(kindFor(log.level()), log.message());
+                // Lignes du moteur (protocole 4 : déjà rédigées et triées) ou
+                // journal brut (moteur ancien) — le seuil local ne peut que
+                // resserrer (l'essentiel du tri s'est fait à l'émission).
+                if (niveauAffiché(log.level())) {
+                    consoleBuffer.line(kindFor(log.level()), log.message());
+                }
+            } else if (event instanceof BuildEvent.Download téléchargement) {
+                // Moteur ancien : la ligne « ↓ fichier » est composée ici (INFO,
+                // comme le moteur de référence). Moteur protocole 4 : déjà
+                // composée par le moteur — l'événement structuré ne devient
+                // JAMAIS une seconde ligne.
+                if (!consoleDuMoteur && téléchargement.done()
+                        && niveauAffiché(BuildEvent.Log.Level.INFO)) {
+                    consoleBuffer.line(ConsoleBuffer.Kind.INFO, "↓ "
+                            + téléchargement.resource() + " ("
+                            + téléchargement.bytesDownloaded() / 1024 + " Kio)");
+                }
+            } else if (event instanceof BuildEvent.Heartbeat pulsation) {
+                // Ligne vivante de la BARRE (tâche longue vivante) — pas de
+                // ligne console : le moteur ne journalise pas ses pulsations,
+                // le silence d'avant restait la norme sur le canal du journal.
+                dernièrePulsation = pulsation;
+                if (buildRunning) {
+                    renderDockBuildPill();
+                }
             } else if (event instanceof BuildEvent.DiagnosticEvent diagnostic) {
                 addProblem(diagnostic.diagnostic());
             } else if (event instanceof BuildEvent.TaskState task) {
@@ -2110,13 +2264,16 @@ public class WorkbenchFragment extends Fragment
         return switch (level) {
             case DEBUG -> ConsoleBuffer.Kind.DEBUG;
             case INFO -> ConsoleBuffer.Kind.INFO;
+            case LIFECYCLE -> ConsoleBuffer.Kind.LIFECYCLE;
             case WARNING -> ConsoleBuffer.Kind.WARNING;
             case ERROR -> ConsoleBuffer.Kind.ERROR;
         };
     }
 
     /** Tâche du graphe : une ligne console (remplacée en place) et une rangée
-     *  d'étape (◐ devient ✔/✗/○) — durées réelles, jamais de « 2,4 » factice. */
+     *  d'étape (◐ devient ✔/✗/○) — durées réelles, jamais de « 2,4 » factice.
+     *  Console du moteur (protocole 4) : les lignes de tâches sont déjà
+     *  composées par le moteur — seule la rangée d'étape reste de l'atelier. */
     private void onTaskState(BuildEvent.TaskState task) {
         String name = task.task();
         String duree = task.durationMs() > 0
@@ -2124,14 +2281,14 @@ public class WorkbenchFragment extends Fragment
                 : "";
         switch (task.status()) {
             case STARTED -> {
-                consoleBuffer.task(name, ConsoleBuffer.Kind.TASK_RUNNING,
+                ligneTâche(name, ConsoleBuffer.Kind.TASK_RUNNING,
                         "◐ " + name + " " + getString(R.string.atelier_console_en_cours));
                 upsertStepRow(name, "◐",
                         getString(R.string.atelier_etape_debut, name),
                         R.color.info, R.color.info);
             }
             case SUCCEEDED -> {
-                consoleBuffer.task(name, ConsoleBuffer.Kind.TASK_OK,
+                ligneTâche(name, ConsoleBuffer.Kind.TASK_OK,
                         "✔ " + name + duree);
                 upsertStepRow(name, "✔",
                         task.durationMs() > 0
@@ -2142,21 +2299,21 @@ public class WorkbenchFragment extends Fragment
                         R.color.ok, R.color.sur);
             }
             case FAILED -> {
-                consoleBuffer.task(name, ConsoleBuffer.Kind.TASK_FAILED,
+                ligneTâche(name, ConsoleBuffer.Kind.TASK_FAILED,
                         "✗ " + name + " " + getString(R.string.atelier_console_echec) + duree);
                 upsertStepRow(name, "✗",
                         getString(R.string.atelier_etape_echouee, name),
                         R.color.erreur, R.color.erreur);
             }
             case SKIPPED -> {
-                consoleBuffer.task(name, ConsoleBuffer.Kind.TASK_SKIPPED,
+                ligneTâche(name, ConsoleBuffer.Kind.TASK_SKIPPED,
                         "○ " + name + " " + getString(R.string.atelier_console_eludee));
                 upsertStepRow(name, "○",
                         getString(R.string.atelier_etape_eludee, name),
                         R.color.contour, R.color.sur_var);
             }
             case UP_TO_DATE -> {
-                consoleBuffer.task(name, ConsoleBuffer.Kind.TASK_UP_TO_DATE,
+                ligneTâche(name, ConsoleBuffer.Kind.TASK_UP_TO_DATE,
                         "✔ " + name + " " + getString(R.string.atelier_console_a_jour));
                 upsertStepRow(name, "✔",
                         getString(R.string.atelier_etape_a_jour, name),
@@ -2168,6 +2325,15 @@ public class WorkbenchFragment extends Fragment
         // événements (STARTED + SUCCEEDED = UNE tâche, pas deux).
         if (task.status() != BuildEvent.TaskState.Status.STARTED) {
             buildTaskCount++;
+        }
+    }
+
+    /** Ligne de tâche en console — SAUF si le moteur compose déjà les siennes
+     *  (protocole 4 : rien ne double) ; les rangées d'étapes restent de
+     *  l'atelier dans tous les cas (événement structuré, pas console). */
+    private void ligneTâche(String name, ConsoleBuffer.Kind kind, String text) {
+        if (!consoleDuMoteur) {
+            consoleBuffer.task(name, kind, text);
         }
     }
 
@@ -2199,25 +2365,29 @@ public class WorkbenchFragment extends Fragment
 
     /** Fin de build : bilan (durée + tâches réelles), pills, barre du dock,
      *  résumé des problèmes ; échec → la feuille s'ouvre sur Problèmes,
-     *  réussite → la barre seule, jamais de vol de focus (preview). */
+     *  réussite → la barre seule, jamais de vol de focus (preview).
+     *  Console du moteur (protocole 4) : le verdict est DÉJÀ dans le journal
+     *  (ligne LIFECYCLE composée par le moteur) — pas de seconde ligne ici. */
     private void onBuildFinished(BuildEvent.Finished finished) {
         buildRunning = false;
         lastBuildEnd = System.currentTimeMillis();
         lastBuildSuccess = finished.success();
         String duree = Durations.format(finished.durationMs(), Locale.getDefault());
         int taches = Math.max(buildTasksTotal, buildTaskCount);
-        if (finished.success()) {
-            consoleBuffer.finished(ConsoleBuffer.Kind.SUCCESS,
-                    "✔ " + getString(R.string.atelier_console_reussi, duree, taches));
-        } else {
-            String fautive = finished.failedTask() != null
-                    ? " · " + getString(R.string.atelier_console_tache_fautive,
-                            finished.failedTask())
-                    : "";
-            consoleBuffer.finished(ConsoleBuffer.Kind.FAILURE,
-                    "✗ " + getString(R.string.atelier_console_echoue, duree) + fautive);
-            if (finished.message() != null && !finished.message().isBlank()) {
-                consoleBuffer.line(ConsoleBuffer.Kind.ERROR, finished.message());
+        if (!consoleDuMoteur) {
+            if (finished.success()) {
+                consoleBuffer.finished(ConsoleBuffer.Kind.SUCCESS,
+                        "✔ " + getString(R.string.atelier_console_reussi, duree, taches));
+            } else {
+                String fautive = finished.failedTask() != null
+                        ? " · " + getString(R.string.atelier_console_tache_fautive,
+                                finished.failedTask())
+                        : "";
+                consoleBuffer.finished(ConsoleBuffer.Kind.FAILURE,
+                        "✗ " + getString(R.string.atelier_console_echoue, duree) + fautive);
+                if (finished.message() != null && !finished.message().isBlank()) {
+                    consoleBuffer.line(ConsoleBuffer.Kind.ERROR, finished.message());
+                }
             }
         }
         renderBuildPills();
@@ -2261,10 +2431,18 @@ public class WorkbenchFragment extends Fragment
     private void renderDockBuildPill() {
         TextView pill = binding.dockBuildState;
         if (buildRunning) {
-            pill.setText(buildTasksTotal > 0
-                    ? getString(R.string.dock_etat_cours_nb, buildTasksDone,
-                            buildTasksTotal)
-                    : getString(R.string.dock_etat_cours));
+            if (dernièrePulsation != null) {
+                // Ligne vivante (protocole 3+) : la tâche longue qui travaille
+                // MAINTENANT, avec son âge — le silence n'est plus un plantage.
+                pill.setText("◐ " + dernièrePulsation.task() + " · "
+                        + Durations.format(dernièrePulsation.elapsedMs(),
+                                Locale.getDefault()));
+            } else {
+                pill.setText(buildTasksTotal > 0
+                        ? getString(R.string.dock_etat_cours_nb, buildTasksDone,
+                                buildTasksTotal)
+                        : getString(R.string.dock_etat_cours));
+            }
             pill.setBackgroundResource(R.drawable.fond_pill_info);
             pill.setTextColor(getResources().getColor(R.color.info));
         } else if (lastBuildEnd > 0 && lastBuildSuccess) {

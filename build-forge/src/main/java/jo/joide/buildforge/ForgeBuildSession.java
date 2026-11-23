@@ -80,6 +80,17 @@ final class ForgeBuildSession implements BuildSession {
         return finished;
     }
 
+    /**
+     * Forge v0.2.26 (protocole 4) : le moteur compose et TRIE lui-même la
+     * console (décision D-21) — la coquille affiche. Vrai dès que le moteur
+     * négocié parle le protocole 4 ; faux face à un moteur plus ancien (la
+     * composition locale d'avant reste la règle, rien ne double).
+     */
+    @Override
+    public boolean engineConsole() {
+        return engine.protocolVersion() >= 4;
+    }
+
     /** À la mort du moteur : clôt la session pour ne pas laisser l'atelier suspendu. */
     void onEngineDead() {
         if (!finished) {
@@ -89,8 +100,15 @@ final class ForgeBuildSession implements BuildSession {
         }
     }
 
-    /** Requête de build Forge pour ce projet (racine = dossier contenant forge.json). */
+    /** Requête de build Forge pour ce projet (racine = dossier contenant forge.json).
+     *
+     * <p>Le niveau de console est un ARGUMENT du moteur (protocole 4, équivalent
+     * des {@code -q/-i/-d} de Gradle) : le moteur n'émet sur le canal que les
+     * entrées dont la sévérité atteint ce niveau — le tri de référence se fait
+     * côté moteur, la coquille demande.</p>
+     */
     static BuildRequest forgeRequest(String buildId, String projectRoot, boolean clean,
+            jo.joide.workbench.BuildEvent.Log.Level consoleLevel,
             ForgeEngineManager.DeviceProfile device) {
         // Options fixées par la coquille (Forge) : parallélisme 2 comme la coquille
         // de Forge, mode basse mémoire sous 2,5 Go, ABI réelle pour les composants
@@ -99,6 +117,19 @@ final class ForgeBuildSession implements BuildSession {
                 && device.totalRamMb() < ForgeEngineManager.LOW_MEMORY_THRESHOLD_MB;
         return new BuildRequest(buildId, projectRoot,
                 new jo.forge.api.BuildOptions(2, lowMemory, false, false,
-                        device.totalRamMb(), device.abi()));
+                        device.totalRamMb(), device.abi(), niveauForge(consoleLevel)));
+    }
+
+    /** Le niveau de console de l'atelier, traduit en niveau du moteur. */
+    private static jo.forge.api.BuildEvent.LogEvent.LogLevel niveauForge(
+            jo.joide.workbench.BuildEvent.Log.Level niveau) {
+        return switch (niveau == null
+                ? jo.joide.workbench.BuildRequest.NIVEAU_PAR_DÉFAUT : niveau) {
+            case DEBUG -> jo.forge.api.BuildEvent.LogEvent.LogLevel.DEBUG;
+            case INFO -> jo.forge.api.BuildEvent.LogEvent.LogLevel.INFO;
+            case LIFECYCLE -> jo.forge.api.BuildEvent.LogEvent.LogLevel.LIFECYCLE;
+            case WARNING -> jo.forge.api.BuildEvent.LogEvent.LogLevel.WARN;
+            case ERROR -> jo.forge.api.BuildEvent.LogEvent.LogLevel.ERROR;
+        };
     }
 }

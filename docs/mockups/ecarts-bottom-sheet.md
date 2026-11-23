@@ -51,6 +51,20 @@
 | Problèmes : appui **ouvre le fichier à la ligne** | ⚠ **deux `setOnClickListener` se neutralisaient** : le dialogue « Expliquer avec l'agent IA » était écrasé, jamais atteignable | **corrigé** — appui : saut au fichier ; **appui long** : explication par l'agent |
 | Marqueurs par sévérité (✗/⚠/▸) | ✗/⚠ (INFO traité comme erreur) | **corrigé** |
 
+## 3bis · Niveau de console et console du moteur (Forge v0.2.26, protocole 4)
+
+> Décision D-21 de Forge : **le moteur compose et trie la console** (lignes de
+> tâches, verdict — niveau `LIFECYCLE`), exactement comme Gradle dicte ses
+> sorties. L'atelier demande (`consoleLevel`, l'équivalent des `-q/-i/-d`) et
+> **affiche** — il ne rédige plus.
+
+| Élément | Implémentation avant | Statut |
+|---|---|---|
+| Le **moteur** rédige les lignes de console (tâches, verdict, diagnostics, téléchargements) | ⚠ **JoIDE composait tout lui-même** (client Forge 0.2.25 : protocole 3, le moteur ne composait rien — deux consoles possibles qui divergent) | **corrigé** — client 0.2.26 : négociation protocole 4, l'atelier affiche les lignes `LIFECYCLE` reçues et **ne compose plus** ses lignes de tâches ni son verdict (rien ne double) ; repli automatique en composition locale face à un moteur plus ancien |
+| Chips de niveau **Essentiel · Détaillé · Tout** (au-dessus de la sortie) | ⚠ **aucun filtre** : tout s'affichait, quel que soit le niveau (et `DownloadEvent`/`HeartbeatEvent` tombaient en lignes `toString` brutes) | **corrigé** — chips persistées : le niveau part **avec la requête** (argument du moteur, le tri de référence se fait à l'émission) ; en cours de build, l'affichage ne peut que se **resserrer** — jamais s'élargir, ce que le moteur n'a pas émis n'existe plus (sémantique Gradle) |
+| Téléchargements et pulsations | lignes `DownloadEvent[buildId=…]` en DEBUG (bruit du repli du traducteur) | **corrigé** — événements propres du contrat (`Download`, `Heartbeat`) : moteur ancien → ligne « ↓ fichier (Kio) » en INFO ; moteur récent → rien (le moteur a déjà composé), la pulsation nourrit la **barre vivante** « ◐ tâche · 45 s » |
+| Niveau `LIFECYCLE` dans le contrat workbench | inexistant (`DEBUG/INFO/WARNING/ERROR`) | **corrigé** — `Level.LIFECYCLE` entre INFO et WARNING (sévérité ordonnée), nature de ligne dédiée, sévérité testée |
+
 ## 4 · Consigné
 
 - **Badge IA (compteur non lus)** : le « 3 » de la maquette reste codé — il
@@ -65,8 +79,11 @@
 
 ## 5 · Vérifications
 
-- `JOIDE_SKIP_ANDROID=1 ./gradlew test` : 298/298 verts, dont 22 nouveaux
-  (`ConsoleBufferTest` 13, `DurationsTest` 9) sur `workbench-spi`.
+- `JOIDE_SKIP_ANDROID=1 ./gradlew test` : 305/305 verts, dont 22 nouveaux
+  (`ConsoleBufferTest` 13, `DurationsTest` 9) sur `workbench-spi` et 7 sur le
+  niveau de console (`ForgeEventTranslatorTest` : LIFECYCLE, sévérité ordonnée,
+  Download/Heartbeat sans bruit, argument `consoleLevel` porté jusqu'aux
+  `BuildOptions` du moteur — moteur factice v0.2.26 en vrai processus).
 - Comptabilité des plages du rendu (mises à jour en place, élagage, note
   d'en-tête) vérifiée par 3000 opérations aléatoires hors Android
   (`scripts/verifie_plages_console.py` hors dépôt) : chaque plage vaut

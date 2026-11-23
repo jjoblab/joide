@@ -39,6 +39,19 @@ public final class ForgeEventTranslator {
             return new jo.joide.workbench.BuildEvent.Progress(
                     progress.tasksTotal(), progress.tasksDone());
         }
+        if (engineEvent instanceof BuildEvent.DownloadEvent download) {
+            // Protocole 4 : la ligne console « ↓ fichier » est composée par le
+            // moteur — l'événement structuré reste pour la représentation, il ne
+            // devient JAMAIS une seconde ligne (le repli toString d'avant faisait
+            // du bruit brut « DownloadEvent[...] » en console).
+            return new jo.joide.workbench.BuildEvent.Download(
+                    download.resource(), download.bytesDownloaded(),
+                    download.bytesTotal(), download.done());
+        }
+        if (engineEvent instanceof BuildEvent.HeartbeatEvent heartbeat) {
+            return new jo.joide.workbench.BuildEvent.Heartbeat(
+                    heartbeat.taskName(), heartbeat.message(), heartbeat.elapsedMs());
+        }
         if (engineEvent instanceof BuildEvent.BuildFinished finished) {
             return new jo.joide.workbench.BuildEvent.Finished(
                     finished.success(), finished.failedTask(),
@@ -65,6 +78,9 @@ public final class ForgeEventTranslator {
         return switch (forge) {
             case DEBUG -> jo.joide.workbench.BuildEvent.Log.Level.DEBUG;
             case INFO -> jo.joide.workbench.BuildEvent.Log.Level.INFO;
+            // Forge v0.2.26 (protocole 4) : les lignes de vie composées par le
+            // moteur — le niveau éponyme de Gradle, entre INFO et avertissement.
+            case LIFECYCLE -> jo.joide.workbench.BuildEvent.Log.Level.LIFECYCLE;
             case WARN -> jo.joide.workbench.BuildEvent.Log.Level.WARNING;
             case ERROR -> jo.joide.workbench.BuildEvent.Log.Level.ERROR;
         };

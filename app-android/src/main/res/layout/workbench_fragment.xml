@@ -567,6 +567,17 @@
                             android:background="@drawable/fond_sortie_dock" />
                     </ScrollView>
 
+                    <!-- Filtre de niveau de la console (Essentiel · Détaillé · Tout) :
+                         un ARGUMENT du moteur, comme les -q/-i/-d de Gradle —
+                         le moteur trie à l'émission, l'atelier demande. -->
+                    <LinearLayout
+                        android:id="@+id/console_filter_row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="8dp"
+                        android:visibility="gone" />
+
                     <!-- Console (sortie du build : lignes colorées par nature,
                          preview bottom-sheet — mono 10.5/1.75 sur sc_lowest) -->
                     <ScrollView

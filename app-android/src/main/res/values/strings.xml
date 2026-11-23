@@ -253,6 +253,12 @@
     <string name="atelier_console_echoue">build échoué · %1$s</string>
     <string name="atelier_console_tache_fautive">tâche fautive : %1$s</string>
     <string name="atelier_console_masquees">… %1$d lignes antérieures masquées</string>
+    <!-- Niveau de console : un ARGUMENT du moteur (protocole 4, D-21), comme
+         les -q/-i/-d de Gradle — le moteur trie à l'émission, l'atelier demande. -->
+    <string name="atelier_console_filtre_essentiel">Essentiel</string>
+    <string name="atelier_console_filtre_detaille">Détaillé</string>
+    <string name="atelier_console_filtre_tout">Tout</string>
+    <string name="atelier_console_filtre_cd">Niveau de console du build</string>
     <string name="atelier_etape_tache">%1$s — terminée en %2$s</string>
     <string name="atelier_etape_sans_duree">%1$s — terminée</string>
     <string name="atelier_etape_debut">%1$s — en cours…</string>

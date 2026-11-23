@@ -1,5 +1,5 @@
 // Module JVM pur : constructible et testable sans SDK Android.
-// Consomme Forge comme bibliothèque versionnée (ADR-001) : artefacts jo.forge 0.2.25
+// Consomme Forge comme bibliothèque versionnée (ADR-001) : artefacts jo.forge 0.2.26
 // publiés sur mavenLocal — publication Maven NATIVE depuis Forge v0.2.24
 // (./gradlew publishToMavenLocal dans le dépôt Forge ; tools/forge-mavenlocal.sh
 // reste utile aux checkouts plus anciens).
@@ -13,10 +13,10 @@ tasks.withType(Test).configureEach { useJUnitPlatform() }
 dependencies {
     api project(":workbench-spi")
     api project(":core-model")
-    api "jo.forge:api:0.2.25"
-    api "jo.forge:client:0.2.25"
-    api "jo.forge:setup:0.2.25"
-    testImplementation "jo.forge:engine:0.2.25" // moteur factice (--fake) : intégration JVM
+    api "jo.forge:api:0.2.26"
+    api "jo.forge:client:0.2.26"
+    api "jo.forge:setup:0.2.26"
+    testImplementation "jo.forge:engine:0.2.26" // moteur factice (--fake) : intégration JVM
     // Les modèles de création (core-store) sont validés contre le VRAI codec
     // du moteur Forge (ForgeTemplateModelTest) : un modèle qui ne se parserait
     // pas produirait un projet inconstructible (critère L4).

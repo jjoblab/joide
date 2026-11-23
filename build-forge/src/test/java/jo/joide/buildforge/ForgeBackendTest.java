@@ -55,11 +55,12 @@ class ForgeBackendTest {
         assertEquals(ForgeEngineManager.HEAP_MB, managerDoté.heapMb());
 
         // Les options du build suivent le profil : mode basse mémoire et ABI réelle.
-        var requêteModeste = ForgeBuildSession.forgeRequest("b", "/p", false, modeste);
+        // (Niveau null : LIFECYCLE, la console de build classique — protocole 4.)
+        var requêteModeste = ForgeBuildSession.forgeRequest("b", "/p", false, null, modeste);
         assertTrue(requêteModeste.options().lowMemory());
         assertEquals("arm64-v8a", requêteModeste.options().abi());
         assertEquals(2048, requêteModeste.options().totalRamMb());
-        var requêteDoté = ForgeBuildSession.forgeRequest("b", "/p", false, doté);
+        var requêteDoté = ForgeBuildSession.forgeRequest("b", "/p", false, null, doté);
         assertFalse(requêteDoté.options().lowMemory());
     }
 }

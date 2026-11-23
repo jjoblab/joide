@@ -144,7 +144,7 @@ public final class ForgeEngineManager {
                                 false, null, 0, "Le moteur Forge s'est arrêté")));
                 engine.startBuild(ForgeBuildSession.forgeRequest(
                         request.buildId(), request.projectRoot(), request.clean(),
-                        device)).get();
+                        request.consoleLevel(), device)).get();
                 return (BuildSession) new ForgeBuildSession(request.buildId(), engine);
             } catch (Exception e) {
                 throw new RuntimeException("Lancement du build Forge : " + e.getMessage(), e);
