@@ -11,6 +11,7 @@ import jo.joide.workbench.BuildRequest;
 import jo.joide.workbench.BuildSession;
 import jo.joide.workbench.Capabilities;
 import jo.joide.workbench.InstallState;
+import jo.joide.workbench.TaskInfo;
 import jo.joide.workbench.WorkMode;
 
 /**
@@ -92,6 +93,16 @@ public final class ForgeBackend implements BuildBackend {
     public CompletableFuture<BuildSession> build(BuildRequest request,
             Consumer<BuildEvent> consumer) {
         return engineManager.startBuild(request, consumer);
+    }
+
+    /**
+     * Le répertoire des tâches d'un projet (Forge v0.2.27+, protocole 5 — D-22) :
+     * le MOTEUR énumère ce qui peut tourner, l'atelier affiche. Une simple
+     * LECTURE — le moteur est jetable, la question s'arrête avec lui.
+     */
+    @Override
+    public CompletableFuture<List<TaskInfo>> listTasks(String projectRoot) {
+        return engineManager.listTasks(projectRoot);
     }
 
     /** Gestionnaire du moteur (assistant d'installation : manifeste, cache, états). */

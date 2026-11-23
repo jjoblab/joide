@@ -1,5 +1,6 @@
 package jo.joide.buildforge;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -106,9 +107,14 @@ final class ForgeBuildSession implements BuildSession {
      * des {@code -q/-i/-d} de Gradle) : le moteur n'émet sur le canal que les
      * entrées dont la sévérité atteint ce niveau — le tri de référence se fait
      * côté moteur, la coquille demande.</p>
+     *
+     * <p>La CIBLE du build (protocole 5, équivalent des arguments de gradlew) part
+     * avec la requête : la clôture des dépendances et les noms de cycle de vie
+     * ({@code assemble}, {@code clean}) se résolvent côté moteur ; la liste vide
+     * reste le graphe complet, la forme historique.</p>
      */
     static BuildRequest forgeRequest(String buildId, String projectRoot, boolean clean,
-            jo.joide.workbench.BuildEvent.Log.Level consoleLevel,
+            jo.joide.workbench.BuildEvent.Log.Level consoleLevel, List<String> tasks,
             ForgeEngineManager.DeviceProfile device) {
         // Options fixées par la coquille (Forge) : parallélisme 2 comme la coquille
         // de Forge, mode basse mémoire sous 2,5 Go, ABI réelle pour les composants
@@ -117,7 +123,8 @@ final class ForgeBuildSession implements BuildSession {
                 && device.totalRamMb() < ForgeEngineManager.LOW_MEMORY_THRESHOLD_MB;
         return new BuildRequest(buildId, projectRoot,
                 new jo.forge.api.BuildOptions(2, lowMemory, false, false,
-                        device.totalRamMb(), device.abi(), niveauForge(consoleLevel)));
+                        device.totalRamMb(), device.abi(), niveauForge(consoleLevel),
+                        tasks));
     }
 
     /** Le niveau de console de l'atelier, traduit en niveau du moteur. */

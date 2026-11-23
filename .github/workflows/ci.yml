@@ -26,13 +26,13 @@ jobs:
           ./tools/check-deps.sh
           ./tools/check-cablage-ia.sh
           ./tools/check-cablage-tiroir.sh
-      - name: Forge v0.2.26 vers mavenLocal (ADR-001, F-01 livré partie locale)
+      - name: Forge v0.2.27 vers mavenLocal (ADR-001, F-01 livré partie locale)
         run: |
           # Forge publie nativement ses modules bibliothèque depuis v0.2.24
           # (maven-publish embarqué) — plus d'injection par script d'initialisation.
-          # v0.2.26 : protocole 4 (console du moteur, D-21) — le traducteur de
+          # v0.2.27 : protocoles 4-5 (console + répertoire du moteur, D-21/D-22) — le traducteur de
           # JoIDE consomme LIFECYCLE et BuildOptions porte consoleLevel.
-          git clone --depth 1 --branch v0.2.26 https://github.com/jjoblab/forge.git /tmp/forge
+          git clone --depth 1 --branch v0.2.27 https://github.com/jjoblab/forge.git /tmp/forge
           cd /tmp/forge && ./gradlew --no-daemon publishToMavenLocal
       - name: Tests du coeur JVM (Forge integre, sans SDK Android)
         run: |
@@ -57,9 +57,9 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Forge v0.2.26 vers mavenLocal (ADR-001)
+      - name: Forge v0.2.27 vers mavenLocal (ADR-001)
         run: |
-          git clone --depth 1 --branch v0.2.26 https://github.com/jjoblab/forge.git /tmp/forge
+          git clone --depth 1 --branch v0.2.27 https://github.com/jjoblab/forge.git /tmp/forge
           cd /tmp/forge && ./gradlew --no-daemon publishToMavenLocal
       - name: APK signe (cle stable des secrets)
         env:

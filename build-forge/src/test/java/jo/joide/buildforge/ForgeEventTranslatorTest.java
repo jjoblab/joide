@@ -74,16 +74,18 @@ class ForgeEventTranslatorTest {
         // Gradle) : la requête Forge doit le porter jusqu'à BuildOptions.
         jo.forge.api.BuildRequest requête = ForgeBuildSession.forgeRequest("b1",
                 "/projets/demo", false,
-                jo.joide.workbench.BuildEvent.Log.Level.DEBUG,
+                jo.joide.workbench.BuildEvent.Log.Level.DEBUG, null,
                 new ForgeEngineManager.DeviceProfile("arm64-v8a", 4096));
         assertEquals(jo.forge.api.BuildEvent.LogEvent.LogLevel.DEBUG,
                 requête.options().consoleLevel());
         assertEquals(true, requête.options().verbose(),
                 "verbose suit le niveau : DEBUG => bavard");
+        assertEquals(java.util.List.of(), requête.options().tasks(),
+                "sans cible, le graphe complet (la forme historique)");
 
         jo.forge.api.BuildRequest essentielle = ForgeBuildSession.forgeRequest("b2",
                 "/projets/demo", false,
-                jo.joide.workbench.BuildEvent.Log.Level.LIFECYCLE,
+                jo.joide.workbench.BuildEvent.Log.Level.LIFECYCLE, null,
                 new ForgeEngineManager.DeviceProfile("arm64-v8a", 4096));
         assertEquals(jo.forge.api.BuildEvent.LogEvent.LogLevel.LIFECYCLE,
                 essentielle.options().consoleLevel());
@@ -91,18 +93,32 @@ class ForgeEventTranslatorTest {
     }
 
     @Test
+    void forgeRequestCarriesTheTargetAsAnEngineArgument() {
+        // La CIBLE du build (protocole 5, les arguments de gradlew) part avec la
+        // requête : la clôture se calcule côté moteur, jamais côté atelier.
+        jo.forge.api.BuildRequest requête = ForgeBuildSession.forgeRequest("b6",
+                "/projets/demo", false,
+                jo.joide.workbench.BuildEvent.Log.Level.LIFECYCLE,
+                java.util.List.of("app:compileJava", "clean"),
+                new ForgeEngineManager.DeviceProfile("arm64-v8a", 4096));
+        assertEquals(java.util.List.of("app:compileJava", "clean"),
+                requête.options().tasks(),
+                "la cible demandée part telle quelle vers le moteur");
+    }
+
+    @Test
     void forgeRequestDefaultsToLifecycleAndKeepsTheDeviceProfile() {
         // Niveau absent (chips jamais touchées, requête historique) : LIFECYCLE,
         // la console de build classique ; l'ABI et le mode mémoire suivent.
         jo.forge.api.BuildRequest défaut = ForgeBuildSession.forgeRequest("b3",
-                "/projets/demo", false, null,
+                "/projets/demo", false, null, null,
                 new ForgeEngineManager.DeviceProfile("arm64-v8a", 4096));
         assertEquals(jo.forge.api.BuildEvent.LogEvent.LogLevel.LIFECYCLE,
                 défaut.options().consoleLevel());
         assertEquals("arm64-v8a", défaut.options().abi());
 
         jo.forge.api.BuildRequest basse = ForgeBuildSession.forgeRequest("b4",
-                "/projets/demo", false, null,
+                "/projets/demo", false, null, null,
                 new ForgeEngineManager.DeviceProfile("arm64-v8a", 2048));
         assertEquals(true, basse.options().lowMemory(),
                 "sous 2,5 Go : le moteur reçoit le mode basse mémoire");

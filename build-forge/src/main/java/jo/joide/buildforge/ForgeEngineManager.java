@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import jo.forge.api.BuildStarted;
@@ -144,13 +145,64 @@ public final class ForgeEngineManager {
                                 false, null, 0, "Le moteur Forge s'est arrêté")));
                 engine.startBuild(ForgeBuildSession.forgeRequest(
                         request.buildId(), request.projectRoot(), request.clean(),
-                        request.consoleLevel(), device)).get();
+                        request.consoleLevel(), request.tasks(), device)).get();
                 return (BuildSession) new ForgeBuildSession(request.buildId(), engine);
             } catch (Exception e) {
                 throw new RuntimeException("Lancement du build Forge : " + e.getMessage(), e);
             }
         }, Executors.newSingleThreadExecutor(r -> {
             Thread t = new Thread(r, "forge-build-" + request.buildId());
+            t.setDaemon(true);
+            return t;
+        }));
+    }
+
+    /**
+     * Le répertoire des tâches d'un projet (Forge v0.2.27+, protocole 5 — D-22) :
+     * lance un moteur JETABLE, pose la question, s'arrête proprement. Une LECTURE —
+     * rien ne s'exécute, aucun événement de build : le moteur énumère ce qui peut
+     * tourner (concrets + cycle de vie), l'atelier affiche.
+     *
+     * <p>Face à un moteur plus ancien (protocole < 5), le client refuse AVANT
+     * d'émettre (une trame inconnue tuerait son lecteur) : l'échec porte le
+     * remède (mettre le moteur à jour).</p>
+     *
+     * @param projectRoot racine du projet (dossier contenant forge.json).
+     * @return le futur des descripteurs de tâches (traduits pour l'atelier).
+     */
+    public CompletableFuture<List<jo.joide.workbench.TaskInfo>> listTasks(
+            String projectRoot) {
+        if (installed == null) {
+            return CompletableFuture.failedFuture(new IllegalStateException(
+                    "Moteur Forge non installé : lancez l'installation d'abord"));
+        }
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                VmSpec spec = specFor(installer.home(), installed, heapMb());
+                EngineClient engine = EngineClient.launch(launcher, spec, "joide-0.1.0",
+                        event -> { }, () -> { });
+                try {
+                    return engine.tasks(projectRoot).get(60, TimeUnit.SECONDS)
+                            .tasks().stream()
+                            .map(d -> new jo.joide.workbench.TaskInfo(d.name(), d.group(),
+                                    d.description(), d.dependencies(), d.lifecycle()))
+                            .toList();
+                } finally {
+                    // Moteur jetable : arrêt poli, tolerant (la réponse est déjà
+                    // livrée — la mort propre du moteur n'est pas un échec de la
+                    // question).
+                    try {
+                        engine.shutdown().get(10, TimeUnit.SECONDS);
+                    } catch (Exception mortPolieIgnorée) {
+                        engine.kill();
+                    }
+                }
+            } catch (Exception e) {
+                throw new RuntimeException("Répertoire de tâches Forge : "
+                        + e.getMessage(), e);
+            }
+        }, Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "forge-tâches");
             t.setDaemon(true);
             return t;
         }));

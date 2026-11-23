@@ -1600,15 +1600,18 @@ public class WorkbenchFragment extends Fragment
         renderDockBuildPill();
     }
 
-    /** Onglets du dock selon le mode (preview : Forge Console/Gradle Console·
-     *  Problèmes·Journal·Logcat, ou ·Étapes·Terminal) : chips 32dp. */
+    /** Onglets du dock selon le mode (preview : Forge Console·Problèmes·Étapes·
+     *  Journal·Logcat — Étapes ouvre le répertoire des tâches du moteur au repos,
+     *  l'horloge des tâches en build ; Gradle Console·Problèmes·Étapes·Terminal) :
+     *  chips 32dp. */
     private void rebuildDockTabs() {
         boolean gradle = activeMode() == WorkMode.GRADLE;
         int[] labels = gradle
                 ? new int[]{R.string.section_console_gradle, R.string.section_problemes,
                         R.string.section_etapes, R.string.terminal_titre}
                 : new int[]{R.string.section_console_forge, R.string.section_problemes,
-                        R.string.section_journal, R.string.section_logcat};
+                        R.string.section_etapes, R.string.section_journal,
+                        R.string.section_logcat};
         binding.dockTabs.removeAllViews();
         for (int i = 0; i < labels.length; i++) {
             TextView chip = new TextView(requireContext());
@@ -1643,24 +1646,27 @@ public class WorkbenchFragment extends Fragment
         }
     }
 
-    /** Section visible du dock (studio : chips 32dp, ON = sc2) et contenus réels. */
+    /** Section visible du dock (studio : chips 32dp, ON = sc2) et contenus réels.
+     *  Forge : Console·Problèmes·Étapes·Journal·Logcat (Étapes = répertoire du
+     *  moteur au repos — D-22 —, horloge en build) ; Gradle : le terminal ouvre
+     *  l'écran dédié en 4e. */
     private void showDockSection(int position) {
         // Sections dans l'ordre des onglets du mode courant (Gradle : Terminal
-        // en 3e ouvre l'écran terminal ; Forge : Logcat honnête).
+        // en 4e ouvre l'écran terminal ; Forge : Journal·Logcat en 4e·5e).
         boolean gradle = activeMode() == WorkMode.GRADLE;
         binding.problemsSection.setVisibility(position == 1 ? View.VISIBLE : View.GONE);
         binding.consoleSection.setVisibility(position == 0 ? View.VISIBLE : View.GONE);
         // Les chips de niveau vivent avec la console (elles la commandent).
         binding.consoleFilterRow.setVisibility(position == 0 ? View.VISIBLE : View.GONE);
         binding.journalSection.setVisibility(
-                !gradle && position == 2 ? View.VISIBLE : View.GONE);
-        binding.logcatSection.setVisibility(
                 !gradle && position == 3 ? View.VISIBLE : View.GONE);
-        if (gradle) {
-            // Étapes : rangées d'horloge des tâches du build (réelles).
-            binding.stepsSection.setVisibility(position == 2 ? View.VISIBLE : View.GONE);
-        } else {
-            binding.stepsSection.setVisibility(View.GONE);
+        binding.logcatSection.setVisibility(
+                !gradle && position == 4 ? View.VISIBLE : View.GONE);
+        // Étapes : rangées d'horloge des tâches du build (réelles) ; au repos en
+        // mode Forge, le RÉPERTOIRE du moteur (protocole 5) — touche = exécution.
+        binding.stepsSection.setVisibility(position == 2 ? View.VISIBLE : View.GONE);
+        if (!gradle && position == 2 && !buildRunning) {
+            chargerRépertoireSiVide();
         }
         // Chips : la sélection reprend le fond sc2 du studio.
         for (int i = 0; i < binding.dockTabs.getChildCount(); i++) {
@@ -2087,8 +2093,14 @@ public class WorkbenchFragment extends Fragment
                 ? choice.chosenMode() : WorkMode.FORGE;
     }
 
-    /** Le build suit le mode actif : Forge par le moteur, Gradle dans le terminal. */
+    /** Le build suit le mode actif : Forge par le moteur, Gradle dans le terminal.
+     *  Cible vide : tout le graphe ; cible nommée : la tâche demandée (protocole 5). */
     private void runBuild() {
+        runBuild(List.of());
+    }
+
+    /** Build ciblé (une tâche du répertoire du moteur — D-22) ou complet. */
+    private void runBuild(List<String> cible) {
         // Nouveau build : les diagnostics rendus à l'agent repartent de zéro.
         lastDiagnostics.clear();
         lastStructuredDiagnostics.clear();
@@ -2096,7 +2108,7 @@ public class WorkbenchFragment extends Fragment
         if (activeMode() == WorkMode.GRADLE) {
             runGradleBuild();
         } else {
-            runForgeBuild();
+            runForgeBuild(cible);
         }
     }
 
@@ -2143,31 +2155,41 @@ public class WorkbenchFragment extends Fragment
                 });
     }
 
-    private void runForgeBuild() {
-        if (forgeBackend == null) {
-            // Lanceur APPAREIL (app_process + ART) — jamais le lanceur JVM (le binaire
-            // java n'existe pas sur Android) — et profil réel (ABI, RAM) : le moteur
-            // en a besoin pour ses composants natifs et son budget mémoire.
-            android.app.ActivityManager mémoire = (android.app.ActivityManager)
-                    requireContext().getSystemService(Context.ACTIVITY_SERVICE);
-            android.app.ActivityManager.MemoryInfo infos =
-                    new android.app.ActivityManager.MemoryInfo();
-            mémoire.getMemoryInfo(infos);
-            forgeBackend = new ForgeBackend(
-                    requireContext().getFilesDir().toPath().resolve("forge"),
-                    new jo.forge.client.DeviceVmLauncher(),
-                    new jo.joide.buildforge.ForgeEngineManager.DeviceProfile(
-                            Build.SUPPORTED_ABIS.length > 0
-                                    ? Build.SUPPORTED_ABIS[0] : "all",
-                            infos.totalMem / (1024L * 1024L)));
+    /** Fabrique (une fois) le backend Forge avec le profil RÉEL de l'appareil. */
+    private void assurerForgeBackend() {
+        if (forgeBackend != null) {
+            return;
         }
+        // Lanceur APPAREIL (app_process + ART) — jamais le lanceur JVM (le binaire
+        // java n'existe pas sur Android) — et profil réel (ABI, RAM) : le moteur
+        // en a besoin pour ses composants natifs et son budget mémoire.
+        android.app.ActivityManager mémoire = (android.app.ActivityManager)
+                requireContext().getSystemService(Context.ACTIVITY_SERVICE);
+        android.app.ActivityManager.MemoryInfo infos =
+                new android.app.ActivityManager.MemoryInfo();
+        mémoire.getMemoryInfo(infos);
+        forgeBackend = new ForgeBackend(
+                requireContext().getFilesDir().toPath().resolve("forge"),
+                new jo.forge.client.DeviceVmLauncher(),
+                new jo.joide.buildforge.ForgeEngineManager.DeviceProfile(
+                        Build.SUPPORTED_ABIS.length > 0
+                                ? Build.SUPPORTED_ABIS[0] : "all",
+                        infos.totalMem / (1024L * 1024L)));
+    }
+
+    private void runForgeBuild(List<String> cible) {
+        assurerForgeBackend();
         String buildId = "joide-" + System.currentTimeMillis();
         consoleBuffer.header(getString(R.string.atelier_console_entete,
-                getString(R.string.mode_forge_nom), heure()));
+                getString(R.string.mode_forge_nom), heure())
+                + (cible.isEmpty() ? "" : " · " + getString(R.string.atelier_console_cible,
+                        String.join(" ", cible))));
         renderConsole();
         // Le niveau de console part AVEC la requête : un argument du moteur
         // (l'équivalent des -q/-i/-d de Gradle) — c'est lui qui trie à l'émission.
-        forgeBackend.build(new BuildRequest(buildId, projectPath, false, niveauConsole),
+        // La CIBLE (protocole 5) part aussi : la clôture se calcule côté moteur.
+        forgeBackend.build(new BuildRequest(buildId, projectPath, false, niveauConsole,
+                        cible),
                 this::onBuildEvent)
                 .whenComplete((session, failure) -> {
                     if (failure != null) {
@@ -2335,6 +2357,80 @@ public class WorkbenchFragment extends Fragment
         if (!consoleDuMoteur) {
             consoleBuffer.task(name, kind, text);
         }
+    }
+
+    // ---- Répertoire des tâches (protocole 5, D-22 : le moteur énumère) ------
+
+    /** Répertoire des tâches du moteur pour le projet courant (null : inconnu). */
+    private List<jo.joide.workbench.TaskInfo> répertoireTâches;
+
+    /** Répertoire déjà demandé pour ce projet (une demande, jamais en plein build). */
+    private boolean répertoireDemandé;
+
+    /** Étapes au repos en mode Forge : le RÉPERTOIRE du moteur (D-22) — la
+     *  coquille affiche, elle ne devine plus ; une rangée touchée lance le build
+     *  CIBLÉ (la clôture des dépendances se calcule côté moteur). L'horloge d'un
+     *  build en cours prime toujours sur le répertoire ; l'historique d'un build
+     *  terminé n'est jamais remplacé par la liste. */
+    private void chargerRépertoireSiVide() {
+        if (buildRunning || répertoireDemandé || projectPath == null) {
+            return;
+        }
+        if (binding.stepsList.getChildCount() > 0 || !stepRows.isEmpty()) {
+            return;
+        }
+        assurerForgeBackend();
+        répertoireDemandé = true;
+        StepRow attente = stepRow("…",
+                getString(R.string.atelier_etapes_repertoire),
+                R.color.info, R.color.sur_var);
+        binding.stepsList.addView(attente.row);
+        forgeBackend.listTasks(projectPath).whenComplete((tâches, échec) -> {
+            if (!isAdded()) {
+                return;
+            }
+            requireActivity().runOnUiThread(() -> {
+                if (buildRunning) {
+                    return; // un build a démarré entre-temps : son horloge prime.
+                }
+                binding.stepsList.removeAllViews();
+                stepRows.clear();
+                if (échec != null) {
+                    StepRow refus = stepRow("○",
+                            getString(R.string.atelier_etapes_indisponible,
+                                    messageDe(échec)),
+                            R.color.contour, R.color.sur_var);
+                    binding.stepsList.addView(refus.row);
+                    return;
+                }
+                répertoireTâches = tâches;
+                for (jo.joide.workbench.TaskInfo tâche : tâches) {
+                    boolean cycle = tâche.lifecycle();
+                    StepRow rangée = stepRow(cycle ? "◐" : "○",
+                            tâche.name() + (tâche.description().isEmpty()
+                                    ? "" : " — " + tâche.description()),
+                            cycle ? R.color.info : R.color.sur_var,
+                            cycle ? R.color.info : R.color.sur);
+                    rangée.row.setOnClickListener(v -> {
+                        if (!buildRunning) {
+                            toast(getString(R.string.atelier_etape_lancee,
+                                    tâche.name()));
+                            runBuild(List.of(tâche.name()));
+                        }
+                    });
+                    binding.stepsList.addView(rangée.row);
+                }
+            });
+        });
+    }
+
+    /** Message le plus profond d'un échec asynchrone (la cause utile, pas l'enveloppe). */
+    private static String messageDe(Throwable échec) {
+        Throwable cause = échec;
+        while (cause.getCause() != null && cause.getCause() != cause) {
+            cause = cause.getCause();
+        }
+        return cause.getMessage() != null ? cause.getMessage() : String.valueOf(cause);
     }
 
     /** Rangée d'étape vivante : créée au démarrage, remplacée au terminal. */

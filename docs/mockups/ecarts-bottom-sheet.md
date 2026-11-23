@@ -73,7 +73,14 @@
 - **Logcat** : état honnête « nécessite adb » (preview : décor) — inchangé,
   câblage au lot diagnostic appareil.
 - **Onglets Étapes/Logcat par mode** : conformes (Gradle : Étapes + Terminal
-  réel ; Forge : Journal + Logcat honnête).
+  réel ; Forge : Journal + Logcat honnête). **Évolué (D-22, Forge v0.2.27)** :
+  le mode Forge gagne l'onglet Étapes (Console·Problèmes·Étapes·Journal·
+  Logcat) — au REPOS il montre le **répertoire des tâches du moteur**
+  (`TASKS_REQUEST`, protocole 5 : le moteur énumère, l'atelier affiche, une
+  rangée touchée lance le build CIBLÉ — la clôture se calcule côté moteur) ;
+  en build, l'horloge vivante des tâches comme toujours. Moteur plus ancien
+  (protocole < 5) : rangée honnête « Répertoire indisponible — mettez le
+  moteur à jour », rien ne casse.
 - La démo interactive HTML (92 → 275 → 434 px) illustre ; l'application
   utilise les détents réels du `BottomSheetBehavior` — pas de hauteur magique.
 

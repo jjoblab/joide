@@ -265,6 +265,10 @@
     <string name="atelier_etape_a_jour">%1$s — à jour</string>
     <string name="atelier_etape_eludee">%1$s — éludée</string>
     <string name="atelier_etape_echouee">%1$s — échouée</string>
+    <string name="atelier_etape_lancee">Exécution de %1$s…</string>
+    <string name="atelier_etapes_repertoire">Tâches du projet (le moteur énumère) — touchez pour exécuter</string>
+    <string name="atelier_etapes_indisponible">Répertoire indisponible — %1$s</string>
+    <string name="atelier_console_cible">cible : %1$s</string>
     <string name="atelier_nb_erreurs">%1$d erreurs</string>
     <string name="atelier_nb_avertissements">%1$d avertissements</string>
     <string name="atelier_problemes_resume">%1$d erreurs · %2$d avertissements</string>
