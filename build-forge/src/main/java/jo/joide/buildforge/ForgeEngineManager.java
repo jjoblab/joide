@@ -172,6 +172,29 @@ public final class ForgeEngineManager {
      */
     public CompletableFuture<List<jo.joide.workbench.TaskInfo>> listTasks(
             String projectRoot) {
+        return listTasks(projectRoot, null);
+    }
+
+    /**
+     * Le répertoire des tâches d'un SOUS-ENSEMBLE de modules (Forge v0.2.28+,
+     * protocole 6 — D-23, l'équivalent de {@code gradlew :core:tasks}) : la même
+     * LECTURE par moteur jetable, la question porte en plus les modules — le
+     * moteur filtre le graphe et y dérive les agrégats propres de chacun
+     * ({@code core:assemble}, {@code core:clean}). Une liste vide ou nulle
+     * demande tout le projet (la forme d'avant).
+     *
+     * <p>Face à un moteur qui parle encore le protocole 5, la liste part quand
+     * même (fin de charge, trame bornée — il l'ignore) et la réponse est la vue
+     * COMPLÈTE : dégradation sans échec. Un module inconnu est refusé par le
+     * moteur avec les modules disponibles (l'échec porte le remède).</p>
+     *
+     * @param projectRoot racine du projet (dossier contenant forge.json).
+     * @param modules     modules demandés (noms sans préfixe) ; vide ou nul :
+     *                    tout le projet.
+     * @return le futur des descripteurs des tâches du sous-ensemble.
+     */
+    public CompletableFuture<List<jo.joide.workbench.TaskInfo>> listTasks(
+            String projectRoot, List<String> modules) {
         if (installed == null) {
             return CompletableFuture.failedFuture(new IllegalStateException(
                     "Moteur Forge non installé : lancez l'installation d'abord"));
@@ -182,7 +205,7 @@ public final class ForgeEngineManager {
                 EngineClient engine = EngineClient.launch(launcher, spec, "joide-0.1.0",
                         event -> { }, () -> { });
                 try {
-                    return engine.tasks(projectRoot).get(60, TimeUnit.SECONDS)
+                    return engine.tasks(projectRoot, modules).get(60, TimeUnit.SECONDS)
                             .tasks().stream()
                             .map(d -> new jo.joide.workbench.TaskInfo(d.name(), d.group(),
                                     d.description(), d.dependencies(), d.lifecycle()))

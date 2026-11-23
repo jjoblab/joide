@@ -35,4 +35,34 @@ public interface BuildBackend {
                         + mode() + " (moteur trop ancien ou mode terminal)"));
         return refus;
     }
+
+    /**
+     * Le répertoire des tâches d'un SOUS-ENSEMBLE de modules (Forge v0.2.28+,
+     * protocole 6 — D-23 de Forge) : l'équivalent de {@code gradlew :core:tasks}.
+     * Le moteur filtre le graphe aux modules demandés et y dérive leurs agrégats
+     * PROPRES ({@code core:assemble}, {@code core:clean}) — jamais l'agrégat
+     * global redéfini en silence. Une simple LECTURE, comme la vue complète.
+     *
+     * <p>Le défaut est honnête : un backend sans sous-ensembles REFUSE (le mode
+     * terminal, un moteur trop ancien) ; une demande vide retombe sur la vue
+     * complète ({@link #listTasks(String)}). Face à un moteur qui parle encore le
+     * protocole 5, la liste part quand même (fin de charge) et le moteur répond la
+     * vue complète — dégradation sans échec.</p>
+     *
+     * @param projectRoot racine du projet (dossier contenant forge.json).
+     * @param modules     modules demandés (noms sans préfixe, ex. {@code app}) ;
+     *                    vide ou nul : tout le projet.
+     * @return le futur des descripteurs des tâches du sous-ensemble.
+     */
+    default CompletableFuture<List<TaskInfo>> listTasks(String projectRoot,
+            List<String> modules) {
+        if (modules == null || modules.isEmpty()) {
+            return listTasks(projectRoot);
+        }
+        CompletableFuture<List<TaskInfo>> refus = new CompletableFuture<>();
+        refus.completeExceptionally(new UnsupportedOperationException(
+                "Répertoire par modules non supporté par le mode "
+                        + mode() + " (moteur trop ancien ou mode terminal)"));
+        return refus;
+    }
 }

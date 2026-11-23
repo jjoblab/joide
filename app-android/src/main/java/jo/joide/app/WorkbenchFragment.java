@@ -10,6 +10,7 @@ import android.text.style.StyleSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -2359,7 +2360,7 @@ public class WorkbenchFragment extends Fragment
         }
     }
 
-    // ---- Répertoire des tâches (protocole 5, D-22 : le moteur énumère) ------
+    // ---- Répertoire des tâches (protocoles 5-6, D-22/D-23 : le moteur énumère) -
 
     /** Répertoire des tâches du moteur pour le projet courant (null : inconnu). */
     private List<jo.joide.workbench.TaskInfo> répertoireTâches;
@@ -2367,11 +2368,34 @@ public class WorkbenchFragment extends Fragment
     /** Répertoire déjà demandé pour ce projet (une demande, jamais en plein build). */
     private boolean répertoireDemandé;
 
+    /** Modules du projet, DÉDUITS du répertoire complet (préfixes des noms de
+     *  tâches que le moteur a donnés) — la coquille regroupe ce qu'elle a reçu,
+     *  elle ne devine pas les modules ; ils alimentent les chips du filtre
+     *  (protocole 6, D-23 : l'équivalent de gradlew :core:tasks). */
+    private List<String> modulesRépertoire = new ArrayList<>();
+
+    /** Module filtré (null : tout le projet) — mémorisé entre les runs. */
+    private String moduleRépertoireChoisi;
+
+    /** Vues de sous-ensembles déjà rendues (une LECTURE moteur par module, pas
+     *  une par touche — le moteur jetable coûte un lancement). */
+    private final java.util.Map<String, List<jo.joide.workbench.TaskInfo>> sousEnsembles
+            = new java.util.HashMap<>();
+
+    /** Préférences du filtre de l'onglet Étapes (module mémorisé entre les runs). */
+    private static final String PRÉFÉRENCES_ÉTAPES = "atelier_etapes";
+
+    /** Clé du module mémorisé. */
+    private static final String CLÉ_MODULE = "module";
+
     /** Étapes au repos en mode Forge : le RÉPERTOIRE du moteur (D-22) — la
      *  coquille affiche, elle ne devine plus ; une rangée touchée lance le build
      *  CIBLÉ (la clôture des dépendances se calcule côté moteur). L'horloge d'un
      *  build en cours prime toujours sur le répertoire ; l'historique d'un build
-     *  terminé n'est jamais remplacé par la liste. */
+     *  terminé n'est jamais remplacé par la liste. Depuis le protocole 6 (D-23),
+     *  le répertoire se demande PAR SOUS-ENSEMBLE : les chips Tout·app·core…
+     *  re-posent la question au moteur (gradlew :core:tasks), la vue répond les
+     *  agrégats PROPRES du module (core:assemble, core:clean). */
     private void chargerRépertoireSiVide() {
         if (buildRunning || répertoireDemandé || projectPath == null) {
             return;
@@ -2404,24 +2428,191 @@ public class WorkbenchFragment extends Fragment
                     return;
                 }
                 répertoireTâches = tâches;
-                for (jo.joide.workbench.TaskInfo tâche : tâches) {
-                    boolean cycle = tâche.lifecycle();
-                    StepRow rangée = stepRow(cycle ? "◐" : "○",
-                            tâche.name() + (tâche.description().isEmpty()
-                                    ? "" : " — " + tâche.description()),
-                            cycle ? R.color.info : R.color.sur_var,
-                            cycle ? R.color.info : R.color.sur);
-                    rangée.row.setOnClickListener(v -> {
-                        if (!buildRunning) {
-                            toast(getString(R.string.atelier_etape_lancee,
-                                    tâche.name()));
-                            runBuild(List.of(tâche.name()));
-                        }
-                    });
-                    binding.stepsList.addView(rangée.row);
+                modulesRépertoire = modulesDe(tâches);
+                // Choix mémorisé (protocole 6, D-23) : chargé une fois, puis
+                // honnête — un module absent du répertoire courant retombe sur
+                // « Tout » (le projet a changé de forme entre les runs).
+                if (moduleRépertoireChoisi == null) {
+                    String mémorisé = requireContext()
+                            .getSharedPreferences(PRÉFÉRENCES_ÉTAPES, Context.MODE_PRIVATE)
+                            .getString(CLÉ_MODULE, "");
+                    moduleRépertoireChoisi = mémorisé == null || mémorisé.isEmpty()
+                            ? null : mémorisé;
+                }
+                moduleRépertoireChoisi = modulesRépertoire.contains(moduleRépertoireChoisi)
+                        ? moduleRépertoireChoisi : null;
+                construireChipsModules();
+                if (moduleRépertoireChoisi == null) {
+                    rendreRépertoire(répertoireTâches);
+                } else {
+                    chargerSousEnsemble(moduleRépertoireChoisi);
                 }
             });
         });
+    }
+
+    /** Les modules du répertoire : préfixes des noms qualifiés (le moteur a donné
+     *  les noms, la coquille regroupe — ex. app:compileJava → app), triés. */
+    private static List<String> modulesDe(List<jo.joide.workbench.TaskInfo> tâches) {
+        java.util.Set<String> modules = new java.util.TreeSet<>();
+        for (jo.joide.workbench.TaskInfo tâche : tâches) {
+            int deuxPoints = tâche.name().indexOf(':');
+            if (deuxPoints > 0) {
+                modules.add(tâche.name().substring(0, deuxPoints));
+            }
+        }
+        return new ArrayList<>(modules);
+    }
+
+    /** Construit la rangée de chips du filtre (Tout + un chip par module), en
+     *  tête de la liste des étapes — elle vit avec le répertoire : partie au
+     *  départ d'un build (la liste est vidée), absente de l'horloge. */
+    private void construireChipsModules() {
+        if (modulesRépertoire.isEmpty()) {
+            return; // projet mono-module : rien à filtrer, aucune chip.
+        }
+        HorizontalScrollView défilement = new HorizontalScrollView(requireContext());
+        défilement.setHorizontalScrollBarEnabled(false);
+        LinearLayout rangée = new LinearLayout(requireContext());
+        rangée.setOrientation(LinearLayout.HORIZONTAL);
+        rangée.setPadding(0, 0, dip(10), dip(6));
+        défilement.addView(rangée);
+        TextView tout = chipModule(null, getString(R.string.atelier_etapes_filtre_tout));
+        rangée.addView(tout);
+        for (String module : modulesRépertoire) {
+            rangée.addView(chipModule(module, module));
+        }
+        binding.stepsList.addView(défilement);
+        styliserChipsModules();
+    }
+
+    /** Une chip de filtre (studio : 28 dp, ON = sc2) ; « Tout » porte le null. */
+    private TextView chipModule(String module, String libellé) {
+        TextView chip = new TextView(requireContext());
+        chip.setText(libellé);
+        chip.setTag(module);
+        chip.setTextSize(12.5f);
+        chip.setTypeface(chip.getTypeface(), android.graphics.Typeface.BOLD);
+        chip.setGravity(android.view.Gravity.CENTER);
+        chip.setPadding(dip(14), 0, dip(14), 0);
+        chip.setContentDescription(getString(R.string.atelier_etapes_filtre_module_cd)
+                + " : " + libellé);
+        chip.setOnClickListener(v -> choisirModuleRépertoire(module));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dip(28));
+        params.rightMargin = dip(8);
+        chip.setLayoutParams(params);
+        return chip;
+    }
+
+    /** Choix du filtre : mémorisé, stylisé, puis la vue suit (cache ou question). */
+    private void choisirModuleRépertoire(String module) {
+        if (buildRunning) {
+            return; // l'horloge prime : le filtre reprendra au repos.
+        }
+        moduleRépertoireChoisi = module;
+        requireContext().getSharedPreferences(PRÉFÉRENCES_ÉTAPES, Context.MODE_PRIVATE)
+                .edit().putString(CLÉ_MODULE, module == null ? "" : module).apply();
+        styliserChipsModules();
+        binding.stepsList.removeAllViews();
+        stepRows.clear();
+        construireChipsModules();
+        if (module == null) {
+            rendreRépertoire(répertoireTâches);
+        } else {
+            chargerSousEnsemble(module);
+        }
+    }
+
+    /** Charge la vue d'un module : le cache d'abord (une LECTURE par module),
+     *  sinon la question au moteur — la rangée d'attente puis la vue, ou le refus
+     *  honnête en une rangée (module inconnu, moteur ancien). */
+    private void chargerSousEnsemble(String module) {
+        List<jo.joide.workbench.TaskInfo> enCache = sousEnsembles.get(module);
+        if (enCache != null) {
+            rendreRépertoire(enCache);
+            return;
+        }
+        StepRow attente = stepRow("…",
+                getString(R.string.atelier_etapes_repertoire_module, module),
+                R.color.info, R.color.sur_var);
+        binding.stepsList.addView(attente.row);
+        forgeBackend.listTasks(projectPath, List.of(module)).whenComplete((tâches, échec) -> {
+            if (!isAdded()) {
+                return;
+            }
+            requireActivity().runOnUiThread(() -> {
+                if (buildRunning) {
+                    return; // un build a démarré entre-temps : son horloge prime.
+                }
+                if (échec != null) {
+                    binding.stepsList.removeAllViews();
+                    stepRows.clear();
+                    construireChipsModules();
+                    StepRow refus = stepRow("○",
+                            getString(R.string.atelier_etapes_indisponible,
+                                    messageDe(échec)),
+                            R.color.contour, R.color.sur_var);
+                    binding.stepsList.addView(refus.row);
+                    return;
+                }
+                sousEnsembles.put(module, tâches);
+                binding.stepsList.removeAllViews();
+                stepRows.clear();
+                construireChipsModules();
+                rendreRépertoire(tâches);
+            });
+        });
+    }
+
+    /** Style des chips du filtre : la sélection prend le fond sc2 du studio. */
+    private void styliserChipsModules() {
+        LinearLayout rangée = rangéeChipsModules();
+        if (rangée == null) {
+            return;
+        }
+        for (int i = 0; i < rangée.getChildCount(); i++) {
+            TextView chip = (TextView) rangée.getChildAt(i);
+            boolean on = java.util.Objects.equals((String) chip.getTag(),
+                    moduleRépertoireChoisi);
+            chip.setBackground(getResources().getDrawable(
+                    on ? R.drawable.fond_chip_on : R.drawable.fond_chip));
+            chip.setTextColor(getResources().getColor(
+                    on ? R.color.sur_sc2 : R.color.sur));
+        }
+    }
+
+    /** La rangée des chips dans la liste des étapes (null : absente). */
+    private LinearLayout rangéeChipsModules() {
+        if (binding.stepsList.getChildCount() == 0
+                || !(binding.stepsList.getChildAt(0) instanceof HorizontalScrollView défilement)
+                || !(défilement.getChildAt(0) instanceof LinearLayout rangée)) {
+            return null;
+        }
+        return rangée;
+    }
+
+    /** Rend les rangées du répertoire (complet ou sous-ensemble) : ○ concret,
+     *  ◐ cycle de vie (les agrégats du moteur : assemble, build, core:assemble…),
+     *  une rangée touchée lance le build CIBLÉ — la cible part telle quelle, la
+     *  clôture se calcule côté moteur. */
+    private void rendreRépertoire(List<jo.joide.workbench.TaskInfo> tâches) {
+        for (jo.joide.workbench.TaskInfo tâche : tâches) {
+            boolean cycle = tâche.lifecycle();
+            StepRow rangée = stepRow(cycle ? "◐" : "○",
+                    tâche.name() + (tâche.description().isEmpty()
+                            ? "" : " — " + tâche.description()),
+                    cycle ? R.color.info : R.color.sur_var,
+                    cycle ? R.color.info : R.color.sur);
+            rangée.row.setOnClickListener(v -> {
+                if (!buildRunning) {
+                    toast(getString(R.string.atelier_etape_lancee,
+                            tâche.name()));
+                    runBuild(List.of(tâche.name()));
+                }
+            });
+            binding.stepsList.addView(rangée.row);
+        }
     }
 
     /** Message le plus profond d'un échec asynchrone (la cause utile, pas l'enveloppe). */

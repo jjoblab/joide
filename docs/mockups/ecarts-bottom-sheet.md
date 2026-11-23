@@ -80,7 +80,15 @@
   rangée touchée lance le build CIBLÉ — la clôture se calcule côté moteur) ;
   en build, l'horloge vivante des tâches comme toujours. Moteur plus ancien
   (protocole < 5) : rangée honnête « Répertoire indisponible — mettez le
-  moteur à jour », rien ne casse.
+  moteur à jour », rien ne casse. **Évolué (D-23, Forge v0.2.28)** : le
+  répertoire gagne le filtre PAR MODULE (chips Tout·app·core… déduites des
+  noms que le moteur a donnés — `gradlew :core:tasks` : la vue du module
+  montre ses concrets et SES agrégats `core:assemble`/`core:clean`, touchables
+  comme les autres) ; l'alias `build` apparaît marqué cycle de vie (honnête :
+  il vaut `assemble` tant qu'aucune vérification n'existe, ses dépendances le
+  disent) ; `check`/`lint`/`test` n'apparaîtront que le jour où des tâches de
+  vérification existeront — le répertoire ne promet rien. Choix mémorisé,
+  cache par module (une lecture moteur par module).
 - La démo interactive HTML (92 → 275 → 434 px) illustre ; l'application
   utilise les détents réels du `BottomSheetBehavior` — pas de hauteur magique.
 

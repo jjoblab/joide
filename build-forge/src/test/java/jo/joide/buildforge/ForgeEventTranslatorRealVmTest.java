@@ -5,6 +5,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import jo.forge.api.BuildEvent;
+import jo.forge.api.TaskDescription;
+import jo.forge.api.TasksResponse;
 import jo.forge.client.EngineClient;
 import jo.forge.client.JavaVmLauncher;
 import jo.forge.client.VmSpec;
@@ -17,6 +19,7 @@ import org.junit.jupiter.api.io.TempDir;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Intégration du traducteur d'événements avec le MOTEUR FICTIF réel
@@ -112,5 +115,64 @@ class ForgeEventTranslatorRealVmTest {
 
         engine.shutdown().get(10, TimeUnit.SECONDS);
         assertEquals(0, engine.awaitExit());
+    }
+
+    @Test
+    @Timeout(60)
+    void leRépertoireParSousEnsembleSeDemandeAuMoteur() throws Exception {
+        // Protocole 6 (Forge v0.2.28, D-23) : la vue d'un SOUS-ENSEMBLE de modules
+        // (l'équivalent de gradlew :app:tasks) — le moteur filtre le graphe et y
+        // dérive les agrégats PROPRES du module (app:assemble, app:clean), jamais
+        // l'assemble global redéfini en silence. La chaîne est la même que sur
+        // appareil : vrai processus, vraies trames, seul le moteur est factice.
+        EngineClient engine = EngineClient.launch(new JavaVmLauncher(), fakeEngine(),
+                "joide-0.1.0", event -> { }, () -> { });
+        try {
+            assertTrue(engine.protocolVersion() >= 6,
+                    "le moteur factice parle le protocole 6 : " + engine.protocolVersion());
+
+            // La vue COMPLÈTE garde ses agrégats globaux (assemble, build, clean).
+            TasksResponse complet = engine.tasks("/projets/demo")
+                    .get(10, TimeUnit.SECONDS);
+            List<String> vueComplète = complet.tasks().stream()
+                    .map(TaskDescription::name).toList();
+            assertTrue(vueComplète.containsAll(List.of("assemble", "build", "clean")),
+                    "la vue complète expose le cycle de vie global : " + vueComplète);
+
+            // La vue du module app : SES concrets + SES agrégats — pas de cycle
+            // de vie global redéfini.
+            TasksResponse vue = engine.tasks("/projets/demo", List.of("app"))
+                    .get(10, TimeUnit.SECONDS);
+            List<String> noms = vue.tasks().stream()
+                    .map(TaskDescription::name).toList();
+            assertEquals(List.of("app:jar", "app:compileJava",
+                    "app:resolveDependencies", "app:assemble", "app:clean"), noms,
+                    "la vue sous-ensemble : concrets du module + SES agrégats");
+            TaskDescription assembleApp = vue.tasks().stream()
+                    .filter(t -> t.name().equals("app:assemble")).findFirst().orElseThrow();
+            assertTrue(assembleApp.lifecycle(),
+                    "l'agrégat de module est marqué cycle de vie, honnêtement");
+            assertEquals(List.of("app:jar"), assembleApp.dependencies(),
+                    "app:assemble agrège les sorties du module SEULEMENT");
+
+            // Un module inconnu : refus honnête, le message porte le remède.
+            try {
+                engine.tasks("/projets/demo", List.of("zork")).get(10, TimeUnit.SECONDS);
+                fail("un module inconnu doit être refusé");
+            } catch (Exception échecAttendu) {
+                String message = échecAttendu.getCause() != null
+                        ? échecAttendu.getCause().getMessage()
+                        : String.valueOf(échecAttendu);
+                assertTrue(message.contains("zork"),
+                        "le refus cite le module fautif : " + message);
+            }
+        } finally {
+            // Moteur jetable : arrêt poli, tolerant — la question est déjà répondue.
+            try {
+                engine.shutdown().get(10, TimeUnit.SECONDS);
+            } catch (Exception mortPolieIgnorée) {
+                engine.kill();
+            }
+        }
     }
 }

@@ -105,6 +105,18 @@ public final class ForgeBackend implements BuildBackend {
         return engineManager.listTasks(projectRoot);
     }
 
+    /**
+     * Le répertoire des tâches d'un SOUS-ENSEMBLE de modules (Forge v0.2.28+,
+     * protocole 6 — D-23, l'équivalent de {@code gradlew :core:tasks}) : le moteur
+     * filtre le graphe et y dérive les agrégats propres de chaque module. Une
+     * simple LECTURE — même moteur jetable, même honnêteté.
+     */
+    @Override
+    public CompletableFuture<List<TaskInfo>> listTasks(String projectRoot,
+            List<String> modules) {
+        return engineManager.listTasks(projectRoot, modules);
+    }
+
     /** Gestionnaire du moteur (assistant d'installation : manifeste, cache, états). */
     public ForgeEngineManager engineManager() {
         return engineManager;

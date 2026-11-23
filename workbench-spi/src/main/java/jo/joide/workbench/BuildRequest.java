@@ -19,9 +19,15 @@ import java.util.List;
  *                     tâches demandées, l'équivalent des arguments de
  *                     {@code gradlew} ({@code :app:compileJava assemble}). La
  *                     clôture des dépendances se calcule côté MOTEUR ; un nom
- *                     inconnu échoue proprement avec les candidats. {@code null}
- *                     ou vide : tout le graphe du projet, la forme historique.
- *                     Le mode Gradle l'ignore aujourd'hui (terminal).
+ *                     inconnu échoue proprement avec les candidats. Depuis
+ *                     v0.2.28 (D-23) les noms de cycle de vie s'y acceptent
+ *                     aussi : {@code build} (l'alias honnête), les agrégats de
+ *                     module ({@code core:assemble}) et, le jour où des tâches
+ *                     de vérification existeront, {@code check}/{@code lint}/
+ *                     {@code test} — le moteur résout, la coquille ne devine
+ *                     jamais. {@code null} ou vide : tout le graphe du projet,
+ *                     la forme historique. Le mode Gradle l'ignore aujourd'hui
+ *                     (terminal).
  */
 public record BuildRequest(String buildId, String projectRoot, boolean clean,
         BuildEvent.Log.Level consoleLevel, List<String> tasks) {

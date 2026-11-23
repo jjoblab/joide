@@ -267,7 +267,12 @@
     <string name="atelier_etape_echouee">%1$s — échouée</string>
     <string name="atelier_etape_lancee">Exécution de %1$s…</string>
     <string name="atelier_etapes_repertoire">Tâches du projet (le moteur énumère) — touchez pour exécuter</string>
+    <string name="atelier_etapes_repertoire_module">Tâches du module %1$s (le moteur énumère) — touchez pour exécuter</string>
     <string name="atelier_etapes_indisponible">Répertoire indisponible — %1$s</string>
+    <!-- Filtre de l'onglet Étapes (protocole 6, D-23) : le répertoire par
+         sous-ensemble de modules, l'équivalent de gradlew :core:tasks. -->
+    <string name="atelier_etapes_filtre_tout">Tout</string>
+    <string name="atelier_etapes_filtre_module_cd">Filtrer le répertoire par module</string>
     <string name="atelier_console_cible">cible : %1$s</string>
     <string name="atelier_nb_erreurs">%1$d erreurs</string>
     <string name="atelier_nb_avertissements">%1$d avertissements</string>
