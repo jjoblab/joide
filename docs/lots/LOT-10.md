@@ -7,6 +7,14 @@
 > nouveaux modules, les sources, classpaths, l'ajout de dépendance. Ajoute aussi un activity
 > crash. » Étude clean-room du dépôt de référence **au SHA épinglé `1b1a305`**
 > (reconsultation consignée dans REFERENCES.md) ; aucune ligne de code copiée.
+>
+> Livré en sept commits poussés au fil de l'eau (consigne du propriétaire : « toujours
+> pousser à chaque phase terminée » ; « pas de dialogue — seulement des popups et des
+> bottom sheets, même design partout ») : 9473e9a (socle JVM), 6940cb6 (réglages runtime
+> + recherche Maven), e3894a5 (**clonage git depuis l'accueil**, demande additionnelle),
+> 4b9b64b (écran Modules + onglet Dépendances), 37c475f (écran Runtime de build),
+> 5abd933 (journal d'activité + erreurs non fatales), 3985e07 (branchement de
+> l'indexation à l'ouverture + consommateur).
 
 ## Réponses aux questions du propriétaire consignées
 
@@ -47,7 +55,7 @@
    Java, SDK plateforme), carte Ensembles de sources (chips amovibles + dialogue d'ajout
    avec préréglages java/kotlin/res + rôle), carte Facette Android (namespace, minSdk,
    targetSdk, versionCode, versionName) ; barre de sauvegarde épinglée
-   (Abandonner/Enregistrer) ; dialogue Nouveau module (nom, type, niveau Java) qui crée
+   (Abandonner/Enregistrer) ; feuille Nouveau module (nom, type, niveau Java) qui crée
    les répertoires et inscrit le module dans `forge.json`.
 5. **Onglet Dépendances** — d'après DependenciesScreen (référence) : liste déclarée par
    module (badge portée, suppression avec confirmation, édition version), **Ajouter** :
@@ -65,7 +73,8 @@
    d'indexation, écroulements des trois zones du `CrashJournal` existant) ; le clic
    déplie la trace ; notification de l'écroulement du moteur dans la console de build +
    ligne honnête « L'IDE est intact — appuyez sur Construire pour réessayer » ; dialogue
-   d'erreur non fatale réutilisable (Message + Voir les détails/trace + Ignorer).
+   d'erreur non fatale réutilisable (Message + Voir les détails/trace + Ignorer) — une
+   FEUILLE, conformément à la consigne du propriétaire (aucun dialogue).
 
 ## Écarts assumés (honnêteté)
 
@@ -73,13 +82,23 @@
   index tout faits) : notre index est local, construit sur l'appareil ; la demande
   d'approvisionnement est consignée (F-08).
 - **Fichier local** : `forge.json` n'a pas de dépendance de fichier local (F-07 ouvert) ;
-  le dialogue copie dans `libs/` et affiche la limite au lieu de mentir.
+  la feuille d'ajout affiche la limite au lieu de mentir (pas de copie `libs/` factice).
 - **Recherche Google Maven absente** : seule Maven Central est interrogée (réel, testé) ;
   l'écran le dit.
 - **Plugins/langages multiples** : l'index couvre Java (et les symboles de plan des XML/
   Markdown existants) ; Kotlin viendra avec la complétion (lots suivants).
 - **Suppression de module** : retire le module de `forge.json` et son dossier (confirmation
   rouge), comme la référence ; pas d'annulation (honnête).
+- **Symboles du tiroir en feuille** : la référence rend les symboles dans la recherche du
+  tiroir ; notre chip « Symboles » ouvre une **feuille** dédiée (recherche par préfixe,
+  saut à la ligne) — même fonction, même design, zéro dialogue ; le rendu inline
+  arrivera avec la complétion (lots suivants).
+- **Fusion de la visionneuse** : la référence a une visionneuse de logs dédiée ; notre
+  écran Journal d'activité fusionne déjà ActivityLog + CrashJournal (les trois zones) —
+  les filtres par sévérité/source arriveront avec les lots d'observabilité.
+- **Renommage de module** : la référence renomme aussi le paquet de l'application
+  (`AppRenameDialog`) ; notre renommage porte le nom dans `forge.json` et les dépendances
+  des frères — le paquet applicatif se renomme à la création du projet (gabarits).
 
 ## Bancs
 
@@ -88,6 +107,13 @@
 - `BuildActivityTest` (bascule, attente, timeout).
 - `IndexServiceTest` (pass à froid, réutilisation par empreintes, re-index d'un fichier,
   statut fraction, annulation, requêtes préfixe, classe depuis un jar réel).
-- `MavenCentralSearchTest` (serveur HTTP local de test, fusion/dédoublonnage, échec
-  réseau → diagnostic).
+- `IndexScopeTest` (sources forge.json **relatives au module** + jars des classpath.json
+  v2 + AAR explosé libs + tolérance jamais construit/pourri).
+- `MavenCentralSearchTest` (serveur HTTP local à deux cœurs comme le vrai solr, fusion,
+  échec réseau → diagnostic distinct d'« aucun résultat »).
+- `EngineSettingsTest` (résolution du tas selon mode/RAM, bornes de l'explicite).
+- `EngineRuntimePrefsTest` (aller-retour, défauts sur absent/illisible/pourri).
+- `ActivityLogTest` (aller-retour avec détail, borne stricte, pourri sauté).
+- `GitServiceCloneTest` (clone réel d'un dépôt local file://, progression, dossier
+  occupé refusé, **nettoyage du demi-dépôt** en cas d'échec, compat cloneInto).
 - L'atelier (javac hors SDK) vérifie la syntaxe ; l'APK reste validé par le CI.

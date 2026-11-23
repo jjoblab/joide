@@ -211,6 +211,23 @@ dialogue d'édition, les dépôts), `BuiltInSettingsPages.kt` + `SettingsBackend
 + `LogsScreen.kt` (l'activité/crash : sémaphore, note du mourant, console honnête,
 dialogue non fatale, visionneuse). Aucune ligne de code copiée (clean-room, Java).
 
+### Reconsultation du 2026-11-23 (suite — clonage git depuis l'accueil)
+
+Demande additionnelle du propriétaire (« ajouter une option depuis l'écran home pour
+cloner un dépôt git ») : re-lecture **au même SHA épinglé `1b1a305`** de `services/
+vcs-impl/.../GitProvider.kt` (JGit `CloneCommand` : URI, dossier, timeout 60 s,
+`ProgressMonitor`, credentials par hôte, **nettoyage récursif du dossier partiel en
+cas d'échec**, refus du dossier non vide), `GitSupport.kt`/`GitEnvironment.kt`
+(adaptation progression et erreurs, config Git confinée), `CloneScreen.kt` +
+`VcsUiPlugin.kt` + `VcsBackend.kt` (le parcours : URL + nom de dossier **prérempli du
+dernier segment de l'URL moins `.git`**, progression fractionnée, **adoption du dossier
+cloné** avec verdict — reconnu → ouverture immédiate ; inconnu → avertissement honnête
+« cloné mais aucun système de build reconnu » + ouverture pour édition), `ProjectsHomeScreen.kt`
+(« Clone repository » : item du menu « Plus », **masqué si le plugin VCS est éteint**),
+`GitHubClient.kt` (comptes/sign-in — NON repris : notre coffre d'identifiants par hôte
+existe déjà, la recherche de dépôts distants n'est pas demandée). Aucune ligne copiée
+(clean-room, Java + JGit nôtre déjà en place).
+
 ## Suivi des écarts après implémentation
 
 Chaque lot (L0-L9) relit la partie correspondante du produit de référence **après**
