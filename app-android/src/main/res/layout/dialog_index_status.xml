@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Détail de l'état d'index (référence IndexStatusDialog 3.47.0, 1:1) :
+     en-tête (icône couches + titre + phase + fermer), barre de progression
+     + compteurs, liste de travail (états par entrée), corps « à jour »,
+     répartition des indexeurs (durées, cache), bouton Réindexer. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/fond_dialogue_index"
+    android:padding="20dp">
+
+    <!-- En-tête : icône couches (primaire en travail, succès au repos). -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:id="@+id/index_dialog_icon"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:src="@drawable/ic_calques"
+            app:tint="@color/primaire"
+            android:contentDescription="@string/atelier_index_dialogue_titre_en_cours" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/index_dialog_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:textColor="@color/sur"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/index_dialog_sub"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:textColor="@color/sur_var"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/index_dialog_close"
+            style="@style/IconBtn"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:contentDescription="@string/atelier_index_dialogue_fermer"
+            android:src="@drawable/ic_close"
+            android:scaleType="centerInside"
+            app:tint="@color/sur_var" />
+    </LinearLayout>
+
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="14dp" />
+
+    <!-- Corps CONSTRUCTION : barre + compte + liste de travail. -->
+    <LinearLayout
+        android:id="@+id/index_dialog_building"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <ProgressBar
+            android:id="@+id/index_dialog_bar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:progressDrawable="@drawable/fond_barre_index"
+            android:max="100" />
+
+        <TextView
+            android:id="@+id/index_dialog_count"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="@color/sur_var"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/index_dialog_work_header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:textColor="@color/sur_var"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08" />
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="6dp" />
+
+        <LinearLayout
+            android:id="@+id/index_dialog_work_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </LinearLayout>
+
+    <!-- Corps REPOS : la phrase « à jour » (référence IdleBody). -->
+    <LinearLayout
+        android:id="@+id/index_dialog_idle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="15dp"
+            android:layout_height="15dp"
+            android:src="@drawable/ic_check"
+            app:tint="@color/ok"
+            android:contentDescription="@string/atelier_index_dialogue_a_jour" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/atelier_index_dialogue_pret_corps"
+            android:textColor="@color/sur"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <!-- Répartition (référence IndexerBreakdown) : indexeurs, durées, cache. -->
+    <LinearLayout
+        android:id="@+id/index_dialog_breakdown"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/atelier_index_dialogue_entete_indexeurs"
+            android:textColor="@color/sur_var"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08" />
+
+        <LinearLayout
+            android:id="@+id/index_dialog_indexers"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="vertical" />
+
+        <TextView
+            android:id="@+id/index_dialog_durations"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="@color/sur_var"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/index_dialog_cache"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textColor="@color/sur_var"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="16dp" />
+
+    <!-- Réindexer (référence ReindexButton, pleine largeur). -->
+    <Button
+        android:id="@+id/index_dialog_reindex"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:background="@drawable/fond_pill_primaire"
+        android:text="@string/atelier_index_dialogue_reindexer"
+        android:textColor="@color/sur_primaire"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:stateListAnimator="@null" />
+</LinearLayout>

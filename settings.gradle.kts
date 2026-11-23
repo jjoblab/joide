@@ -56,6 +56,29 @@ dependencyResolutionManagement {
                 includeGroup("com.github.termux.termux-app")
                 // celeris : JitPack publie en com.github.jjoblab.celeris:<module>:v<tag>
                 includeGroupByRegex("com\\.github\\.jjoblab(\\..*)?")
+                // codeide-tooling (protocole tooling 1.2.0, transitif de lsp-host)
+                // est publié sur JitPack sans jeton — la voie anonyme (B-04).
+                includeGroupByRegex("com\\.github\\.jjoblab\\.codeide-tooling(\\..*)?")
+            }
+        }
+        // code-lsp (B-02 → LOT-11) : les packs LSP v1.15.0 (jo.codeide.lsp.*) se
+        // publient sur le GitHub Packages de jjoblab/code-lsp — registre à jeton
+        // même pour lire : JOIDE_GH_PACKAGES_TOKEN (localement le PAT du
+        // propriétaire, en CI le GITHUB_TOKEN du dépôt avec packages: read).
+        // Sans jeton, la résolution de code-lsp échoue mais le reste du build
+        // reste résolvable (les groupes sont filtrés ci-dessous).
+        maven {
+            name = "code-lsp"
+            url = uri("https://maven.pkg.github.com/jjoblab/code-lsp")
+            val jetonLsp = providers.environmentVariable("JOIDE_GH_PACKAGES_TOKEN")
+                .orElse(providers.environmentVariable("GITHUB_TOKEN"))
+                .getOrElse("")
+            credentials {
+                username = "jjoblab"
+                password = jetonLsp
+            }
+            content {
+                includeGroupByRegex("jo\\.codeide\\.lsp(\\..*)?")
             }
         }
     }
@@ -70,6 +93,9 @@ rootProject.name = "joide"
 include(":core-model")
 include(":core-store")
 include(":core-index")
+// LOT-11 : le client LSP pur JVM — traduction du classpath Forge vers le
+// protocole tooling, conversion lsp4j→céleris, client LanguageClient.
+include(":core-lsp")
 include(":terminal-core")
 include(":ai")
 include(":workbench-spi")

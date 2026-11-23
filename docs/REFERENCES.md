@@ -263,3 +263,43 @@ place côté JoIDE). Aucune ligne copiée (clean-room, Java + vues Android).
 Chaque lot (L0-L9) relit la partie correspondante du produit de référence **après**
 implémentation et consigne ici les écarts : voulus, améliorations, ou oublis corrigés. Ce
 suivi est alimenté par les rapports `docs/lots/LOT-xx.md`.
+
+## Reconsultation du 2026-11-24 (LOT-11 — l'écran d'indexation et les LSP)
+
+**Objet** : l'écran d'indexation de la référence et le câblage des moteurs de
+langage de la brique code-lsp. Re-lecture **au même SHA épinglé `1b1a305`** :
+
+- `app/ide-ui-components/.../EditorChrome.kt` — **`IndexStatusChip`** : pastille
+  `primaryContainer` pendant le pass (spinner 13dp trait 2dp + « Indexing… X % »,
+  corps `bodySmall` medium, padding 10×5), état repos « Indexed » (coche 12dp
+  `success`, `surfaceContainerHigh`) **masqué en compact** — la puce n'existe sur
+  téléphone QUE pendant l'indexation ; tap = dialogue d'état.
+- `app/ide-ui-components/.../IndexStatusDialog.kt` — le dialogue **1:1** : en-tête
+  (icône couches 18dp `primary`/`success`, titre « Indexing »/« Index », sous-titre
+  = phase courante, croix), corps construction (barre linéaire 4dp en pilule,
+  compte « X / Y artifacts » ou « files », **liste de travail** — une rangée par
+  artefact : coche `success` / spinner 12dp / point, nom 12sp, plafond de rendu),
+  corps repos (coche 15dp + « All symbol & completion indexes are up to date. »),
+  **répartition des indexeurs** (libellé · N entrées · X ms, seuls ceux qui ont
+  coûté ≥ 1 ms), durées « libraries X ms · source Y ms », cache « N artifacts ·
+  M from cache », bouton pleine largeur **Re-index project**.
+- `app/ide-ui-api/.../IdeBackend.kt` — `IndexUiStatus` : `building`, `fraction`,
+  `phase` (« Libraries & SDK », « Project source »), `items` (PENDING/ACTIVE/DONE),
+  `processed`/`total`, `breakdown`, `stats` (libMs, sourceMs, artefacts
+  construits/repris, fichiers parcourus/analysés) — la FORME même de l'état.
+- `app/ide-core/.../IdeServices.kt` — le pass d'index est **LE travail lourd de
+  l'ouverture** (séquencement à froid : rien d'autre ne se lève avec lui) ; les
+  transitions building→done partent au bus, la phase « Libraries & SDK » scanne le
+  classpath réel (plateforme + dépendances résolues).
+
+**Traduction JoIDE (LOT-11)** : l'état affiché n'est plus celui de l'index local
+L10 (pass quasi instantané sans build — la puce restait invisible, le constat du
+propriétaire) mais celui de **l'index CIDX des moteurs code-lsp v1.15.0**
+(`jo.codeide.lsp.host` : `EtatIndexation` — phases CONSTRUCTION/PRET, phase
+détaillée BIBLIOTHEQUES/SOURCES, liste de travail EN_ATTENTE/ACTIF/TERMINE/REPRIS/
+ECARTE, répartition par indexeur, durées, bilan du dernier pass) : le pass scanne
+**android.jar + les jars résolus du classpath Forge** — il est réel et visible, la
+puce et le dialogue (réécrits sur `dialog_index_status.xml`) suivent la référence.
+Les chaînes françaises reprennent les libellés du dialogue référence (ARTEFACTS,
+FICHIER COURANT, INDEXEURS, « bibliothèques X ms · sources Y ms », « +N de plus »,
+« Réindexer le projet »). Aucune ligne copiée (clean-room, Java + vues Android).

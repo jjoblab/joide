@@ -100,6 +100,44 @@ public class WorkbenchFragment extends Fragment
     private boolean avisDépliés;
     private String projectPath;
 
+    // ---- LSP (LOT-11, B-02) ---------------------------------------------------
+
+    /** Les sessions LSP du projet (moteurs Java/Kotlin/XML de code-lsp v1.15). */
+    private jo.joide.app.lsp.LspSessions sessionsLsp;
+
+    /** Le tick de l'état d'index (la puce et le dialogue s'y rafraîchissent). */
+    private final android.os.Handler tickIndex = new android.os.Handler();
+
+    /** Le tick court-il ? (posé au premier état CONSTRUCTION, endormi au repos). */
+    private boolean tickIndexActif;
+
+    /** Compteur de repos du tick (~2 s après la fin d'un pass, il s'endort). */
+    private int reposIndex;
+
+    /** Dernière phase LSP vue (transitions vers la console et le journal). */
+    private jo.codeide.lsp.host.PhaseIndexation dernièrePhaseIndex;
+
+    /** Les diagnostics LSP du document actif (squiggles + bande céleris). */
+    private final List<jo.celeris.android.host.spi.HostDiagnostic> diagnosticsLsp =
+            new java.util.ArrayList<>();
+
+    /** Poignée de retrait de l'auditeur de diagnostics du pont client. */
+    private Runnable retraitDiagnosticsLsp;
+
+    /** L'uri du document actif côté moteurs (file://…). */
+    private String uriDocumentActif;
+
+    /** Le dialogue d'état d'index ouvert (null fermé) et ses vues vives. */
+    private android.app.Dialog dialogueIndex;
+    private android.view.View dialogueIndexCorps;
+    private android.widget.ProgressBar dialogueIndexBarre;
+    private android.widget.TextView dialogueIndexCompte;
+    private android.widget.TextView dialogueIndexSous;
+    private android.widget.LinearLayout dialogueIndexListe;
+    private android.widget.LinearLayout dialogueIndexIndexeurs;
+    private android.widget.TextView dialogueIndexDurées;
+    private android.widget.TextView dialogueIndexCache;
+
     /** Instance sur un projet (chemin absolu du dossier racine du projet). */
     public static WorkbenchFragment forProject(String projectPath) {
         WorkbenchFragment fragment = new WorkbenchFragment();
@@ -1858,9 +1896,122 @@ public class WorkbenchFragment extends Fragment
         }
         editor.open(fileName, content);
         wireSession();
+        // La session de langage LSP suit l'ouverture (java, kotlin, xml) :
+        // complétion typée, survol, signatures, diagnostics — la porte
+        // céleris connectServer (LOT-11, B-02).
+        monterSessionLangage();
         // Un fichier texte s'ouvre : Code visible, états masqués (preview).
         showCodeView();
         refreshTools();
+    }
+
+    /**
+     * Pose la session de langage du document actif (référence LspSessionMount
+     * du sample céleris) : le montage (initialisation du serveur) se joue sur
+     * le fil des serveurs, le branchement revient au fil de l'interface — une
+     * pose dépassée (changement d'onglet pendant la poignée de main) ne se
+     * branche jamais, le serveur du fichier A ne sert jamais le document B.
+     */
+    private void monterSessionLangage() {
+        jo.joide.app.lsp.LspSessions sessions = sessionsLsp;
+        if (sessions == null || editor == null || editor.session() == null
+                || activeFile == null) {
+            return;
+        }
+        String langage = langageLspDe(activeFile);
+        if (langage == null) {
+            return; // fichier sans moteur : pas de session, honnête.
+        }
+        final int pose = sessions.nouvellePose();
+        final String uri = activeFile.toAbsolutePath().toUri().toString();
+        final jo.celeris.core.text.TextSession textePose = editor.session();
+        uriDocumentActif = uri;
+        sessions.filServeurs().execute(() -> {
+            if (!sessions.poseCourante(pose)) {
+                return;
+            }
+            org.eclipse.lsp4j.services.LanguageServer serveur =
+                    sessions.serveurInitialisé(langage);
+            if (serveur == null || !sessions.poseCourante(pose)) {
+                return;
+            }
+            jo.joide.app.lsp.EditorLanguageSession sessionÉdition =
+                    new jo.joide.app.lsp.EditorLanguageSession(serveur, langage,
+                            sessions.filServeurs(),
+                            sessions.légendeJetons(langage));
+            if (binding == null) {
+                return;
+            }
+            binding.getRoot().post(() -> {
+                if (binding == null || !sessions.poseCourante(pose)
+                        || editor == null || editor.popups() == null
+                        || editor.session() != textePose) {
+                    return;
+                }
+                editor.popups().connectServer(sessionÉdition, uri,
+                        editor.language());
+            });
+        });
+    }
+
+    /** L'identifiant de langage LSP d'un fichier (null : sans moteur). */
+    private static String langageLspDe(java.nio.file.Path fichier) {
+        String nom = fichier.getFileName().toString().toLowerCase(
+                java.util.Locale.ROOT);
+        if (nom.endsWith(".java")) {
+            return "java";
+        }
+        if (nom.endsWith(".kt") || nom.endsWith(".kts")) {
+            return "kotlin";
+        }
+        if (nom.endsWith(".xml")) {
+            return "xml";
+        }
+        return null;
+    }
+
+    /**
+     * Les diagnostics publiés par les moteurs pour le document ACTIF : la
+     * conversion céleris posée aux popups — squiggles, gouttière, bande
+     * d'erreurs (référence : les diagnostics de l'éditeur, même design).
+     */
+    private void recevoirDiagnosticsLsp(String uri,
+            List<org.eclipse.lsp4j.Diagnostic> diags) {
+        if (binding == null || editor == null || editor.popups() == null
+                || uriDocumentActif == null || !uriDocumentActif.equals(uri)) {
+            return;
+        }
+        diagnosticsLsp.clear();
+        if (diags != null) {
+            for (org.eclipse.lsp4j.Diagnostic diagnostic : diags) {
+                if (diagnostic != null && diagnostic.getRange() != null) {
+                    diagnosticsLsp.add(enDiagnosticHôte(uri, diagnostic));
+                }
+            }
+        }
+        editor.popups().setDiagnostics(List.copyOf(diagnosticsLsp));
+    }
+
+    /** Un diagnostic lsp4j en diagnostic d'hôte céleris (lignes 1-based). */
+    private static jo.celeris.android.host.spi.HostDiagnostic enDiagnosticHôte(
+            String uri, org.eclipse.lsp4j.Diagnostic diagnostic) {
+        String chemin = uri;
+        if (uri.startsWith("file://")) {
+            chemin = uri.substring("file://".length());
+        }
+        int gravité = diagnostic.getSeverity() != null
+                ? diagnostic.getSeverity().getValue() : 3;
+        jo.celeris.android.host.spi.GraviteDiagnostic gravitéCéleris =
+                gravité == 1 ? jo.celeris.android.host.spi.GraviteDiagnostic.ERREUR
+                : gravité == 2
+                        ? jo.celeris.android.host.spi.GraviteDiagnostic.AVERTISSEMENT
+                        : jo.celeris.android.host.spi.GraviteDiagnostic.INFO;
+        return new jo.celeris.android.host.spi.HostDiagnostic(
+                jo.celeris.android.host.spi.CheminDoc.of(chemin),
+                diagnostic.getRange().getStart().getLine() + 1,
+                diagnostic.getRange().getStart().getCharacter() + 1,
+                gravitéCéleris,
+                diagnostic.getMessage() != null ? diagnostic.getMessage() : "");
     }
 
     /** Écoutes du tampon courant : édition (✱), curseur (chemin de symboles). */
@@ -2576,19 +2727,14 @@ public class WorkbenchFragment extends Fragment
             index = new jo.joide.index.IndexService(
                     java.nio.file.Paths.get(projectPath));
         } catch (RuntimeException racineInvalide) {
-            return; // projet illisible : pas d'index, honnête.
+            démarrerLsp();
+            return; // projet illisible : pas d'index local, le LSP reste.
         }
-        // Statut observable : la puce de la barre suit le pass (référence
-        // IndexStatusChip — visible PENDANT, verdict au journal/console/avis).
+        // L'index local (L10) nourrit les SYMBOLES DU TIROIR : son verdict
+        // part au journal/console/avis — la PUCE, elle, suit l'index des
+        // MOTeurs LSP (LOT-11) : c'est le pass réel des bibliothèques et du
+        // SDK, celui que la référence montre à l'ouverture.
         index.observe(statut -> {
-            if (binding != null) {
-                binding.getRoot().post(() -> {
-                    if (binding == null) {
-                        return;
-                    }
-                    màjPuceIndex(statut);
-                });
-            }
             if (!statut.building() && binding != null) {
                 binding.getRoot().post(() -> {
                     if (binding == null || statut.stats().ms() <= 0) {
@@ -2617,55 +2763,441 @@ public class WorkbenchFragment extends Fragment
             }
         });
         relancerIndexation();
+        démarrerLsp();
+    }
+
+    /**
+     * Monte les sessions LSP du projet (LOT-11) : moteurs Java, Kotlin et
+     * XML de la brique code-lsp v1.15.0 EN PROCESSUS, nourris du classpath
+     * Forge réel. Le pass d'index qui suit la sync est RÉEL — la phase
+     * « Bibliothèques et SDK » scanne android.jar et les jars résolus —
+     * c'est l'écran d'indexation de la référence qui s'affiche enfin.
+     */
+    private void démarrerLsp() {
+        if (projectPath == null) {
+            return;
+        }
+        final android.content.Context contexte = requireContext();
+        Thread montage = new Thread(() -> {
+            jo.joide.app.lsp.LspSessions sessions =
+                    jo.joide.app.lsp.LspSessions.open(contexte,
+                            java.nio.file.Paths.get(projectPath),
+                            androidJarDuProjet(contexte));
+            if (sessions == null) {
+                return; // honnête : l'atelier vit sans LSP, le logcat le dit.
+            }
+            sessionsLsp = sessions;
+            // Les diagnostics publiés par les moteurs (debounce 50 ms côté
+            // serveur) rejoignent l'éditeur : squiggles + bande d'erreurs.
+            retraitDiagnosticsLsp = sessions.pont().onDiagnostics(
+                    (uri, diags) -> {
+                        if (binding != null) {
+                            binding.getRoot().post(() ->
+                                    recevoirDiagnosticsLsp(uri, diags));
+                        }
+                    });
+            sessions.syncForge();
+            if (binding != null) {
+                binding.getRoot().post(this::démarrerTickIndex);
+            }
+        }, "joide-lsp-montage");
+        montage.setDaemon(true);
+        montage.start();
+    }
+
+    /**
+     * Le jar de la plateforme Android du projet : d'abord les composants
+     * installés du moteur Forge (filesDir/forge/components/platform-N),
+     * puis le SDK local des machines de développement (ANDROID_HOME) —
+     * null si absent (honnête : l'index scanne alors les seules sources).
+     */
+    private static java.nio.file.Path androidJarDuProjet(
+            android.content.Context contexte) {
+        try {
+            java.nio.file.Path composants = contexte.getFilesDir().toPath()
+                    .resolve("forge").resolve("components");
+            java.nio.file.Path trouvé = premierJarPlateforme(composants);
+            if (trouvé != null) {
+                return trouvé;
+            }
+            String sdk = System.getenv("ANDROID_HOME");
+            if (sdk != null && !sdk.isBlank()) {
+                return premierJarPlateforme(
+                        java.nio.file.Path.of(sdk).resolve("platforms"));
+            }
+        } catch (RuntimeException lecture) {
+            // lecture impossible : pas de plateforme — honnête.
+        }
+        return null;
+    }
+
+    /** Le android.jar de plus haut niveau API sous un répertoire de plateformes. */
+    private static java.nio.file.Path premierJarPlateforme(
+            java.nio.file.Path racine) {
+        try (var dossiers = java.nio.file.Files.list(racine)) {
+            return dossiers.filter(java.nio.file.Files::isDirectory)
+                    .filter(d -> d.getFileName().toString().startsWith("platform")
+                            || d.getFileName().toString().startsWith("android-"))
+                    .sorted(java.util.Comparator.<
+                            java.nio.file.Path>comparingInt(d -> niveauApi(d)))
+                    .map(d -> d.resolve("android.jar"))
+                    .filter(java.nio.file.Files::isRegularFile)
+                    .reduce((premier, dernier) -> dernier)
+                    .orElse(null);
+        } catch (java.io.IOException absent) {
+            return null;
+        }
+    }
+
+    /** Le niveau API d'un répertoire de plateforme (0 si illisible). */
+    private static int niveauApi(java.nio.file.Path plateforme) {
+        String nom = plateforme.getFileName().toString();
+        String chiffres = nom.replaceAll("[^0-9]", "");
+        try {
+            return chiffres.isEmpty() ? 0 : Integer.parseInt(chiffres);
+        } catch (NumberFormatException tropGrand) {
+            return 0;
+        }
+    }
+
+    /** Démarre le tick d'état d'index (250 ms — la puce et le dialogue suivent). */
+    private void démarrerTickIndex() {
+        if (!tickIndexActif) {
+            tickIndexActif = true;
+            reposIndex = 0;
+            tickIndex.post(this::tickÉtatIndex);
+        } else {
+            reposIndex = 0;
+        }
+    }
+
+    /** Un tick : lit l'état LSP, rafraîchit la puce et le dialogue, s'endort
+     *  ~2 s après la fin d'un pass (la batterie reste à l'édition). */
+    private void tickÉtatIndex() {
+        if (binding == null) {
+            tickIndexActif = false;
+            return;
+        }
+        jo.joide.app.lsp.LspSessions sessions = sessionsLsp;
+        if (sessions == null) {
+            tickIndexActif = false;
+            return;
+        }
+        jo.codeide.lsp.host.EtatIndexation état = sessions.étatIndexation();
+        màjPuceIndex(état);
+        màjDialogueIndex(état);
+        direTransitionsIndex(état);
+        if (état.getPhase() == jo.codeide.lsp.host.PhaseIndexation.CONSTRUCTION) {
+            reposIndex = 0;
+        } else if (++reposIndex > 8) {
+            tickIndexActif = false;
+            return;
+        }
+        tickIndex.postDelayed(this::tickÉtatIndex, 250);
+    }
+
+    /** Les transitions de phase se disent : console + journal d'activité. */
+    private void direTransitionsIndex(jo.codeide.lsp.host.EtatIndexation état) {
+        jo.codeide.lsp.host.PhaseIndexation phase = état.getPhase();
+        if (phase == dernièrePhaseIndex) {
+            return;
+        }
+        boolean première = dernièrePhaseIndex == null;
+        dernièrePhaseIndex = phase;
+        if (phase == jo.codeide.lsp.host.PhaseIndexation.CONSTRUCTION) {
+            consoleBuffer.line(ConsoleBuffer.Kind.INFO,
+                    getString(R.string.atelier_index_lance));
+            renderConsole();
+        } else if (!première
+                && phase == jo.codeide.lsp.host.PhaseIndexation.PRET
+                && état.getDureesPhases() != null) {
+            consoleBuffer.line(ConsoleBuffer.Kind.INFO,
+                    getString(R.string.atelier_index_pret_lsp,
+                            état.getDureesPhases().getBibliothequesMs(),
+                            état.getDureesPhases().getSourcesMs()));
+            renderConsole();
+            journalActivité().record(
+                    jo.joide.corestore.ActivityLog.Kind.INDEX,
+                    getString(R.string.atelier_index_pret_lsp,
+                            état.getDureesPhases().getBibliothequesMs(),
+                            état.getDureesPhases().getSourcesMs()),
+                    null);
+        }
     }
 
     /**
      * Puce d'indexation (référence IndexStatusChip, barre compacte) : visible
      * seulement pendant un pass — spinner + pourcentage — puis disparaît.
+     * Pilotée par l'état LSP (le pass réel des moteurs, LOT-11).
      */
-    private void màjPuceIndex(jo.joide.index.IndexService.Status statut) {
-        if (!statut.building()) {
+    private void màjPuceIndex(jo.codeide.lsp.host.EtatIndexation état) {
+        if (binding == null) {
+            return;
+        }
+        if (état.getPhase() != jo.codeide.lsp.host.PhaseIndexation.CONSTRUCTION) {
             binding.indexChip.setVisibility(View.GONE);
             return;
         }
         binding.indexChip.setVisibility(View.VISIBLE);
-        if (statut.fraction() >= 0 && statut.fraction() <= 1) {
+        int total = état.getTotal();
+        if (total > 0) {
             binding.indexChipTexte.setText(getString(R.string.atelier_index_pourcent,
-                    (int) Math.round(statut.fraction() * 100)));
+                    (int) Math.round(état.getFaits() * 100.0 / total)));
         } else {
             binding.indexChipTexte.setText(R.string.atelier_index_en_cours);
         }
     }
 
-    /** Détail de l'index (référence IndexStatusDialog) : phase, compteurs, réindexer. */
+    /**
+     * Détail de l'index (référence IndexStatusDialog, 1:1) : en-tête (phase,
+     * compte), barre de progression, liste de travail avec états, répartition
+     * des indexeurs, durées, cache — et le bouton Réindexer.
+     */
     private void montrerDétailIndex() {
-        if (index == null) {
+        jo.joide.app.lsp.LspSessions sessions = sessionsLsp;
+        if (sessions == null) {
             return;
         }
-        jo.joide.index.IndexService.Status statut = index.status();
-        StringBuilder détail = new StringBuilder();
-        if (statut.message() != null && !statut.message().isBlank()) {
-            détail.append(statut.message()).append("\n\n");
+        android.view.LayoutInflater gonfleur = android.view.LayoutInflater
+                .from(requireContext());
+        android.view.View vue = gonfleur.inflate(R.layout.dialog_index_status,
+                null);
+        dialogueIndexCorps = vue;
+        dialogueIndexBarre = vue.findViewById(R.id.index_dialog_bar);
+        dialogueIndexCompte = vue.findViewById(R.id.index_dialog_count);
+        dialogueIndexSous = vue.findViewById(R.id.index_dialog_sub);
+        dialogueIndexListe = vue.findViewById(R.id.index_dialog_work_list);
+        dialogueIndexIndexeurs = vue.findViewById(R.id.index_dialog_indexers);
+        dialogueIndexDurées = vue.findViewById(R.id.index_dialog_durations);
+        dialogueIndexCache = vue.findViewById(R.id.index_dialog_cache);
+        vue.findViewById(R.id.index_dialog_close).setOnClickListener(v ->
+                fermerDialogueIndex());
+        vue.findViewById(R.id.index_dialog_reindex).setOnClickListener(v -> {
+            sessions.réindexer();
+            démarrerTickIndex();
+        });
+        dialogueIndex = new android.app.Dialog(requireContext());
+        dialogueIndex.setContentView(vue);
+        android.view.Window fenêtre = dialogueIndex.getWindow();
+        if (fenêtre != null) {
+            fenêtre.setBackgroundDrawable(
+                    new android.graphics.drawable.ColorDrawable(
+                            android.graphics.Color.TRANSPARENT));
         }
-        if (statut.phase() != null) {
-            détail.append(statut.phase() == jo.joide.index.IndexService.Phase.LIBRAIRIES
-                    ? getString(R.string.atelier_index_dialogue_phase_librairies)
-                    : getString(R.string.atelier_index_dialogue_phase_sources))
-                    .append(" · ")
-                    .append(statut.processed()).append('/').append(statut.total())
-                    .append("\n");
+        dialogueIndex.setOnDismissListener(d -> {
+            dialogueIndex = null;
+            dialogueIndexCorps = null;
+        });
+        dialogueIndex.show();
+        màjDialogueIndex(sessions.étatIndexation());
+        démarrerTickIndex();
+    }
+
+    /** Ferme le dialogue d'état d'index (ses vues vives partent avec). */
+    private void fermerDialogueIndex() {
+        if (dialogueIndex != null) {
+            dialogueIndex.dismiss();
         }
-        détail.append(statut.ready()
-                ? getString(R.string.activite_index_pret, statut.stats().symboles(),
-                        statut.stats().classes())
-                : getString(R.string.atelier_index_interrompu));
-        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                .setTitle(R.string.atelier_index_dialogue_titre)
-                .setMessage(détail.toString())
-                .setPositiveButton(R.string.atelier_index_dialogue_reindexer,
-                        (dialog, which) -> relancerIndexation())
-                .setNegativeButton(R.string.atelier_index_dialogue_fermer, null)
-                .show();
+    }
+
+    /** Rafraîchit le dialogue ouvert par l'état LSP courant (rien si fermé). */
+    private void màjDialogueIndex(jo.codeide.lsp.host.EtatIndexation état) {
+        android.view.View vue = dialogueIndexCorps;
+        if (vue == null || dialogueIndex == null) {
+            return;
+        }
+        boolean construction =
+                état.getPhase() == jo.codeide.lsp.host.PhaseIndexation.CONSTRUCTION;
+        android.widget.ImageView icône = vue.findViewById(R.id.index_dialog_icon);
+        android.widget.TextView titre = vue.findViewById(R.id.index_dialog_title);
+        icône.setImageTintList(android.content.res.ColorStateList.valueOf(
+                construction ? couleur(R.color.primaire) : couleur(R.color.ok)));
+        titre.setText(construction
+                ? R.string.atelier_index_dialogue_titre_en_cours
+                : R.string.atelier_index_dialogue_titre_repos);
+        int libelléPhase;
+        switch (état.getPhaseDetaillee()) {
+            case BIBLIOTHEQUES ->
+                    libelléPhase = R.string.atelier_index_dialogue_sous_bibliotheques;
+            case SOURCES ->
+                    libelléPhase = R.string.atelier_index_dialogue_sous_sources;
+            default -> libelléPhase = construction
+                    ? R.string.atelier_index_dialogue_en_travail
+                    : R.string.atelier_index_dialogue_a_jour;
+        }
+        dialogueIndexSous.setText(libelléPhase);
+        vue.findViewById(R.id.index_dialog_building).setVisibility(
+                construction ? View.VISIBLE : View.GONE);
+        vue.findViewById(R.id.index_dialog_idle).setVisibility(
+                construction ? View.GONE : View.VISIBLE);
+        if (construction) {
+            int total = état.getTotal();
+            if (total > 0) {
+                dialogueIndexBarre.setIndeterminate(false);
+                dialogueIndexBarre.setMax(total);
+                dialogueIndexBarre.setProgress(Math.min(état.getFaits(), total));
+            } else {
+                dialogueIndexBarre.setIndeterminate(true);
+            }
+            boolean sources =
+                    état.getPhaseDetaillee() == jo.codeide.lsp.host.PhaseDetailleeIndexation.SOURCES;
+            dialogueIndexCompte.setText(getString(sources
+                    ? R.string.atelier_index_dialogue_compte_fichiers
+                    : R.string.atelier_index_dialogue_compte_artefacts,
+                    état.getFaits(), Math.max(état.getFaits(), total)));
+            android.widget.TextView entête = vue.findViewById(
+                    R.id.index_dialog_work_header);
+            entête.setText(sources
+                    ? R.string.atelier_index_dialogue_entete_fichier_courant
+                    : R.string.atelier_index_dialogue_entete_artefacts);
+            remplirListeTravail(état);
+        }
+        remplirRépartition(état);
+    }
+
+    /** La liste de travail du dialogue (8 entrées visibles, +N au-delà). */
+    private void remplirListeTravail(jo.codeide.lsp.host.EtatIndexation état) {
+        dialogueIndexListe.removeAllViews();
+        List<jo.codeide.lsp.host.EntreeTravailIndexation> entrées =
+                état.getListeTravail();
+        if (entrées == null || entrées.isEmpty()) {
+            if (état.getEntreeCourante() != null) {
+                entrées = List.of(new jo.codeide.lsp.host.EntreeTravailIndexation(
+                        état.getEntreeCourante(),
+                        jo.codeide.lsp.host.EtatEntreeTravailIndexation.ACTIF));
+            }
+        }
+        if (entrées == null || entrées.isEmpty()) {
+            return;
+        }
+        android.content.Context contexte = dialogueIndexListe.getContext();
+        int bornes = Math.min(entrées.size(), 8);
+        for (int i = 0; i < bornes; i++) {
+            dialogueIndexListe.addView(
+                    rangéeTravail(contexte, entrées.get(i)));
+        }
+        if (entrées.size() > bornes) {
+            android.widget.TextView reste = new android.widget.TextView(contexte);
+            reste.setText(getString(R.string.atelier_index_dialogue_entree_plus,
+                    entrées.size() - bornes));
+            reste.setTextColor(couleur(R.color.sur_var));
+            reste.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12);
+            dialogueIndexListe.addView(reste);
+        }
+    }
+
+    /** Une rangée de la liste de travail : l'état (fait/actif/en attente) + le nom. */
+    private android.view.View rangéeTravail(android.content.Context contexte,
+            jo.codeide.lsp.host.EntreeTravailIndexation entrée) {
+        android.widget.LinearLayout rangée = new android.widget.LinearLayout(
+                contexte);
+        rangée.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+        rangée.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        android.widget.FrameLayout icône = new android.widget.FrameLayout(contexte);
+        android.widget.LinearLayout.LayoutParams marge =
+                new android.widget.LinearLayout.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                        android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
+        marge.setMargins(0, 2, 10, 2);
+        icône.setLayoutParams(marge);
+        android.widget.TextView nom = new android.widget.TextView(contexte);
+        nom.setText(entrée.getNom());
+        nom.setTextColor(couleur(R.color.sur_var));
+        nom.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12);
+        nom.setSingleLine(true);
+        nom.setEllipsize(android.text.TextUtils.TruncateAt.MIDDLE);
+        nom.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+                0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        switch (entrée.getEtat()) {
+            case TERMINE, REPRIS, ECARTE -> {
+                android.widget.ImageView fait = new android.widget.ImageView(
+                        contexte);
+                fait.setImageResource(R.drawable.ic_check);
+                fait.setImageTintList(android.content.res.ColorStateList.valueOf(
+                        entrée.getEtat()
+                                == jo.codeide.lsp.host.EtatEntreeTravailIndexation.ECARTE
+                                ? couleur(R.color.sur_var) : couleur(R.color.ok)));
+                fait.setLayoutParams(new android.view.ViewGroup.LayoutParams(
+                        android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                        android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
+                icône.addView(fait);
+            }
+            case ACTIF -> {
+                android.widget.ProgressBar tourne =
+                        new android.widget.ProgressBar(contexte, null,
+                                android.R.attr.progressBarStyleSmall);
+                tourne.setLayoutParams(new android.view.ViewGroup.LayoutParams(
+                        14, 14));
+                icône.addView(tourne);
+            }
+            default -> {
+                android.widget.ImageView point = new android.widget.ImageView(
+                        contexte);
+                point.setImageResource(R.drawable.ic_point);
+                point.setImageTintList(android.content.res.ColorStateList.valueOf(
+                        couleur(R.color.sur_var)));
+                point.setLayoutParams(new android.view.ViewGroup.LayoutParams(
+                        android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                        android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
+                icône.addView(point);
+            }
+        }
+        rangée.addView(icône);
+        rangée.addView(nom);
+        return rangée;
+    }
+
+    /** La répartition du dialogue : indexeurs coûteux, durées, cache. */
+    private void remplirRépartition(jo.codeide.lsp.host.EtatIndexation état) {
+        List<jo.codeide.lsp.host.BreakdownIndexeurIndexation> répartition =
+                état.getBreakdownIndexeurs();
+        jo.codeide.lsp.host.BilanDernierPassageIndexation bilan =
+                état.getBilanDernierPassage();
+        boolean visible = (répartition != null && répartition.stream()
+                .anyMatch(indexeur -> indexeur.getMillisecondesCumulees() >= 1))
+                || état.getDureesPhases() != null;
+        dialogueIndexCorps.findViewById(R.id.index_dialog_breakdown)
+                .setVisibility(visible ? View.VISIBLE : View.GONE);
+        if (!visible) {
+            return;
+        }
+        dialogueIndexIndexeurs.removeAllViews();
+        android.content.Context contexte = dialogueIndexIndexeurs.getContext();
+        if (répartition != null) {
+            for (jo.codeide.lsp.host.BreakdownIndexeurIndexation indexeur
+                    : répartition) {
+                if (indexeur.getMillisecondesCumulees() < 1) {
+                    continue; // seuls les indexeurs qui ont coûté (référence)
+                }
+                android.widget.TextView ligne = new android.widget.TextView(
+                        contexte);
+                ligne.setText(getString(R.string.atelier_index_dialogue_indexeur,
+                        indexeur.getLibelle() != null ? indexeur.getLibelle()
+                                : indexeur.getIdentifiant(),
+                        indexeur.getNombreEntrees(),
+                        indexeur.getMillisecondesCumulees()));
+                ligne.setTextColor(couleur(R.color.sur_var));
+                ligne.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12);
+                dialogueIndexIndexeurs.addView(ligne);
+            }
+        }
+        if (état.getDureesPhases() != null) {
+            dialogueIndexDurées.setText(getString(
+                    R.string.atelier_index_dialogue_phases,
+                    état.getDureesPhases().getBibliothequesMs(),
+                    état.getDureesPhases().getSourcesMs()));
+        }
+        if (bilan != null) {
+            dialogueIndexCache.setText(getString(
+                    R.string.atelier_index_dialogue_entrees_cache,
+                    bilan.getArtefactsTotal(), bilan.getArtefactsRepris()));
+        }
+    }
+
+    /** Une couleur du thème (raccourci honnête des longues lignes). */
+    private int couleur(int idCouleur) {
+        return androidx.core.content.ContextCompat.getColor(requireContext(),
+                idCouleur);
     }
 
     /** Une passe d'index sur le périmètre RÉEL du projet (L10). */
@@ -2689,6 +3221,22 @@ public class WorkbenchFragment extends Fragment
         super.onDestroyView();
         // L'index survit (persistant) ; le fil de fond s'arrête proprement.
         indexExecutor.shutdownNow();
+        // Les sessions LSP s'arrêtent sur leur fil (jamais d'ANR à la fermeture) ;
+        // le tick s'endort, le dialogue et l'auditeur de diagnostics partent.
+        tickIndex.removeCallbacksAndMessages(null);
+        tickIndexActif = false;
+        fermerDialogueIndex();
+        if (retraitDiagnosticsLsp != null) {
+            retraitDiagnosticsLsp.run();
+            retraitDiagnosticsLsp = null;
+        }
+        jo.joide.app.lsp.LspSessions sessions = sessionsLsp;
+        if (sessions != null) {
+            sessionsLsp = null;
+            Thread arrêt = new Thread(sessions::close, "joide-lsp-arret");
+            arrêt.setDaemon(true);
+            arrêt.start();
+        }
         binding = null;
     }
 

@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace 'jo.joide.app'
-    compileSdk 36  // celeris AAR (2.2.11) exige 36 ; targetSdk reste 28 (ADR-009)
+    compileSdk 37  // celeris v2.2.18 + lsp-host 1.15.0 (minCompileSdk 37.2) ; targetSdk reste 28 (ADR-009)
     defaultConfig {
         applicationId 'jo.joide.app'
         minSdk 28
@@ -20,6 +20,22 @@ android {
     buildFeatures {
         buildConfig true
         viewBinding true
+    }
+    packaging {
+        resources {
+            // Les packs LSP embarquent des bibliothèques Kotlin multiplateforme
+            // (syntax-api, lang-syntax) : leurs métadonnées de liaison communes
+            // se dupliquent — inutiles sur ART, elles partent à l'empaquetage.
+            excludes += ['commonMain/**',
+                         'META-INF/kotlin-project-structure-metadata.json',
+                         'META-INF/com.android.tools/r8/**']
+        }
+    }
+    testOptions {
+        // JUnit 5 (LOT-11) : l'intégration réelle des moteurs LSP s'y joue.
+        unitTests.all {
+            it.useJUnitPlatform()
+        }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -66,12 +82,30 @@ android {
 
 dependencies {
     // Brique céleris (consigne du propriétaire, conception §6) : version épinglée
-    // v2.2.11, publiée par JitPack (tag git v2.2.11 de jjoblab/celeris).
-    // 2.2.11 : la carte des usages sert le document ouvert sans serveur (2e725f4).
-    implementation 'com.github.jjoblab.celeris:android-view:v2.2.11'
-    implementation 'com.github.jjoblab.celeris:android-widgets:v2.2.11'
-    implementation 'com.github.jjoblab.celeris:android-host:v2.2.11'
-    implementation 'com.github.jjoblab.celeris:core-syntax-grammars:v2.2.11'
+    // v2.2.18, publiée par JitPack (tag git v2.2.18 de jjoblab/celeris).
+    // 2.2.11→2.2.18 : la coloration ne paie plus la lexicographie intégrale
+    // (ADR-0032), le lexeur TextMate réel (ADR-0030), le cache d'échecs de règles
+    // (ADR-0029), la grammaire du premier fichier ne patiente plus (ADR-0028),
+    // la complétion survit au lexique périmé (2.2.14).
+    implementation 'com.github.jjoblab.celeris:android-view:v2.2.18'
+    implementation 'com.github.jjoblab.celeris:android-widgets:v2.2.18'
+    implementation 'com.github.jjoblab.celeris:android-host:v2.2.18'
+    implementation 'com.github.jjoblab.celeris:core-syntax-grammars:v2.2.18'
+    // Brique code-lsp (B-02, LOT-11) : l'hôte LSP officiel — orchestre les
+    // moteurs Java/Kotlin/XML v1.15.0 (GitHub Packages de jjoblab/code-lsp,
+    // lecture authentifiée par JOIDE_GH_PACKAGES_TOKEN), amène lsp4j 0.22.0,
+    // le compagnon ecj-art (EPL-2.0, ~3,2 Mo — B-02 l'avait budgété) et son
+    // index CIDX dont l'état nourrit l'écran d'indexation (référence 3.47.0).
+    implementation 'jo.codeide.lsp.host:jo-codeide-lsp-host:1.15.0'
+    // Le compagnon ecj patché (3,2 Mo, EPL-2.0 — B-02 l'avait budgété) : la
+    // brique l'injecte dans SON POM par withXml mais PAS dans les métadonnées
+    // Gradle (.module) que Gradle consomme en priorité — la dépendance se
+    // déclare ICI (B-05 demandé : rendre le compagnon visible des deux).
+    implementation 'jo.codeide.lsp.java:jo-codeide-lsp-java-ecj-art:1.15.0'
+    // Coroutines : le constructeur de SessionLsp prend son dispatcheur — la
+    // même version que la brique (sinon son scope bifurque).
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0'
+    implementation project(':core-lsp')
     implementation project(':core-model')
     implementation project(':core-store')
     implementation project(':workbench-spi')
@@ -106,4 +140,9 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.2.0'
     implementation 'androidx.navigation:navigation-fragment:2.8.4'
     implementation 'androidx.navigation:navigation-ui:2.8.4'
+    // Tests unitaires (LOT-11) : l'intégration réelle des moteurs LSP sur JVM
+    // — le même bytecode que l'appareil (SessionLsp, pont client, classpath Forge).
+    testImplementation platform("org.junit:junit-bom:5.11.4")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }

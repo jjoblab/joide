@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [main]
 
+# Lecture des packs LSP de jjoblab/code-lsp sur GitHub Packages (LOT-11,
+# B-02) : les paquets publics exigent quand même un jeton — celui du dépôt
+# suffit avec packages: read.
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   controles:
     name: Controles et tests JVM
@@ -39,8 +46,14 @@ jobs:
         run: |
           chmod +x gradlew
           JOIDE_SKIP_ANDROID=1 ./gradlew --no-daemon test
-      - name: APK debug (SDK de l executant)
+      - name: APK debug (SDK de l executant, plateforme 37)
+        env:
+          JOIDE_GH_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # lsp-host 1.15.0 (minCompileSdk 37.2) exige la plateforme 37 : le
+          # SDK de l'exécutant ne l'embarque pas encore, sdkmanager l'installe.
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platforms;android-37" > /dev/null || true
           chmod +x gradlew
           ./gradlew --no-daemon :app-android:assembleDebug
       - uses: actions/upload-artifact@v4
@@ -52,6 +65,9 @@ jobs:
     name: APK signe (sur etiquette)
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -66,10 +82,13 @@ jobs:
         env:
           JOIDE_KEYSTORE_B64: ${{ secrets.JOIDE_KEYSTORE_B64 }}
           JOIDE_KEYSTORE_MDP: ${{ secrets.JOIDE_KEYSTORE_MDP }}
+          JOIDE_GH_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Keystore reconstitué depuis le secret (base64 PKCS12), puis build
           # release signé (même clé pour toutes les mises à jour).
           echo "$JOIDE_KEYSTORE_B64" | base64 -d > app-android/joide-ci.keystore
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platforms;android-37" > /dev/null || true
           chmod +x gradlew
           ./gradlew --no-daemon :app-android:assembleRelease
           rm -f app-android/joide-ci.keystore

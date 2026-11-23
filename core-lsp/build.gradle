@@ -1,0 +1,42 @@
+// Module JVM pur : le client LSP de JoIDE (lot L11).
+//
+// Trois responsabilités, toutes testables sans SDK Android :
+//  1. ForgeClasspath — la traduction du périmètre RÉEL d'un projet Forge
+//     (forge.json + build/<module>/resolved/classpath.json + android.jar du
+//     moteur) vers le ClasspathResult du protocole tooling que l'hôte LSP
+//     (jo.codeide.lsp.host, brique code-lsp v1.15.0) consomme ;
+//  2. LspTypes — la conversion des types lsp4j 0.22.0 vers les types
+//     immuables de céleris (jo.celeris.core.lsp.types.*) — B-02 : JoIDE
+//     câble SON propre client lsp4j, aucun des deux camps n'impose l'autre ;
+//  3. LanguageClientBridge — le LanguageClient lsp4j qui reçoit les
+//     diagnostics publiés par les moteurs (debounce 50 ms côté serveur) et
+//     les relaie à l'auditeur de l'atelier (squiggles + bande d'erreurs).
+//
+// AUCUNE dépendance Android ici (check-deps) : les classes de l'hôte LSP
+// (AAR code-lsp) vivent côté app-android — leur code est JVM, elles y sont
+// consommées par LspSessions.
+plugins { id "java-library" }
+group = "jo.joide"
+version = "0.1.0"
+java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
+
+tasks.withType(JavaCompile).configureEach { options.encoding = "UTF-8"; options.release = 17 }
+tasks.withType(Test).configureEach { useJUnitPlatform() }
+dependencies {
+    api project(":core-model") // forge.json : modules, racines sources
+    api project(":core-index") // IndexScope : lecture des classpath résolus
+    api "jo.forge:json:0.2.28" // lecture des classpath.json du moteur
+    // Protocole tooling (ClasspathResult v8) — transitif de lsp-host mais
+    // requis à la compilation ici : JitPack, voie anonyme (B-04).
+    api "com.github.jjoblab.codeide-tooling:protocol:1.2.0"
+    // Le client lsp4j (B-02 : le nôtre, version 0.22.0 — celle du couple
+    // lsp-host + moteurs testé par la brique code-lsp elle-même).
+    api "org.eclipse.lsp4j:org.eclipse.lsp4j:0.22.0"
+    api "org.eclipse.lsp4j:org.eclipse.lsp4j.jsonrpc:0.22.0"
+    // Types céleris (core-lsp/core-text : JVM purs, JitPack v2.2.18).
+    api "com.github.jjoblab.celeris:core-lsp:v2.2.18"
+    api "com.github.jjoblab.celeris:core-text:v2.2.18"
+    testImplementation platform("org.junit:junit-bom:5.11.4")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}

@@ -15,7 +15,8 @@ ViewBinding), `minSdk 28`, `targetSdk 28` (ADR-009).
 | `workbench-spi/` | Ports de l'atelier : `BuildBackend`, événements de build, diagnostics |
 | `build-forge/` | Backend Forge : adaptation du client Forge au port `BuildBackend` |
 | `build-gradle-core/` | Backend Gradle : lancement via terminal, analyse des diagnostics (testable sans appareil) |
-| `app-android/` | L'application : écrans, atelier, assistant des modes, design system |
+| `core-lsp/` | Client LSP : classpath Forge → protocole tooling, conversions lsp4j→céleris, pont client (LOT-11) |
+| `app-android/` | L'application : écrans, atelier, assistant des modes, design system, sessions LSP |
 | `docs/` | Analyses, revue, conception, design system, licences, ADR, fiches d'écrans, registre de références |
 | `tools/` | Contrôles locaux : termes interdits, langue, dépendances, API 28, publication locale de Forge |
 | `.github/workflows/` | CI : contrôles + build APK |
@@ -27,9 +28,14 @@ ViewBinding), `minSdk 28`, `targetSdk 28` (ADR-009).
 git clone https://github.com/jjoblab/forge.git ../forge
 cd ../forge && ./gradlew publishToMavenLocal  # Forge v0.2.25+ publie nativement (ADR-001)
 cd ../joide
-./gradlew build                              # complet (SDK Android requis pour app-android)
-JOIDE_SKIP_ANDROID=1 ./gradlew test          # cœur JVM uniquement, sans SDK
+JOIDE_GH_PACKAGES_TOKEN=ghp_xxx ./gradlew build   # complet (SDK Android + jeton de lecture GitHub Packages)
+JOIDE_SKIP_ANDROID=1 ./gradlew test               # cœur JVM uniquement, sans SDK ni jeton
 ```
+
+Les moteurs LSP (brique code-lsp v1.15.0, LOT-11) se lisent sur le GitHub
+Packages de `jjoblab/code-lsp` : registre à jeton même pour lire — un PAT avec
+`read:packages` suffit (`JOIDE_GH_PACKAGES_TOKEN`, ou `GITHUB_TOKEN`) ; la CI
+utilise le jeton du dépôt.
 
 Le mode de build actif est **Forge seul** (ADR-009) : le mode Gradle + terminal
 intégré est conçu et conservé (`build-gradle-core`, `terminal-core`) mais pas
