@@ -228,6 +228,36 @@ cloné** avec verdict — reconnu → ouverture immédiate ; inconnu → avertis
 existe déjà, la recherche de dépôts distants n'est pas demandée). Aucune ligne copiée
 (clean-room, Java + JGit nôtre déjà en place).
 
+### Reconsultation du 2026-11-24 (suite — le contenu principal de l'éditeur)
+
+Demande additionnelle du propriétaire (« consulter encore la référence : le contenu
+principal, la section toolbar, le menu overflow, la section entre le toolbar et le
+tablayout, le fil d'Ariane, l'éditeur, et le bottom-sheet replié ne doit pas cacher
+le bas de l'éditeur ») : re-lecture **au même SHA épinglé `1b1a305`** de
+`app/ide-ui-screens/.../EditorScreen.kt` (entrée adaptative compact/étendu, retour
+système, overlays), `EditorLayouts.kt` (**CompactLayout** : tiroir poussé, colonne
+`EditorCenter` + `KeyboardAccessory` + **`Spacer(DockBarHeight)` — le slot de la
+barre repliée est RÉSERVÉ sous l'éditeur**, puis `BuildDock`), `EditorCenter.kt`
+(l'ordre exact toolbar → bandeau leçon → DepsProgressBar → EditorNoticeStrip →
+cartes → TabsStrip → BreadcrumbBar → éditeur/`NoOpenFilesView` + les modes de vue
+Text/Preview/Split), `app/ide-ui-components/.../EditorChrome.kt`
+(`EditorTopBar` 52dp + `SidebarToggleButton` animé, `IndexStatusChip` **visible en
+compact seulement pendant l'indexation** (spinner + %, tap = dialogue), `EditorOverflowMenu`
+(actions du fichier, bascules à état acccentué, sous-menu variante), `RunControl`
+(play inline + chevron picker — **jamais dans le ⋯**), `TabsStrip` (onglet actif
+secondaryContainer, menu long-press fermer/autres/droite/gauche/tout, **chevron de
+débordement épinglé + hairline SOUS la strip**)), `EditorBreadcrumbBar.kt` (flèches
+← → sur l'historique de navigation, localisation **suivant le curseur** (débounce
+200 ms, repli sur le chemin), **tap = panneau Structure**, `ViewModeToggle`
+Code/Blocs/Aperçu/Scindé), `app/ide-ui-components/.../BuildDock.kt` (`DockBarHeight`
+60dp, détentes barre→60 %→**plein écran**, ligne de progression 2dp sur le bord,
+`BuildStatusChip` spinner→✓/✗, **hint d'apprentissage une fois (persisté)**, dock
+**caché pendant le clavier** — la barre de symboles prend le slot), et
+`EditorNotices.kt` (`EditorNoticeStrip` : **UNE barre pour tous les avis** — un avis
+= sa rangée, plusieurs = « N choses » dépliable, teinte 10 %, action + masquage).
+`EditorBottomNav.kt` lu pour la barre repliée (recherche/IA/plus badge — déjà en
+place côté JoIDE). Aucune ligne copiée (clean-room, Java + vues Android).
+
 ## Suivi des écarts après implémentation
 
 Chaque lot (L0-L9) relit la partie correspondante du produit de référence **après**
