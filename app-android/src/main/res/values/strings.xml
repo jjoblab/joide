@@ -533,4 +533,29 @@
     <string name="atelier_restaure">Restaurer</string>
     <string name="atelier_sauvegarde_restauree">Sauvegarde restaurée (non enregistrée)</string>
     <string name="atelier_chemin_copie">Chemin copié</string>
+
+    <!-- Clonage depuis l\'accueil (lot L10 : bouton « Plus » → popup → feuille) -->
+    <string name="accueil_plus_cloner">Cloner un dépôt Git</string>
+    <string name="accueil_plus_importer">Importer un dossier</string>
+    <string name="clone_titre">Cloner un dépôt Git</string>
+    <string name="clone_sous_titre">Le dépôt atterrit dans le stockage des projets, prêt à ouvrir.</string>
+    <string name="clone_url_label">Adresse du dépôt</string>
+    <string name="clone_url_hint">https://github.com/utilisateur/depot</string>
+    <string name="clone_dossier_label">Nom du dossier</string>
+    <string name="clone_dossier_hint">mon-depot</string>
+    <string name="clone_destination">Destination : %1$s</string>
+    <string name="clone_destination_inconnue">—</string>
+    <string name="clone_bouton">Cloner</string>
+    <string name="clone_annuler">Annuler</string>
+    <string name="clone_en_cours">Clonage en cours…</string>
+    <string name="clone_tache">%1$s %% · %2$s</string>
+    <string name="clone_ok_reconnu">« %1$s » cloné et reconnu comme projet (il apparaît dans la liste).</string>
+    <string name="clone_ok_inconnu">« %1$s » cloné — aucun système de build reconnu (forge.json ou Gradle). Le dossier s\'ouvre en édition ; il restera invisible de la liste des projets.</string>
+    <string name="clone_echec">Clonage impossible : %1$s</string>
+    <string name="clone_ouvrir">Ouvrir</string>
+    <string name="clone_ouvrir_quand_meme">Ouvrir quand même</string>
+    <string name="clone_fermer">Fermer</string>
+    <string name="clone_url_vide">Collez l\'adresse du dépôt (https://… ) et un nom de dossier.</string>
+    <string name="clone_dossier_occupe">Le dossier « %1$s » existe déjà — changez le nom.</string>
+    <string name="clone_accueil_inconnu">« %1$s » cloné sans système de build reconnu — visible depuis la feuille de clonage seulement.</string>
 </resources>

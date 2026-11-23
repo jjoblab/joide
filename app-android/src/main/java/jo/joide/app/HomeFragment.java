@@ -28,9 +28,10 @@ import jo.joide.workbench.WorkMode;
  * conteneur secondaire Gradle) + méta de dernière ouverture, CTA asymétrique
  * 64 dp + bouton tonal « Plus », état vide pointillé, navbar du bas. Le
  * stockage reste le vrai ({@link ProjectStore}, ADR-010) ; le clonage git vit
- * sur l'écran Git (studio : popup ancrée à l'accueil).
+ * sur la feuille ancrée à l'accueil (lot L10 : bouton « Plus » → popup →
+ * feuille de clonage, jamais de dialogue).
  */
-public class HomeFragment extends Fragment {
+public class HomeFragment extends Fragment implements CloneSheet.Host {
 
     private HomeFragmentBinding binding;
     private ProjectStore store;
@@ -65,9 +66,7 @@ public class HomeFragment extends Fragment {
                                 new CreateProjectFragment())
                         .addToBackStack(null)
                         .commit());
-        binding.moreButton.setOnClickListener(v ->
-                // « Plus » du studio : import + clonage annoncés là où ils vivent.
-                showTransientNotice(getString(R.string.import_non_cable_encore)));
+        binding.moreButton.setOnClickListener(v -> showPlusMenu());
         setupFilters();
         setupNavbar();
         refresh();
@@ -250,6 +249,44 @@ public class HomeFragment extends Fragment {
                 .replace(((ViewGroup) requireView().getParent()).getId(), workbench)
                 .addToBackStack(null)
                 .commit();
+    }
+
+    // ---- « Plus » : popup ancrée → clonage réel (lot L10) / import annoncé ----
+
+    /** Le bouton « Plus » ouvre la popup ancrée du studio (pas de dialogue). */
+    private void showPlusMenu() {
+        android.widget.PopupMenu menu = new android.widget.PopupMenu(
+                requireContext(), binding.moreButton);
+        menu.inflate(R.menu.home_plus);
+        menu.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == R.id.option_cloner) {
+                new CloneSheet()
+                        .show(getChildFragmentManager(), "clone-sheet");
+                return true;
+            }
+            // Import : reste annoncé honnêtement (permissions documentées L8).
+            showTransientNotice(getString(R.string.import_non_cable_encore));
+            return true;
+        });
+        menu.show();
+    }
+
+    @Override
+    public void onCloned(Path target, boolean reconnu) {
+        // Le stockage est dérivé du contenu réel du dossier : le projet reconnu
+        // apparaît sans index à désynchroniser ; l'inconnu ne s'y affiche pas.
+        // Les compteurs des chips suivent (setupFilters relit le stockage).
+        setupFilters();
+        refresh();
+        if (binding != null && !reconnu) {
+            showTransientNotice(getString(
+                    R.string.clone_accueil_inconnu, target.getFileName()));
+        }
+    }
+
+    @Override
+    public void onOpenRequested(Path target) {
+        openWorkbench(target.toAbsolutePath().toString());
     }
 
     private void showTransientNotice(String message) {

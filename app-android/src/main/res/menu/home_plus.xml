@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bouton « Plus » de l'accueil (studio : popup ancrée) — le clonage est
+     réel (lot L10), l'import reste annoncé honnêtement. -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/option_cloner"
+        android:title="@string/accueil_plus_cloner" />
+    <item
+        android:id="@+id/option_importer"
+        android:title="@string/accueil_plus_importer" />
+</menu>

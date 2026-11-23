@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Feuille de clonage (lot L10, demande du propriétaire 2026-11-23 : cloner un
+  dépôt git depuis l'accueil — studio : popup ancrée, ici bottom sheet, aucun
+  dialogue) : URL du dépôt, nom du dossier (prérempli du dernier segment),
+  progression réelle du clonage, verdict honnête (projet reconnu ou dossier
+  éditable) et actions.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="24dp"
+    android:paddingEnd="24dp"
+    android:paddingTop="14dp"
+    android:paddingBottom="24dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/clone_titre"
+        android:textColor="@color/sur"
+        style="@style/Txt.Xl" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="@string/clone_sous_titre"
+        style="@style/Txt.BodyS" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:layout_marginBottom="8dp"
+        android:text="@string/clone_url_label"
+        android:textColor="@color/sur"
+        style="@style/Txt.Label" />
+
+    <EditText
+        android:id="@+id/clone_url_field"
+        style="@style/Champ"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:importantForAutofill="no"
+        android:inputType="textUri"
+        android:fontFamily="monospace"
+        android:textSize="13sp"
+        android:hint="@string/clone_url_hint" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="8dp"
+        android:text="@string/clone_dossier_label"
+        android:textColor="@color/sur"
+        style="@style/Txt.Label" />
+
+    <EditText
+        android:id="@+id/clone_dossier_field"
+        style="@style/Champ"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:importantForAutofill="no"
+        android:inputType="text"
+        android:hint="@string/clone_dossier_hint" />
+
+    <TextView
+        android:id="@+id/clone_destination"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        style="@style/Txt.BodyS" />
+
+    <!-- Clonage en cours : barre réelle + tâche JGit -->
+    <LinearLayout
+        android:id="@+id/clone_progress_zone"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="18dp"
+        android:visibility="gone">
+
+        <ProgressBar
+            android:id="@+id/clone_progress_bar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:indeterminate="true" />
+
+        <TextView
+            android:id="@+id/clone_progress_task"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textColor="@color/sur_var"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <!-- Verdict : projet reconnu / dossier éditable / échec -->
+    <TextView
+        android:id="@+id/clone_resultat"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:padding="14dp"
+        android:textSize="13sp"
+        android:lineSpacingExtra="2dp"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="18dp">
+
+        <LinearLayout
+            android:id="@+id/clone_bouton"
+            style="@style/Cta"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:src="@drawable/ic_wb"
+                android:scaleType="centerInside"
+                android:contentDescription="@string/clone_bouton"
+                app:tint="@color/sur_primaire" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:text="@string/clone_bouton"
+                android:textColor="@color/sur_primaire"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/clone_annuler_bouton"
+            style="@style/Tonal64"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_marginStart="8dp">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:src="@drawable/ic_back"
+                android:scaleType="centerInside"
+                android:contentDescription="@string/clone_annuler"
+                app:tint="@color/sur_sc2" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Après succès : ouvrir tout de suite (reconnu) ou pour édition (inconnu) -->
+    <LinearLayout
+        android:id="@+id/clone_ouvrir_zone"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="12dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/clone_ouvrir_bouton"
+            style="@style/Cta"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1">
+
+            <TextView
+                android:id="@+id/clone_ouvrir_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/clone_ouvrir"
+                android:textColor="@color/sur_primaire"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/clone_fermer_bouton"
+            style="@style/Tonal64"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="8dp">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_dots"
+                android:scaleType="centerInside"
+                android:contentDescription="@string/clone_fermer"
+                app:tint="@color/sur_sc2" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

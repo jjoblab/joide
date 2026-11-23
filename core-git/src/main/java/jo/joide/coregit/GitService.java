@@ -214,12 +214,124 @@ public final class GitService {
 
     /** Clonage effectif (retourne la racine clonée). */
     public static Path cloneInto(String url, Path target) throws IOException {
+        return clone(url, target, null, null, 60);
+    }
+
+    /**
+     * Progression du clonage (rendu du bottom sheet d'accueil) : fraction
+     * 0..1, ou -1 pour « indéterminée » (phase de négociation).
+     */
+    public interface CloneProgress {
+
+        /** @param fraction 0..1, ou -1 si inconnue ; @param tâche libellé JGit traduit tel quel. */
+        void update(double fraction, String task);
+    }
+
+    /**
+     * Clonage complet (lot L10, parcours d'accueil) : timeout, identifiants par
+     * hôte, progression, et **nettoyage du dossier partiel en cas d'échec** —
+     * comme la référence : un clonage raté ne laisse pas un demi-dépôt qui
+     * bloquerait la tentative suivante.
+     *
+     * @param url            adresse du dépôt (https ou file)
+     * @param target         dossier de destination (doit être vide ou absent)
+     * @param credentials    identifiants distants éventuels (dépôt privé)
+     * @param progress       auditeur de progression (peut être null)
+     * @param timeoutSeconds borne réseau du clonage
+     * @return la racine clonée
+     * @throws IOException échec réseau, authentification, dossier non vide…
+     */
+    public static Path clone(String url, Path target, GitOps.Credentials credentials,
+            CloneProgress progress, int timeoutSeconds) throws IOException {
+        if (url == null || url.isBlank()) {
+            throw new IOException("Adresse du dépôt vide");
+        }
+        if (Files.isDirectory(target) && !estVide(target)) {
+            throw new IOException("Le dossier " + target.getFileName()
+                    + " existe déjà et n'est pas vide");
+        }
         try {
-            org.eclipse.jgit.api.Git.cloneRepository().setURI(url)
-                    .setDirectory(target.toFile()).setDepth(1).call();
+            org.eclipse.jgit.api.CloneCommand commande =
+                    org.eclipse.jgit.api.Git.cloneRepository()
+                            .setURI(url.trim())
+                            .setDirectory(target.toFile())
+                            .setTimeout(timeoutSeconds);
+            if (credentials != null && credentials.token() != null
+                    && !credentials.token().isBlank()) {
+                commande.setCredentialsProvider(
+                        new org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider(
+                                credentials.username() == null
+                                        ? "" : credentials.username(),
+                                credentials.token()));
+            }
+            if (progress != null) {
+                commande.setProgressMonitor(new org.eclipse.jgit.lib.ProgressMonitor() {
+                    private volatile int total;
+                    private volatile int fait;
+
+                    @Override public void start(int totalTasks) { }
+
+                    @Override public void beginTask(String title, int total) {
+                        this.total = Math.max(total, 0);
+                        this.fait = 0;
+                        notifier(title);
+                    }
+
+                    @Override public void update(int completed) {
+                        if (completed > 0) {
+                            fait = completed;
+                        }
+                        notifier(null);
+                    }
+
+                    @Override public void endTask() { }
+
+                    @Override public boolean isCancelled() { return false; }
+
+                    @Override public void showDuration(boolean enabled) { }
+
+                    private void notifier(String title) {
+                        double fraction = total > 0 ? (double) fait / total : -1;
+                        String tâche = title != null ? title
+                                : total > 0 ? fait + "/" + total : "";
+                        progress.update(fraction, tâche);
+                    }
+                });
+            }
+            commande.call();
             return target;
-        } catch (org.eclipse.jgit.api.errors.GitAPIException e) {
-            throw new IOException(e.getMessage(), e);
+        } catch (Exception e) {
+            // Un clonage raté ne laisse pas un demi-dépôt (nettoyage best-effort).
+            try {
+                nettoyer(target);
+            } catch (IOException silencieux) {
+                // Le nettoyage échoue rarement ; l'erreur d'origine prime.
+            }
+            throw new IOException(e.getMessage() == null
+                    ? "Clonage impossible" : e.getMessage(), e);
+        }
+    }
+
+    /** Le dossier ne contient rien ? (même un .git partiel compte comme occupé.) */
+    private static boolean estVide(Path dir) throws IOException {
+        try (var stream = Files.list(dir)) {
+            return stream.findAny().isEmpty();
+        }
+    }
+
+    /** Suppression récursive best-effort (nettoyage d'un clonage raté). */
+    private static void nettoyer(Path dir) throws IOException {
+        if (!Files.exists(dir)) {
+            return;
+        }
+        try (var stream = Files.walk(dir)) {
+            stream.sorted(java.util.Comparator.reverseOrder()).forEach(p -> {
+                try {
+                    Files.delete(p);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
         }
     }
 
