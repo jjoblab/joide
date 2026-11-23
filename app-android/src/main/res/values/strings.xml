@@ -652,4 +652,25 @@
     <string name="depots_vide">Aucun dépôt déclaré (le moteur applique ses défauts).</string>
     <string name="depots_url_invalide">Ce n\'est pas une adresse de dépôt (https://…).</string>
     <string name="depots_doublon">Ce dépôt est déjà déclaré.</string>
+
+    <!-- Écran Runtime de build (lot L10, d\'après la page Build Runtime de la référence) -->
+    <string name="settings_row_runtime">Runtime de build</string>
+    <string name="settings_row_runtime_desc">Tas du moteur, mode basse mémoire, constats</string>
+    <string name="runtime_titre">Runtime de build</string>
+    <string name="runtime_tas_titre">Tas du moteur</string>
+    <string name="runtime_tas_auto">Auto</string>
+    <string name="runtime_tas_auto_valeur">Auto — %1$d Mo (256 Mo sous 2,5 Go de RAM)</string>
+    <string name="runtime_tas_explicite">%1$d Mo (au prochain lancement du moteur)</string>
+    <string name="runtime_tas_bornes">256 – 1024 Mo, pas de 64</string>
+    <string name="runtime_basse_memoire_titre">Mode basse mémoire</string>
+    <string name="runtime_basse_memoire_desc">Sous 2,5 Go de RAM totale, le moteur retombe à 256 Mo de tas (seuil réel, décisions Forge v0.2.15+).</string>
+    <string name="runtime_basse_memoire_auto">Auto</string>
+    <string name="runtime_basse_memoire_force">Activé</string>
+    <string name="runtime_basse_memoire_off">Désactivé</string>
+    <string name="runtime_separe_titre">Processus séparé — toujours</string>
+    <string name="runtime_separe_desc">Le moteur Forge tourne dans son propre processus : un écroulement du moteur (mémoire comprise) ne tue jamais l\'IDE. C\'est un choix d\'architecture, pas un réglage.</string>
+    <string name="runtime_conflits_titre">Conflits de versions — NEWEST</string>
+    <string name="runtime_conflits_desc">Quand deux dépendances demandent des versions différentes, le moteur garde la plus récente (NEWEST, Forge v0.2.28). Non réglable pour l\'instant.</string>
+    <string name="runtime_effet">Les réglages s\'appliquent au PROCHAIN lancement du moteur — un moteur déjà lancé garde son tas (le redémarrage suit l\'anti-recul d\'installation, pas un bouton caché).</string>
+    <string name="runtime_ecriture_impossible">Écriture impossible : %1$s</string>
 </resources>

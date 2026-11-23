@@ -2223,6 +2223,11 @@ public class WorkbenchFragment extends Fragment
                         Build.SUPPORTED_ABIS.length > 0
                                 ? Build.SUPPORTED_ABIS[0] : "all",
                         infos.totalMem / (1024L * 1024L)));
+        // Réglages du runtime (page Runtime de build — L10) : lus du fichier de
+        // préférences réel, appliqués à CE lancement du moteur.
+        forgeBackend.configure(new jo.joide.buildforge.EngineRuntimePrefs(
+                requireContext().getFilesDir().toPath()
+                        .resolve("runtime.properties")).read());
     }
 
     private void runForgeBuild(List<String> cible) {

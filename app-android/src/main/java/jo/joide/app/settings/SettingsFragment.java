@@ -129,12 +129,14 @@ public final class SettingsFragment extends Fragment {
                         .commit());
     }
 
-    // ---- Section Construction (moteurs, terminal) -----------------------------
+    // ---- Section Construction (moteurs, runtime, terminal) -------------------
 
     private void wireBuildRows(Context context) {
         row(binding.rowBuildEngines, R.drawable.ic_play,
                 R.string.settings_row_build_engines,
                 R.string.settings_row_build_engines_desc);
+        row(binding.rowRuntime, R.drawable.ic_gear,
+                R.string.settings_row_runtime, R.string.settings_row_runtime_desc);
         row(binding.rowTerminal, R.drawable.ic_terminal,
                 R.string.settings_row_terminal, R.string.settings_row_terminal_desc);
 
@@ -145,6 +147,14 @@ public final class SettingsFragment extends Fragment {
                 getParentFragmentManager().beginTransaction()
                         .replace(((ViewGroup) requireView().getParent()).getId(),
                                 jo.joide.app.install.InstallFragment.forMode(activeMode()))
+                        .addToBackStack(null)
+                        .commit());
+        // Runtime de build : tas du moteur, mode basse mémoire, constats
+        // honnêtes (processus séparé, NEWEST) — lot L10.
+        binding.rowRuntime.getRoot().setOnClickListener(v ->
+                getParentFragmentManager().beginTransaction()
+                        .replace(((ViewGroup) requireView().getParent()).getId(),
+                                new jo.joide.app.config.BuildRuntimeFragment())
                         .addToBackStack(null)
                         .commit());
         // Terminal : sessions réelles du mode Gradle.

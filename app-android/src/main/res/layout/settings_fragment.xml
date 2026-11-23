@@ -197,6 +197,12 @@
             <include layout="@layout/settings_hub_separator" />
 
             <include
+                android:id="@+id/row_runtime"
+                layout="@layout/settings_hub_row" />
+
+            <include layout="@layout/settings_hub_separator" />
+
+            <include
                 android:id="@+id/row_terminal"
                 layout="@layout/settings_hub_row" />
         </LinearLayout>

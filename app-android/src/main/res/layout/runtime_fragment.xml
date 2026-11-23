@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Écran Runtime de build (lot L10, d'après la page « Build Runtime » de la
+  référence — REF-130) : tas du moteur (glissière bornée aux valeurs RÉELLES
+  du moteur 256-1024 Mo + Auto), mode basse mémoire (seuil réel 2,5 Go), et
+  DEUX cartes de constat honnêtes — le moteur est un processus séparé
+  (toujours, non négociable) et la médiation de conflits est NEWEST
+  (v0.2.28, non réglable). Effet au prochain lancement du moteur (dit).
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/fond">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="10dp">
+
+        <ImageButton
+            android:id="@+id/runtime_back"
+            style="@style/IconBtn"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:contentDescription="@string/commun_retour"
+            android:src="@drawable/ic_back"
+            android:scaleType="centerInside"
+            app:tint="@color/sur_var" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="6dp"
+            android:text="@string/runtime_titre"
+            android:textColor="@color/sur"
+            style="@style/Txt.Xl" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="24dp">
+
+            <!-- Tas du moteur -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/fond_carte_bas"
+                android:layout_marginTop="12dp"
+                android:padding="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/runtime_tas_titre"
+                    android:textColor="@color/sur"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/runtime_tas_valeur"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:textColor="@color/sur"
+                    android:textSize="13sp" />
+
+                <SeekBar
+                    android:id="@+id/runtime_tas_barre"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/runtime_tas_bornes"
+                        android:textColor="@color/sur_var"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/runtime_tas_auto"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/runtime_tas_auto"
+                        android:textColor="@color/sur_sc2"
+                        android:textSize="12.5sp"
+                        android:textStyle="bold"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:paddingTop="7dp"
+                        android:paddingBottom="7dp"
+                        android:background="@drawable/fond_chip" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Mode basse mémoire -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/fond_carte_bas"
+                android:layout_marginTop="12dp"
+                android:padding="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/runtime_basse_memoire_titre"
+                    android:textColor="@color/sur"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/runtime_basse_memoire_desc"
+                    android:textColor="@color/sur_var"
+                    android:textSize="12.5sp" />
+
+                <LinearLayout
+                    android:id="@+id/runtime_basse_memoire_chips"
+                    android:layout_width="wrap_content"
+                    android:layout_height="38dp"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="10dp" />
+            </LinearLayout>
+
+            <!-- Constat : processus séparé (non négociable) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/fond_carte_bas"
+                android:layout_marginTop="12dp"
+                android:padding="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/runtime_separe_titre"
+                    android:textColor="@color/sur"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/runtime_separe_desc"
+                    android:textColor="@color/sur_var"
+                    android:textSize="12.5sp"
+                    android:lineSpacingExtra="2dp" />
+            </LinearLayout>
+
+            <!-- Constat : médiation de conflits (NEWEST, non réglable) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/fond_carte_bas"
+                android:layout_marginTop="12dp"
+                android:padding="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/runtime_conflits_titre"
+                    android:textColor="@color/sur"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/runtime_conflits_desc"
+                    android:textColor="@color/sur_var"
+                    android:textSize="12.5sp"
+                    android:lineSpacingExtra="2dp" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:padding="14dp"
+                android:text="@string/runtime_effet"
+                android:textSize="12.5sp"
+                android:lineSpacingExtra="2dp"
+                android:textColor="@color/sur_conteneur_tertiaire"
+                android:background="@drawable/fond_pastille_tertiaire" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>
