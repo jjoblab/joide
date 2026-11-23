@@ -3,6 +3,7 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:id="@+id/option_fichiers" android:title="@string/option_atelier_fichiers" />
     <item android:id="@+id/option_modules" android:title="@string/option_atelier_modules" />
+    <item android:id="@+id/option_activite" android:title="@string/option_atelier_activite" />
     <item android:id="@+id/option_agent_ia" android:title="@string/option_atelier_agent_ia" />
     <item android:id="@+id/option_console" android:title="@string/option_atelier_console" />
     <item android:id="@+id/option_symboles" android:title="@string/option_atelier_symboles" />

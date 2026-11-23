@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import jo.joide.app.R;
+import jo.joide.app.config.ErrorSheet;
 import jo.joide.app.databinding.WorkbenchFragmentBinding;
 import jo.joide.corestore.ModePreferences;
 import jo.joide.app.ModeSetupFragment;
@@ -883,6 +884,13 @@ public class WorkbenchFragment extends Fragment
                 binding.drawerLayout.openDrawer(androidx.core.view.GravityCompat.START);
             } else if (id == R.id.option_modules) {
                 openModulesScreen();
+            } else if (id == R.id.option_activite) {
+                // Journal d'activité (L10) : chronologie builds/index/crash.
+                getParentFragmentManager().beginTransaction()
+                        .replace(((ViewGroup) requireView().getParent()).getId(),
+                                new jo.joide.app.config.ActivityFragment())
+                        .addToBackStack(null)
+                        .commit();
             } else if (id == R.id.option_agent_ia) {
                 openAiDrawer();
             } else if (id == R.id.option_construire) {
@@ -2153,6 +2161,12 @@ public class WorkbenchFragment extends Fragment
         lastDiagnostics.clear();
         lastStructuredDiagnostics.clear();
         beginBuildInDock();
+        journalActivité().record(jo.joide.corestore.ActivityLog.Kind.BUILD,
+                getString(R.string.activite_build_lance,
+                        activeMode() == WorkMode.FORGE
+                                ? getString(R.string.mode_forge_nom)
+                                : getString(R.string.mode_gradle_nom)),
+                cible.isEmpty() ? null : String.join(" ", cible));
         if (activeMode() == WorkMode.GRADLE) {
             runGradleBuild();
         } else {
@@ -2257,6 +2271,18 @@ public class WorkbenchFragment extends Fragment
                 });
     }
 
+    /** Journal d'activité réel (filesDir/journal/activite.txt — L10). */
+    private jo.joide.corestore.ActivityLog journalActivité() {
+        return new jo.joide.corestore.ActivityLog(
+                requireContext().getFilesDir().toPath().resolve("journal/activite.txt"));
+    }
+
+    /** Journal des écroulements réel (filesDir/journal/ecroulements.txt). */
+    private jo.joide.corestore.CrashJournal crashJournal() {
+        return new jo.joide.corestore.CrashJournal(
+                requireContext().getFilesDir().toPath().resolve("journal/ecroulements.txt"));
+    }
+
     /** Heure locale HH:mm pour l'en-tête de run de la console. */
     private String heure() {
         return LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"));
@@ -2275,6 +2301,17 @@ public class WorkbenchFragment extends Fragment
             consoleBuffer.line(ConsoleBuffer.Kind.ERROR,
                     failure.getMessage() != null ? failure.getMessage()
                             : String.valueOf(failure));
+            // Lancement impossible (moteur absent…) : journalé + feuille
+            // d'erreur non fatale réutilisable (L10) — jamais muet.
+            journalActivité().record(jo.joide.corestore.ActivityLog.Kind.CRASH,
+                    getString(R.string.activite_lancement_impossible,
+                            failure.getMessage() == null ? "" : failure.getMessage()),
+                    null);
+            ErrorSheet.montrer(getChildFragmentManager(),
+                    getString(R.string.erreur_titre_lancement),
+                    getString(R.string.erreur_message_lancement,
+                            Paths.get(projectPath).getFileName().toString()),
+                    failure);
             renderConsole();
             renderDockBuildPill();
             dockBehavior.setState(com.google.android.material.bottomsheet
@@ -2713,6 +2750,10 @@ public class WorkbenchFragment extends Fragment
         lastBuildSuccess = finished.success();
         String duree = Durations.format(finished.durationMs(), Locale.getDefault());
         int taches = Math.max(buildTasksTotal, buildTaskCount);
+        // Mort anormale du moteur (la session se clôt sans fin de build) :
+        // écroulement journalé + ligne honnête — l'IDE est intact (L10).
+        boolean moteurÉcroulé = !finished.success() && finished.message() != null
+                && finished.message().contains("mort anormale");
         if (!consoleDuMoteur) {
             if (finished.success()) {
                 consoleBuffer.finished(ConsoleBuffer.Kind.SUCCESS,
@@ -2728,6 +2769,25 @@ public class WorkbenchFragment extends Fragment
                     consoleBuffer.line(ConsoleBuffer.Kind.ERROR, finished.message());
                 }
             }
+        }
+        if (moteurÉcroulé) {
+            // Ligne honnête de la référence : l'IDE survit au moteur.
+            consoleBuffer.line(ConsoleBuffer.Kind.ERROR,
+                    getString(R.string.atelier_moteur_ecroule));
+            journalActivité().record(jo.joide.corestore.ActivityLog.Kind.CRASH,
+                    getString(R.string.atelier_moteur_ecroule_journal),
+                    finished.message());
+            crashJournal().record(jo.joide.corestore.CrashJournal.Zone.MOTEUR,
+                    new RuntimeException(finished.message() == null
+                            ? "moteur mort" : finished.message()));
+        } else {
+            journalActivité().record(jo.joide.corestore.ActivityLog.Kind.VERDICT,
+                    finished.success()
+                            ? getString(R.string.activite_build_reussi, duree, taches)
+                            : getString(R.string.activite_build_echoue, duree,
+                                    finished.failedTask() == null ? "—"
+                                            : finished.failedTask()),
+                    finished.message());
         }
         renderBuildPills();
         renderDockBuildPill();
