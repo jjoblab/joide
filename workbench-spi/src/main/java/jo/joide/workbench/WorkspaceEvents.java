@@ -22,7 +22,8 @@ public final class WorkspaceEvents {
     /** Événement de l'espace de travail (fermé : les types sont stables). */
     public sealed interface Event permits
             FileCreated, FileRenamed, FileDeleted, FileSaved, FileChangedOnDisk,
-            BuildFinished, GitStateChanged, DiagnosticsChanged {}
+            BuildFinished, GitStateChanged, DiagnosticsChanged,
+            ModelChanged, RebuildRequested {}
 
     /** Un fichier a été créé. */
     public record FileCreated(Path file) implements Event {}
@@ -47,6 +48,19 @@ public final class WorkspaceEvents {
 
     /** Les diagnostics du projet ont changé (à relire). */
     public record DiagnosticsChanged() implements Event {}
+
+    /**
+     * Le modèle de build a été réécrit ({@code forge.json} — écrans de
+     * configuration du lot L10) : arborescence, détecteurs et index se
+     * rafraîchissent sur le disque.
+     */
+    public record ModelChanged(Path file) implements Event {}
+
+    /**
+     * Une re-résolution est demandée (écran Dépendances du lot L10) : la
+     * résolution vit dans le moteur — l'hôte lance le build.
+     */
+    public record RebuildRequested() implements Event {}
 
     private final List<Consumer<Event>> subscribers = new CopyOnWriteArrayList<>();
 

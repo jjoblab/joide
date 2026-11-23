@@ -30,7 +30,7 @@ class GitServiceCloneTest {
         Git.init().setDirectory(distant.toFile())
                 .setInitialBranch("main").call().close();
         Files.writeString(distant.resolve("forge.json"),
-                "{\n  \"modules\": {\n    \":app\": { \"type\": \"application\" }\n  }\n}\n");
+                "{\"modules\":[{\"name\":\"app\",\"type\":\"application\"}]}\n");
         try (Git git = Git.open(distant.toFile())) {
             git.add().addFilepattern(".").call();
             git.commit().setMessage("initial").setAuthor("T", "t@ex.io").call();

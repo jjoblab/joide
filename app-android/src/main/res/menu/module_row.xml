@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Menu ⋮ d'un module (lot L10) : renommer, supprimer (rouge à la confirmation). -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/option_renommer_module"
+        android:title="@string/modules_renommer_titre" />
+    <item
+        android:id="@+id/option_supprimer_module"
+        android:title="@string/modules_supprimer_titre" />
+</menu>

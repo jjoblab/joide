@@ -714,6 +714,20 @@ public class WorkbenchFragment extends Fragment
                 .commit();
     }
 
+    /**
+     * Ouvre l'écran Modules (lot L10) : configuration du modèle réel
+     * (modules, sources, facette Android, dépendances, dépôts).
+     */
+    @Override
+    public void openModulesScreen() {
+        binding.drawerLayout.closeDrawer(androidx.core.view.GravityCompat.START);
+        getParentFragmentManager().beginTransaction()
+                .replace(((ViewGroup) requireView().getParent()).getId(),
+                        jo.joide.app.config.ModulesFragment.forProject(projectPath))
+                .addToBackStack(null)
+                .commit();
+    }
+
     // ---- Contexte vivant de l'agent (Lot 0 : valeurs réelles seulement) ----
 
     // ---- Tiroirs (gauche : fichiers · droite : agent IA) — ils POUSSENT le contenu --
@@ -784,6 +798,22 @@ public class WorkbenchFragment extends Fragment
     /** Demande d'explication en attente pour l'agent (posée hors de l'atelier). */
     private static volatile String pendingAgentAsk;
 
+    /** Le forge.json a été réécrit hors de l'atelier (écrans Modules — L10). */
+    private static volatile boolean pendingModelChanged;
+
+    /** Une re-résolution est demandée (onglet Dépendances — L10). */
+    private static volatile boolean pendingRebuild;
+
+    /** Signale une réécriture du forge.json (consommée à la reprise). */
+    public static void notifyModelChanged() {
+        pendingModelChanged = true;
+    }
+
+    /** Demande une re-résolution : le build repartira à la reprise (L10). */
+    public static void requestRebuild() {
+        pendingRebuild = true;
+    }
+
     /**
      * Ouvre le tiroir droit de l'agent avec une question préremplie
      * ( « Expliquer cette erreur » depuis les Problèmes — Lot 8).
@@ -814,6 +844,21 @@ public class WorkbenchFragment extends Fragment
             pendingAgentAsk = null;
             openAgentPanel(ask);
         }
+        if (binding == null || projectPath == null) {
+            return;
+        }
+        // Le modèle de build a été réécrit depuis l'écran Modules : l'arbre et
+        // les détecteurs relisent le disque (un seul chemin d'update — Lot 8).
+        if (pendingModelChanged) {
+            pendingModelChanged = false;
+            workspaceEvents.publish(new jo.joide.workbench.WorkspaceEvents
+                    .ModelChanged(java.nio.file.Paths.get(projectPath, "forge.json")));
+        }
+        // Re-résolution demandée (la résolution vit dans le moteur) : build.
+        if (pendingRebuild) {
+            pendingRebuild = false;
+            runBuild();
+        }
     }
 
     /** Ouvre le tiroir droit : agent IA (fragment enfant créé à la première ouverture). */
@@ -836,6 +881,8 @@ public class WorkbenchFragment extends Fragment
             int id = item.getItemId();
             if (id == R.id.option_fichiers) {
                 binding.drawerLayout.openDrawer(androidx.core.view.GravityCompat.START);
+            } else if (id == R.id.option_modules) {
+                openModulesScreen();
             } else if (id == R.id.option_agent_ia) {
                 openAiDrawer();
             } else if (id == R.id.option_construire) {

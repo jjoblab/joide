@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Écran Modules (lot L10, d'après ModuleConfigScreen de la référence — REF-127) :
+  liste des modules du forge.json RÉEL (tuile type, menu ⋮ renommer/supprimer,
+  FAB « Nouveau module », état vide), détail à onglets Réglages / Dépendances,
+  barre de sauvegarde épinglée. Le rendu des rangées et cartes vit en code
+  (même règle que l'accueil et l'écran Git).
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/fond">
+
+    <!-- Barre : retour + titre + ajout -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="10dp">
+
+        <ImageButton
+            android:id="@+id/modules_back"
+            style="@style/IconBtn"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:contentDescription="@string/commun_retour"
+            android:src="@drawable/ic_back"
+            android:scaleType="centerInside"
+            app:tint="@color/sur_var" />
+
+        <TextView
+            android:id="@+id/modules_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="6dp"
+            android:text="@string/modules_titre"
+            android:textColor="@color/sur"
+            style="@style/Txt.Xl" />
+
+        <LinearLayout
+            android:id="@+id/modules_add_button"
+            style="@style/Tonal64"
+            android:layout_width="48dp"
+            android:layout_height="48dp">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_plus"
+                android:scaleType="centerInside"
+                android:contentDescription="@string/modules_nouveau"
+                app:tint="@color/sur_sc2" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Liste (rendu en code) -->
+    <ScrollView
+        android:id="@+id/modules_list_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:id="@+id/modules_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="16dp" />
+    </ScrollView>
+
+    <!-- Détail d'un module (gone par défaut) -->
+    <LinearLayout
+        android:id="@+id/modules_detail"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <!-- En-tête du module : tuile type + nom + type + menu ⋮ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="4dp">
+
+            <ImageButton
+                android:id="@+id/modules_detail_back"
+                style="@style/IconBtn"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:contentDescription="@string/commun_retour"
+                android:src="@drawable/ic_back"
+                android:scaleType="centerInside"
+                app:tint="@color/sur_var" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="6dp">
+
+                <TextView
+                    android:id="@+id/modules_detail_name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/sur"
+                    style="@style/Txt.Xl" />
+
+                <TextView
+                    android:id="@+id/modules_detail_type"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    style="@style/Txt.BodyS" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Onglets Réglages / Dépendances (chips du studio) -->
+        <LinearLayout
+            android:id="@+id/modules_tabs"
+            android:layout_width="wrap_content"
+            android:layout_height="38dp"
+            android:orientation="horizontal"
+            android:paddingStart="16dp" />
+
+        <!-- Contenu de l'onglet (rendu en code) -->
+        <ScrollView
+            android:id="@+id/modules_detail_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <LinearLayout
+                android:id="@+id/modules_detail_content"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="16dp" />
+        </ScrollView>
+    </LinearLayout>
+
+    <!-- Barre de sauvegarde épinglée (référence : SaveBar — jamais un bouton
+         perdu au fil du formulaire) -->
+    <LinearLayout
+        android:id="@+id/modules_savebar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="12dp"
+        android:background="@drawable/fond_dock"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/modules_savebar_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/modules_non_enregistre"
+            android:textColor="@color/sur"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/modules_discard_button"
+            style="@style/Tonal64"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:paddingStart="18dp"
+            android:paddingEnd="18dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/modules_abandonner"
+                android:textColor="@color/sur_sc2"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/modules_save_button"
+            style="@style/Cta"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:layout_marginStart="8dp"
+            android:paddingStart="18dp"
+            android:paddingEnd="18dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/modules_enregistrer"
+                android:textColor="@color/sur_primaire"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

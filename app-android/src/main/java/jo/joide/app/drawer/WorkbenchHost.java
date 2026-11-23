@@ -60,4 +60,10 @@ public interface WorkbenchHost {
 
     /** Ouvre l'écran Git plein écran (comportement conservé du Lot 0). */
     void openGitScreen();
+
+    /**
+     * Ouvre l'écran Modules (lot L10) : configuration du modèle réel
+     * (modules, sources, facette Android, dépendances, dépôts).
+     */
+    void openModulesScreen();
 }

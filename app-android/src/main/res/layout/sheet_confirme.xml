@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Feuille de confirmation (lot L10) : supprimer un module / une dépendance —
+     destructive = rouge ; jamais un AlertDialog (règle du propriétaire). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="24dp"
+    android:paddingEnd="24dp"
+    android:paddingTop="14dp"
+    android:paddingBottom="24dp">
+
+    <TextView
+        android:id="@+id/confirme_titre"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/sur"
+        style="@style/Txt.Xl" />
+
+    <TextView
+        android:id="@+id/confirme_message"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:padding="14dp"
+        android:textSize="13sp"
+        android:lineSpacingExtra="2dp"
+        android:background="@drawable/fond_carte_bas" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="18dp">
+
+        <LinearLayout
+            android:id="@+id/confirme_annuler"
+            style="@style/Tonal64"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/modules_confirme_annuler"
+                android:textColor="@color/sur_sc2"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/confirme_action"
+            style="@style/Cta"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/fond_cta_erreur">
+
+            <TextView
+                android:id="@+id/confirme_action_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/sur_primaire"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>
