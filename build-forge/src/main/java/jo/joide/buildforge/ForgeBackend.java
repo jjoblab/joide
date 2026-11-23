@@ -61,6 +61,14 @@ public final class ForgeBackend implements BuildBackend {
         return WorkMode.FORGE;
     }
 
+    /**
+     * Applique les réglages du runtime de build (page Runtime — L10) au gestionnaire
+     * du moteur : tas borné, mode basse mémoire. Effet au prochain lancement du moteur.
+     */
+    public void configure(EngineSettings settings) {
+        engineManager.configure(settings);
+    }
+
     @Override
     public Capabilities capabilities() {
         // Forge v0.2.24 : AAR et ViewBinding livrés (F-05/F-06 closes), composants

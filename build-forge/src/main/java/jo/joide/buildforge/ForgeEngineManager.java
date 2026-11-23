@@ -56,6 +56,7 @@ public final class ForgeEngineManager {
     private final DeviceProfile device;
     private final AtomicBoolean installing = new AtomicBoolean();
     private volatile InstalledState installed;
+    private volatile EngineSettings settings = EngineSettings.auto();
 
     /**
      * Gestionnaire sur un ForgeHome (appareil : {@code filesDir/forge} ; JVM : dossier
@@ -233,8 +234,17 @@ public final class ForgeEngineManager {
 
     /** Tas du moteur selon la RAM de l'appareil (décision Forge v0.2.15+). */
     int heapMb() {
-        return device.totalRamMb() > 0 && device.totalRamMb() < LOW_MEMORY_THRESHOLD_MB
-                ? HEAP_LOW_MEMORY_MB : HEAP_MB;
+        return settings.resolveHeapMb(device.totalRamMb());
+    }
+
+    /**
+     * Applique les réglages du runtime (page Runtime de build — L10) : tas du
+     * moteur borné et mode basse mémoire. Pris en compte au PROCHAIN lancement
+     * du moteur (un moteur lancé garde son tas — honnête, comme la référence
+     * pour son process séparé).
+     */
+    public void configure(EngineSettings settings) {
+        this.settings = settings == null ? EngineSettings.auto() : settings;
     }
 
     /** Fabrique la spécification du moteur (classpath du répertoire installé). */
