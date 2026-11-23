@@ -690,4 +690,17 @@
     <string name="erreur_voir_details">Voir les détails</string>
     <string name="erreur_masquer_details">Masquer les détails</string>
     <string name="erreur_ignorer">Ignorer</string>
+
+    <!-- Indexation à l\'ouverture + symboles (lot L10) -->
+    <string name="tiroir_symboles_mode">Symboles</string>
+    <string name="symboles_titre">Symboles du projet</string>
+    <string name="symboles_sous_titre">Les déclarations indexées à l\'ouverture (classes, méthodes, champs) — tapez un préfixe.</string>
+    <string name="symboles_hint">ex. MainActiv</string>
+    <string name="symboles_prefixe_vide">Tapez un préfixe : les symboles correspondants s\'affichent.</string>
+    <string name="symboles_index_en_preparation">Index en préparation (le pass tourne) — aucun résultat pour l\'instant, jamais de faux résultats : la recherche plein texte reste la porte de secours.</string>
+    <string name="symboles_index_absent">Aucun index pour ce projet (projet sans forge.json ou pas encore ouvert par l\'atelier).</string>
+    <string name="symboles_aucun">Aucun symbole déclaré ne correspond à ce préfixe.</string>
+    <string name="atelier_index_pret">Index prêt · %1$d symboles · %2$d classes du classpath · %3$d fichiers réutilisés</string>
+    <string name="atelier_index_interrompu">Indexation interrompue — l\'index partiel ne sert aucun résultat (honnête)</string>
+    <string name="activite_index_pret">Index prêt · %1$d symboles · %2$d classes</string>
 </resources>

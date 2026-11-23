@@ -11,6 +11,8 @@ tasks.withType(Test).configureEach { useJUnitPlatform() }
 dependencies {
     api project(":core-outline")
     api project(":workbench-spi")
+    api project(":core-model") // forge.json : racines sources réelles (L10)
+    api "jo.forge:json:0.2.28" // lecture des classpath.json résolus du moteur (L10)
     testImplementation platform("org.junit:junit-bom:5.11.4")
     testImplementation "org.junit.jupiter:junit-jupiter"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"

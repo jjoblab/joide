@@ -66,4 +66,13 @@ public interface WorkbenchHost {
      * (modules, sources, facette Android, dépendances, dépôts).
      */
     void openModulesScreen();
+
+    /**
+     * L'index du projet ouvert (lot L10 : indexation à l'ouverture) — null
+     * tant qu'aucun projet n'est ouvert ou que l'index n'existe pas. Les
+     * requêtes rendent vide tant qu'un pass complet n'a pas fini : le tiroir
+     * de recherche replie honnêtement sur le texte plein.
+     */
+    @Nullable
+    jo.joide.index.IndexService indexService();
 }

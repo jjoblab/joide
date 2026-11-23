@@ -132,6 +132,15 @@ public final class SearchTabFragment extends Fragment {
     private void setupModes() {
         binding.searchModeText.setOnClickListener(v -> setGotoMode(false));
         binding.searchModeFile.setOnClickListener(v -> setGotoMode(true));
+        // Symboles du projet (lot L10) : la feuille consomme l'index à
+        // l'ouverture — recherche par préfixe, saut à la ligne ; repli honnête
+        // tant que le pass n'a pas fini (jamais de faux résultats).
+        binding.searchModeSymbols.setOnClickListener(v -> {
+            WorkbenchHost hôte = host();
+            new jo.joide.app.config.SymbolsSheet(
+                    hôte != null ? hôte.indexService() : null, hôte)
+                    .show(getChildFragmentManager(), "symboles-projet");
+        });
     }
 
     private void setGotoMode(boolean gotoFile) {

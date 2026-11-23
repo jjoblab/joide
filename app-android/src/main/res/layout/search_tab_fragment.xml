@@ -46,6 +46,21 @@
             android:textColor="@color/sur"
             android:textSize="11.5sp"
             android:textStyle="bold" />
+
+        <!-- Symboles du projet (lot L10) : l'index à l'ouverture, repli honnête. -->
+        <TextView
+            android:id="@+id/search_mode_symbols"
+            style="@style/Chip"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:layout_marginStart="6dp"
+            android:gravity="center"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:text="@string/tiroir_symboles_mode"
+            android:textColor="@color/sur"
+            android:textSize="11.5sp"
+            android:textStyle="bold" />
     </LinearLayout>
 
     <!-- Champ de recherche + compteur/Stop -->

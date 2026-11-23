@@ -78,6 +78,8 @@ dependencies {
     implementation project(':build-forge')
     implementation project(':build-gradle-core')
     implementation project(':terminal-core')
+    // Indexation à l'ouverture (lot L10) : index consommé par les symboles du tiroir.
+    implementation project(':core-index')
     // Écran git (studio HTML) : couche JGit JVM pure, testée.
     implementation project(':core-git')
     // Arborescence du tiroir gauche (Lot 2) : listage borné/annulable,

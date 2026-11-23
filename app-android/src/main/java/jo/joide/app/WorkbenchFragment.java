@@ -118,6 +118,10 @@ public class WorkbenchFragment extends Fragment
             setupTabs();
             setupDock();
             setupModeVisibility();
+            // L10 : l'indexation démarre À L'OUVERTURE du projet — pour que les
+            // fournisseurs de langue s'en servent (structure, symboles, complétion
+            // à venir). Cède au build, incrémentale à la sauvegarde.
+            démarrerIndexation();
             // J2 : construire — le build du mode actif alimente le dock.
             binding.buildButton.setOnClickListener(v -> runBuild());
         }
@@ -425,6 +429,32 @@ public class WorkbenchFragment extends Fragment
             } else if (event instanceof jo.joide.workbench.WorkspaceEvents.FileRenamed renamed) {
                 changed = renamed.to();
                 renamedFrom = renamed.from();
+            } else if (event instanceof jo.joide.workbench.WorkspaceEvents.FileSaved saved) {
+                changed = saved.file();
+            } else if (event instanceof jo.joide.workbench.WorkspaceEvents.ModelChanged modèle) {
+                // forge.json réécrit (écrans Modules) : les racines sources ont
+                // pu changer — repasse d'index au fil de fond (L10).
+                relancerIndexation();
+            } else if (event instanceof jo.joide.workbench.WorkspaceEvents.BuildFinished build) {
+                // Un build vient de finir : les classpath résolus fraîchement
+                // écrits par le moteur grossissent le périmètre des jars (L10).
+                relancerIndexation();
+            }
+            // Indexation incrémentale (L10) : le fichier changé/sauvegardé
+            // re-indexe SEUL — coût O(fichier), sur le fil de fond.
+            if (changed != null && index != null
+                    && (event instanceof jo.joide.workbench.WorkspaceEvents.FileChangedOnDisk
+                        || event instanceof jo.joide.workbench.WorkspaceEvents.FileSaved
+                        || event instanceof jo.joide.workbench.WorkspaceEvents.FileCreated)) {
+                java.nio.file.Path fichierIndexé = changed;
+                indexExecutor.execute(() -> {
+                    try {
+                        index.reindexSource(fichierIndexé,
+                                Files.readString(fichierIndexé, StandardCharsets.UTF_8));
+                    } catch (IOException | RuntimeException illisible) {
+                        // binaire/illisible : rien à indexer — honnête.
+                    }
+                });
             }
             if (changed == null || activeFile == null) {
                 return;
@@ -2140,6 +2170,86 @@ public class WorkbenchFragment extends Fragment
     private ForgeBackend forgeBackend;
     private GradleBackend gradleBackend;
 
+    // ---- Indexation à l'ouverture (lot L10) ----------------------------------
+
+    /** L'index du projet ouvert (null : projet inexistant). */
+    private jo.joide.index.IndexService index;
+
+    /** Fil de fond unique de l'index (basse priorité : daemon). */
+    private final java.util.concurrent.ExecutorService indexExecutor =
+            java.util.concurrent.Executors.newSingleThreadExecutor(runnable -> {
+                Thread fil = new Thread(runnable, "joide-index");
+                fil.setDaemon(true);
+                fil.setPriority(Thread.NORM_PRIORITY - 1);
+                return fil;
+            });
+
+    /** Sémaphore « une compile tourne » : l'index CÈDE au build (jamais l'inverse). */
+    private final jo.joide.workbench.BuildActivity buildActivity =
+            new jo.joide.workbench.BuildActivity();
+
+    /** Ouvre l'index du projet et lance la première passe (fil de fond). */
+    private void démarrerIndexation() {
+        try {
+            index = new jo.joide.index.IndexService(
+                    java.nio.file.Paths.get(projectPath));
+        } catch (RuntimeException racineInvalide) {
+            return; // projet illisible : pas d'index, honnête.
+        }
+        // Statut observable : le verdict va au journal d'activité (L10) et à
+        // la console (une ligne honnête, pas de spam de progression).
+        index.observe(statut -> {
+            if (!statut.building() && binding != null) {
+                binding.getRoot().post(() -> {
+                    if (binding == null || statut.stats().ms() <= 0) {
+                        return;
+                    }
+                    consoleBuffer.line(ConsoleBuffer.Kind.INFO,
+                            statut.prêt()
+                                    ? getString(R.string.atelier_index_pret,
+                                            statut.stats().symboles(),
+                                            statut.stats().classes(),
+                                            statut.stats().fichiersRéutilisés())
+                                    : getString(R.string.atelier_index_interrompu));
+                    renderConsole();
+                    journalActivité().record(
+                            jo.joide.corestore.ActivityLog.Kind.INDEX,
+                            statut.prêt()
+                                    ? getString(R.string.activite_index_pret,
+                                            statut.stats().symboles(),
+                                            statut.stats().classes())
+                                    : getString(R.string.atelier_index_interrompu),
+                            null);
+                });
+            }
+        });
+        relancerIndexation();
+    }
+
+    /** Une passe d'index sur le périmètre RÉEL du projet (L10). */
+    private void relancerIndexation() {
+        if (index == null || projectPath == null) {
+            return;
+        }
+        index.ensureUpToDate(
+                jo.joide.index.IndexScope.duProjet(java.nio.file.Paths.get(projectPath)),
+                indexExecutor, buildActivity);
+    }
+
+    @Nullable
+    @Override
+    public jo.joide.index.IndexService indexService() {
+        return index;
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        // L'index survit (persistant) ; le fil de fond s'arrête proprement.
+        indexExecutor.shutdownNow();
+        binding = null;
+    }
+
     /** Mode actif (conception §4 : capacités honnêtes, jamais de bouton que le mode ne satisfait pas). */
     private WorkMode activeMode() {
         ModePreferences preferences = new ModePreferences(
@@ -2161,6 +2271,8 @@ public class WorkbenchFragment extends Fragment
         lastDiagnostics.clear();
         lastStructuredDiagnostics.clear();
         beginBuildInDock();
+        // Le sémaphore se lève : l'indexation de fond CÈDE (L10).
+        buildActivity.set(true);
         journalActivité().record(jo.joide.corestore.ActivityLog.Kind.BUILD,
                 getString(R.string.activite_build_lance,
                         activeMode() == WorkMode.FORGE
@@ -2296,6 +2408,8 @@ public class WorkbenchFragment extends Fragment
         }
         requireActivity().runOnUiThread(() -> {
             buildRunning = false;
+            // Lancement raté : le sémaphore retombe aussi (jamais suspendu).
+            buildActivity.set(false);
             lastBuildEnd = System.currentTimeMillis();
             lastBuildSuccess = false;
             consoleBuffer.line(ConsoleBuffer.Kind.ERROR,
@@ -2746,6 +2860,9 @@ public class WorkbenchFragment extends Fragment
      *  (ligne LIFECYCLE composée par le moteur) — pas de seconde ligne ici. */
     private void onBuildFinished(BuildEvent.Finished finished) {
         buildRunning = false;
+        // Le build est fini : le sémaphore retombe, la re-passe d'index
+        // (classpaths frais) peut reprendre (L10).
+        buildActivity.set(false);
         lastBuildEnd = System.currentTimeMillis();
         lastBuildSuccess = finished.success();
         String duree = Durations.format(finished.durationMs(), Locale.getDefault());
