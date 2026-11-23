@@ -81,6 +81,17 @@ dependencyResolutionManagement {
                 includeGroupByRegex("jo\\.codeide\\.lsp(\\..*)?")
             }
         }
+        // Dépendances IntelliJ du pack Kotlin de code-lsp (syntax-api,
+        // lang-syntax) : ces artefacts org.jetbrains ne sont PAS sur Maven
+        // Central, ils vivent sur le dépôt public JetBrains — filtre strict
+        // au groupe, rien d'autre ne vient de ce registre.
+        maven {
+            name = "jetbrains-intellij-dependencies"
+            url = uri("https://packages.jetbrains.team/maven/p/ij/intellij-dependencies")
+            content {
+                includeGroup("org.jetbrains")
+            }
+        }
     }
 }
 
