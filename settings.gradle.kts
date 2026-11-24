@@ -43,7 +43,7 @@ dependencyResolutionManagement {
         // Forge (ADR-001) : aucun paquet Maven jo.forge n'est publié sur un dépôt
         // distant ; Forge publie ses releases GitHub (zips + manifest.json) et,
         // depuis v0.2.24, ses modules bibliothèque sur mavenLocal.
-        // Les bibliothèques jo.forge:*:0.2.25 viennent donc d'un mavenLocal alimenté
+        // Les bibliothèques jo.forge:*:0.2.28 viennent donc d'un mavenLocal alimenté
         // par ./gradlew publishToMavenLocal dans le dépôt Forge.
         mavenLocal()
         google()
@@ -72,6 +72,10 @@ dependencyResolutionManagement {
             url = uri("https://maven.pkg.github.com/jjoblab/code-lsp")
             val jetonLsp = providers.environmentVariable("JOIDE_GH_PACKAGES_TOKEN")
                 .orElse(providers.environmentVariable("GITHUB_TOKEN"))
+                // Appareil (AndroidIDE) : les variables d'environnement n'atteignent pas
+                // toujours le démon Gradle — la propriété joideGhPackagesToken de
+                // ~/.gradle/gradle.properties (jamais versionné) sert alors de relais.
+                .orElse(providers.gradleProperty("joideGhPackagesToken"))
                 .getOrElse("")
             credentials {
                 username = "jjoblab"
