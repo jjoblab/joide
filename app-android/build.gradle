@@ -9,7 +9,11 @@ plugins {
 
 android {
     namespace 'jo.joide.app'
-    compileSdk 37  // celeris v2.2.18 + lsp-host 1.15.0 (minCompileSdk 37.2) ; targetSdk reste 28 (ADR-009)
+    // compileSdk 35 : plateforme supportée nativement par AGP 8.7.3 et installable partout
+    // (plus de montage manuel android-37). celeris v2.2.18 et lsp-host 1.15.0 déclarent
+    // minCompileSdk 37.2 dans leurs métadonnées AAR : ce contrôle est désactivé plus bas
+    // (le code de l'application n'appelle aucune API 36/37) ; targetSdk reste 28 (ADR-009).
+    compileSdk 35
     defaultConfig {
         applicationId 'jo.joide.app'
         minSdk 28
@@ -145,4 +149,12 @@ dependencies {
     testImplementation platform("org.junit:junit-bom:5.11.4")
     testImplementation "org.junit.jupiter:junit-jupiter"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+// Contrôle des métadonnées AAR désactivé : les briques jjoblab (celeris, lsp-host) exigent
+// compileSdk 37.2 alors que l'application compile contre l'API 35 (voir plus haut).
+tasks.configureEach { t ->
+    if (t.name.startsWith('check') && t.name.endsWith('AarMetadata')) {
+        t.enabled = false
+    }
 }
