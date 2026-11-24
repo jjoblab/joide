@@ -55,8 +55,24 @@
     <string name="diagnostic_build_log_demo2">✗ error: incompatible types: String cannot be converted to int</string>
     <string name="diagnostic_build_log_demo3">▸ tâche :app:processResources</string>
     <string name="diagnostic_build_log_demo4">✓ BUILD ÉCHOUÉ en 9,4 s (2 erreurs)</string>
-    <string name="diagnostic_crash_log_section">Journal des écroulements (borné à 20)</string>
-    <string name="diagnostic_crash_log_empty">(aucun)</string>
+    <!-- Carte 4 : rapports de plantage (core-diag, ADR-021) -->
+    <string name="diagnostic_crash_reports_section">Rapports de plantage</string>
+    <string name="diagnostic_crash_reports_empty">(aucun)</string>
+    <string name="diagnostic_crash_unreviewed">%1$d rapport(s) non consulté(s) — un plantage attend votre lecture.</string>
+    <string name="diagnostic_crash_type_exception">EXCEPTION</string>
+    <string name="diagnostic_crash_type_anr">ANR</string>
+    <string name="diagnostic_crash_type_native">NATIF</string>
+    <string name="diagnostic_crash_boucle">boucle de plantages</string>
+    <string name="diagnostic_crash_breadcrumbs">Derniers filons :</string>
+    <string name="diagnostic_crash_mark_reviewed">Marquer consulté</string>
+    <string name="diagnostic_crash_delete">Supprimer</string>
+    <string name="diagnostic_crash_deleted">Rapport supprimé</string>
+    <string name="diagnostic_crash_reviewed_toast">Rapport marqué consulté</string>
+    <string name="diagnostic_crash_none_recent">Aucun plantage enregistré — le prochain sera capturé avec sa trace complète.</string>
+    <!-- Carte 5 : journal applicatif (pipeline ADR-021) -->
+    <string name="diagnostic_journal_section">Journal applicatif</string>
+    <string name="diagnostic_journal_empty">(vide)</string>
+    <string name="diagnostic_journal_note">Niveau minimal persisté, effet immédiat · messages expurgés à l\'écriture · fichier borné et tournant (filesDir/logs).</string>
     <string name="diagnostic_action_copy">Copier le rapport</string>
     <string name="diagnostic_action_share">Partager…</string>
     <string name="diagnostic_report_title">Rapport de diagnostic JoIDE</string>

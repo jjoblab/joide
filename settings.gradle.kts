@@ -40,6 +40,24 @@ dependencyResolutionManagement {
         if (miroir.isNotEmpty()) {
             maven { url = uri(miroir) }
         }
+        // AAR locaux compileSdk 35 (ADR-020) : céleris v2.2.18 (android-view,
+        // android-host, android-widgets) et lsp-host 1.15.0 exigent 36/37.2
+        // dans leurs métadonnées — aucune version amont compatible n'existe.
+        // Servis en COPIES LOCALES (tools/aar-p35/repo, reconstruites par
+        // tools/aar-p35/reconstruire.py) dont SEULE la ligne minCompileSdk des
+        // métadonnées est ajustée : bytecode, ressources et POM identiques à
+        // l'amont. Ce dépôt se déclare AVANT JitPack/GitHub Packages (résolution
+        // par ordre de déclaration) ; le filtre de contenu est strict — les
+        // autres artefacts com.github.jjoblab.* et jo.codeide.lsp.* continuent
+        // de venir des registres distants.
+        maven {
+            name = "aar-p35"
+            url = uri(settingsDir.resolve("tools/aar-p35/repo").toURI())
+            content {
+                includeGroup("com.github.jjoblab.celeris")
+                includeGroup("jo.codeide.lsp.host")
+            }
+        }
         // Forge (ADR-001) : aucun paquet Maven jo.forge n'est publié sur un dépôt
         // distant ; Forge publie ses releases GitHub (zips + manifest.json) et,
         // depuis v0.2.24, ses modules bibliothèque sur mavenLocal.
@@ -103,6 +121,7 @@ rootProject.name = "joide"
 
 include(":core-model")
 include(":core-store")
+include(":core-diag")
 include(":core-index")
 // LOT-11 : le client LSP pur JVM — traduction du classpath Forge vers le
 // protocole tooling, conversion lsp4j→céleris, client LanguageClient.

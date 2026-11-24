@@ -3269,6 +3269,13 @@ public class WorkbenchFragment extends Fragment
                                 ? getString(R.string.mode_forge_nom)
                                 : getString(R.string.mode_gradle_nom)),
                 cible.isEmpty() ? null : String.join(" ", cible));
+        // ADR-021 : le journal applicatif reçoit AUSSI les évènements de build.
+        jo.joide.diag.AppLog.i("Build",
+                getString(R.string.activite_build_lance,
+                        activeMode() == WorkMode.FORGE
+                                ? getString(R.string.mode_forge_nom)
+                                : getString(R.string.mode_gradle_nom))
+                        + (cible.isEmpty() ? "" : " · " + String.join(" ", cible)));
         if (activeMode() == WorkMode.GRADLE) {
             runGradleBuild();
         } else {
@@ -3414,11 +3421,10 @@ public class WorkbenchFragment extends Fragment
                 requireContext().getFilesDir().toPath().resolve("journal/activite.txt"));
     }
 
-    /** Journal des écroulements réel (filesDir/journal/ecroulements.txt). */
-    private jo.joide.corestore.CrashJournal crashJournal() {
-        return new jo.joide.corestore.CrashJournal(
-                requireContext().getFilesDir().toPath().resolve("journal/ecroulements.txt"));
-    }
+    // Journal des écroulements : REMPLACÉ par le système de rapports de plantage
+    // complet (core-diag, ADR-021) — les erreurs non fatales du moteur partent
+    // dans le journal applicatif (AppLog) avec leur trace, les plantages du
+    // processus sont capturés par le gestionnaire installé dans DiagApp.
 
     /** Heure locale HH:mm pour l'en-tête de run de la console. */
     private String heure() {
@@ -3448,6 +3454,9 @@ public class WorkbenchFragment extends Fragment
                     getString(R.string.activite_lancement_impossible,
                             failure.getMessage() == null ? "" : failure.getMessage()),
                     null);
+            jo.joide.diag.AppLog.w("Build", failure,
+                    getString(R.string.activite_lancement_impossible,
+                            failure.getMessage() == null ? "" : failure.getMessage()));
             ErrorSheet.montrer(getChildFragmentManager(),
                     getString(R.string.erreur_titre_lancement),
                     getString(R.string.erreur_message_lancement,
@@ -3923,9 +3932,12 @@ public class WorkbenchFragment extends Fragment
             journalActivité().record(jo.joide.corestore.ActivityLog.Kind.CRASH,
                     getString(R.string.atelier_moteur_ecroule_journal),
                     finished.message());
-            crashJournal().record(jo.joide.corestore.CrashJournal.Zone.MOTEUR,
+            // ADR-021 : l'écroulement du moteur part AUSSI dans le journal
+            // applicatif, avec sa trace — l'écran Diagnostic le relit.
+            jo.joide.diag.AppLog.e("Moteur",
                     new RuntimeException(finished.message() == null
-                            ? "moteur mort" : finished.message()));
+                            ? "moteur mort" : finished.message()),
+                    getString(R.string.atelier_moteur_ecroule_journal));
         } else {
             journalActivité().record(jo.joide.corestore.ActivityLog.Kind.VERDICT,
                     finished.success()

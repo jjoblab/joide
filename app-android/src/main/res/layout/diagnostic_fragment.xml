@@ -238,7 +238,7 @@
                     style="@style/Txt.BodyS" />
             </LinearLayout>
 
-            <!-- Carte « Journal des écroulements (borné à 20) » -->
+            <!-- Carte « Rapports de plantage » (core-diag, ADR-021) -->
             <LinearLayout
                 style="@style/Carte"
                 android:layout_width="match_parent"
@@ -251,17 +251,72 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="10dp"
-                    android:text="@string/diagnostic_crash_log_section"
+                    android:text="@string/diagnostic_crash_reports_section"
                     style="@style/Txt.Eyebrow" />
 
+                <!-- Alerte : rapports non consultés (le plantage du lancement
+                     précédent attend une lecture) -->
                 <TextView
-                    android:id="@+id/diagnostic_crash_log"
+                    android:id="@+id/diagnostic_crash_unreviewed"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:textColor="@color/alerte"
+                    android:textSize="12sp"
+                    android:visibility="gone"
+                    android:text="@string/diagnostic_crash_unreviewed" />
+
+                <!-- Rangées de rapports (remplies par DiagnosticFragment) :
+                     pill type + classe + âge, tap = dépliage du détail -->
+                <LinearLayout
+                    android:id="@+id/diagnostic_crash_list"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </LinearLayout>
+
+            <!-- Carte « Journal applicatif » (pipeline ADR-021) -->
+            <LinearLayout
+                style="@style/Carte"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp"
+                    android:text="@string/diagnostic_journal_section"
+                    style="@style/Txt.Eyebrow" />
+
+                <!-- Niveau minimal persisté : 4 pills, effet immédiat -->
+                <LinearLayout
+                    android:id="@+id/diagnostic_journal_levels"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="10dp" />
+
+                <TextView
+                    android:id="@+id/diagnostic_journal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/fond_field"
+                    android:backgroundTint="@color/sc_lowest"
+                    android:padding="12dp"
                     android:fontFamily="monospace"
                     android:textSize="11sp"
                     android:textColor="@color/sur_var"
-                    android:lineSpacingMultiplier="1.9" />
+                    android:lineSpacingMultiplier="1.8" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/diagnostic_journal_note"
+                    style="@style/Txt.BodyS" />
             </LinearLayout>
 
             <!-- 2 chips 46dp rayon 14 : Copier le rapport / Partager… -->

@@ -36,11 +36,22 @@ class SessionLspIntegrationTest {
     @TempDir
     Path dossier;
 
+    // Écriture/lecture API 28-sûres : Files.writeString/readString sont API 33
+    // (le compileSdk 35 d'android.jar ne les expose pas et ADR-009 proscrit
+    // leur usage sur appareil — le test compile contre android.jar).
+    private static void write(Path file, String content) throws Exception {
+        Files.write(file, content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    private static String read(Path file) throws Exception {
+        return new String(Files.readAllBytes(file), java.nio.charset.StandardCharsets.UTF_8);
+    }
+
     /** Un projet Forge minimal : un module, une source fautive, une plateforme
      *  factice (l'index lit les NOMS des entrées du jar — un zip aux entrées
      *  nommées suffit, aucun bytecode réel). */
     private void projetMinimal() throws Exception {
-        Files.writeString(dossier.resolve("forge.json"), """
+        write(dossier.resolve("forge.json"), """
                 { "name": "demo", "modules": [
                     { "name": "app", "type": "application", "language": "java" }
                 ] }
@@ -48,7 +59,7 @@ class SessionLspIntegrationTest {
         Path sources = dossier.resolve("app").resolve("src").resolve("main")
                 .resolve("java");
         Files.createDirectories(sources);
-        Files.writeString(sources.resolve("A.java"), """
+        write(sources.resolve("A.java"), """
                 package demo;
 
                 public class A {
@@ -60,7 +71,7 @@ class SessionLspIntegrationTest {
         Path classpath = dossier.resolve("build").resolve("app")
                 .resolve("resolved");
         Files.createDirectories(classpath);
-        Files.writeString(classpath.resolve("classpath.json"),
+        write(classpath.resolve("classpath.json"),
                 "{\"version\":2,\"compile\":[],\"runtime\":[]}");
     }
 
@@ -147,7 +158,7 @@ class SessionLspIntegrationTest {
             serveur.getTextDocumentService().didOpen(
                     new DidOpenTextDocumentParams(new TextDocumentItem(
                             source.toUri().toString(), "java", 1,
-                            Files.readString(source))));
+                            read(source))));
 
             départ = System.currentTimeMillis();
             while (reçus.isEmpty() && System.currentTimeMillis() - départ < 20_000) {

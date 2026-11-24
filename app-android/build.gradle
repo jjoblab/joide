@@ -9,7 +9,13 @@ plugins {
 
 android {
     namespace 'jo.joide.app'
-    compileSdk 37  // celeris v2.2.18 + lsp-host 1.15.0 (minCompileSdk 37.2) ; targetSdk reste 28 (ADR-009)
+    // compileSdk 35 (ADR-020) : retour à la plateforme stable 35 — la 37 n'est
+    // publiée par Google qu'en « android-37.0 » (schéma mineur, r02), invisible
+    // d'AGP 8.7 qui cherche « android-37 » : déroulage manuel obligatoire en CI
+    // et blocage local. Les AAR exigeant 36 (céleris) et 37.2 (lsp-host) se
+    // consomment en copies locales à métadonnées ajustées (tools/aar-p35,
+    // ADR-020) ; targetSdk reste 28 (ADR-009).
+    compileSdk 35
     defaultConfig {
         applicationId 'jo.joide.app'
         minSdk 28

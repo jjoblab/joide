@@ -21,16 +21,18 @@ import java.util.Locale;
 import jo.joide.app.R;
 import jo.joide.app.databinding.ActivityFragmentBinding;
 import jo.joide.corestore.ActivityLog;
-import jo.joide.corestore.CrashJournal;
+import jo.joide.diag.CrashReportStore;
+import jo.joide.diag.CrashReportSummary;
+import jo.joide.diag.CrashType;
 
 /**
  * Journal d'activité (lot L10, d'après BuildActivity + DaemonCrashNote + la
  * visionneuse de la référence) : la chronologie FUSIONNÉE, la plus récente en
  * tête — builds de l'atelier et verdicts ({@link ActivityLog}), passes
- * d'indexation, écroulements des trois zones ({@link CrashJournal} : UI,
- * moteur, terminal). Le tap sur une rangée portant un détail (trace,
- * statistiques) le DÉPLIE. Une erreur dépliée s'ouvre dans
- * {@link ErrorSheet} (feuille, jamais un dialogue).
+ * d'indexation, <b>rapports de plantage</b> (core-diag, ADR-021 : exception,
+ * ANR ou plantage natif, avec leur message). Le tap sur une rangée portant
+ * un détail (trace, statistiques) le DÉPLIE. Une erreur dépliée s'ouvre
+ * dans {@link ErrorSheet} (feuille, jamais un dialogue).
  */
 public class ActivityFragment extends Fragment {
 
@@ -68,12 +70,12 @@ public class ActivityFragment extends Fragment {
         }
     }
 
-    /** Fusionne activité + écroulements, la plus récente en tête. */
+    /** Fusionne activité + rapports de plantage, la plus récente en tête. */
     private List<Ligne> fusionner() {
         ActivityLog activité = new ActivityLog(requireContext().getFilesDir()
                 .toPath().resolve("journal/activite.txt"));
-        CrashJournal crashes = new CrashJournal(requireContext().getFilesDir()
-                .toPath().resolve("journal/ecroulements.txt"));
+        CrashReportStore crashes = new CrashReportStore(
+                requireContext().getFilesDir().toPath().resolve("crashes"));
 
         List<Ligne> lignes = new ArrayList<>();
         for (ActivityLog.Entry entry : activité.read()) {
@@ -105,16 +107,17 @@ public class ActivityFragment extends Fragment {
             lignes.add(new Ligne(entry.epochMs(), icône, couleur,
                     entry.message(), entry.detail()));
         }
-        for (CrashJournal.Entry entry : crashes.read()) {
-            int couleur = switch (entry.zone()) {
-                case MOTEUR -> R.color.erreur;
-                case TERMINAL -> R.color.alerte;
-                case UI -> R.color.sur_var;
+        for (CrashReportSummary entry : crashes.listSummaries()) {
+            int couleur = switch (entry.type()) {
+                case ANR -> R.color.alerte;
+                case NATIVE, EXCEPTION -> R.color.erreur;
             };
-            String message = getString(R.string.activite_crash_zone,
-                    entry.zone().name(), entry.errorClass());
-            lignes.add(new Ligne(entry.epochMs(), R.drawable.ic_dots,
-                    couleur, message, entry.message()));
+            String message = getString(R.string.activite_crash_rapport,
+                    entry.type().name(), entry.exceptionClassName());
+            String détail = entry.shortMessage()
+                    + (entry.reviewed() ? "" : getString(R.string.activite_crash_non_lu));
+            lignes.add(new Ligne(entry.timestampMillis(), R.drawable.ic_dots,
+                    couleur, message, détail));
         }
         lignes.sort(Comparator.comparingLong(Ligne::epochMs).reversed());
         return lignes;

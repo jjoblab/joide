@@ -10,49 +10,23 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import jo.joide.workbench.WorkMode;
+import jo.joide.diag.CrashReportSummary;
+import jo.joide.diag.CrashType;
+import jo.joide.diag.DeviceInfo;
+import jo.joide.diag.LogEntry;
+import jo.joide.diag.LogLevel;
 
 /**
- * Lot L8 : journal des écroulements borné + rapport de diagnostic avec secrets
+ * Lot L8 (mis à jour ADR-021 : CrashJournal remplacé par les rapports de
+ * plantage complets de core-diag) : rapport de diagnostic avec secrets
  * rédigés + gestionnaire de modes (bascule, réparation, désinstallation) —
- * tests JVM purs sur répertoire temporaire.
+ * tests JVM purs sur répertoire temporaire. Les bornes du journal des
+ * écroulements vivent désormais dans core-diag (CrashReportStoreTest).
  */
 class L8StoreTest {
 
     @TempDir
     java.nio.file.Path tmp;
-
-    // ---- CrashJournal -------------------------------------------------------
-
-    @Test
-    void crashJournalBoundsEntriesAndMessages() throws Exception {
-        CrashJournal journal = new CrashJournal(tmp.resolve("journal/ecroulements.txt"), 3);
-        for (int i = 0; i < 6; i++) {
-            journal.record(CrashJournal.Zone.UI,
-                    new IllegalStateException("plantage " + i));
-        }
-        journal.record(CrashJournal.Zone.MOTEUR, new OutOfMemoryError(
-                "x".repeat(500)));
-
-        List<CrashJournal.Entry> entries = journal.read();
-        assertEquals(3, entries.size(), "la borne stricte tient (3 entrées)");
-        assertTrue(entries.get(2).message().endsWith("…"), "le message long est borné");
-        assertTrue(entries.get(2).message().length() <= 301);
-        assertEquals(CrashJournal.Zone.MOTEUR, entries.get(2).zone());
-        // Les plus anciens sont partis : après 6 UI + 1 moteur borné à 3,
-        // il reste plantage 4, plantage 5, et l'OOM moteur.
-        assertTrue(entries.get(0).message().contains("4"), "les plus anciens sont partis");
-    }
-
-    @Test
-    void crashJournalSurvivesUnreadableFileAsEmpty() throws Exception {
-        Files.createDirectories(tmp.resolve("journal"));
-        Files.writeString(tmp.resolve("journal/ecroulements.txt"), "n'importe quoi ]]]");
-        CrashJournal journal = new CrashJournal(tmp.resolve("journal/ecroulements.txt"));
-        // Ligne illisible : entrée marquée, jamais d'exception vers l'appelant.
-        List<CrashJournal.Entry> entries = journal.read();
-        assertEquals(1, entries.size());
-        assertEquals("LigneIllisible", entries.get(0).errorClass());
-    }
 
     // ---- DiagnosticReport : rédaction des secrets ---------------------------
 
@@ -84,16 +58,24 @@ class L8StoreTest {
                         new DiagnosticReport.ModeState("GRADLE", "NOT_INSTALLED")),
                 "tâche compileJava\n" + "erreur line\n".repeat(300)
                         + "apiKey=sk-abcdef0123456789abcdef",
-                List.of(new CrashJournal.Entry(CrashJournal.Zone.TERMINAL,
+                List.of(new CrashReportSummary("id-1", CrashType.EXCEPTION,
                         System.currentTimeMillis(), "java.io.IOException",
-                        "sortie interrompue")));
+                        "sortie interrompue", false)),
+                List.of(new LogEntry(System.currentTimeMillis(), "session",
+                        LogLevel.INFO, "Build", "main", "Build lancé (Forge)", null)),
+                new DeviceInfo("Google", "Pixel 8", "15", 35, "arm64-v8a",
+                        "fr-FR", 256_000_000L, 128_000_000L, 10_000_000_000L));
         String rendered = report.render();
 
         assertTrue(rendered.contains("Versions :"), "la section versions existe");
         assertTrue(rendered.contains("0.2.6"), "la version Forge est rendue");
         assertTrue(rendered.contains("FORGE : INSTALLED"), "l'état des modes est rendu");
-        assertTrue(rendered.contains("Journal des écroulements"));
+        assertTrue(rendered.contains("Rapports de plantage"));
         assertTrue(rendered.contains("sortie interrompue"), "le plantage est rendu");
+        assertTrue(rendered.contains("[non consulté]"), "l'état de lecture est rendu");
+        assertTrue(rendered.contains("Journal applicatif"), "la queue du journal est rendue");
+        assertTrue(rendered.contains("Build lancé (Forge)"));
+        assertTrue(rendered.contains("Pixel 8"), "la photographie d'appareil est rendue");
         // Le journal de build est borné (queue gardée : l'erreur est à la fin).
         assertTrue(rendered.length() < 5_000, "le journal borné ne déborde pas");
         assertTrue(rendered.contains("[rédigé]"), "le secret du journal est rédigé");

@@ -714,7 +714,8 @@
     <string name="activite_build_lance">Build lancé (%1$s)</string>
     <string name="activite_build_reussi">Build réussi · %1$s · %2$d tâches</string>
     <string name="activite_build_echoue">Build échoué · %1$s · tâche %2$s</string>
-    <string name="activite_crash_zone">Écroulement %1$s — %2$s</string>
+    <string name="activite_crash_rapport">Plantage %1$s — %2$s</string>
+    <string name="activite_crash_non_lu"> · non consulté</string>
     <string name="activite_lancement_impossible">Lancement du moteur impossible : %1$s</string>
     <string name="atelier_moteur_ecroule">Le moteur s\'est écroulé — l\'IDE est intact. Appuyez sur Construire pour réessayer.</string>
     <string name="atelier_moteur_ecroule_journal">Le moteur s\'est écroulé (l\'IDE est intact)</string>

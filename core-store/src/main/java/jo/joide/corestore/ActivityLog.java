@@ -14,7 +14,8 @@ import java.util.List;
  * référence) : la chronologie de ce que l'IDE a fait — **builds** (départ,
  * verdict, écroulement du moteur), **passes d'indexation** (phase, verdict) —
  * bornée, persistante, écrite atomiquement. Les écroulements des trois zones
- * vivent dans le {@link CrashJournal} ; l'écran d'activité FUSIONNE les deux.
+ * vivent dans les rapports de plantage de core-diag (ADR-021) ;
+ * l'écran d'activité FUSIONNE les deux.
  *
  * <p>Une entrée : nature, horodatage, message court, détail optionnel
  * (déplié au tap — trace, statistiques). Format par ligne :

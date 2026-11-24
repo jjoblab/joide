@@ -2,8 +2,8 @@
 <!--
   Journal d'activité (lot L10, d'après BuildActivity + DaemonCrashNote + la
   visionneuse de la référence — REF-130/131) : la chronologie fusionnée —
-  builds de l'atelier (ActivityLog), passes d'indexation, écroulements des
-  trois zones (CrashJournal) — le tap déplie le détail/la trace.
+  builds de l'atelier (ActivityLog), passes d'indexation, rapports de
+  plantage (core-diag, ADR-021) — le tap déplie le détail/la trace.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"

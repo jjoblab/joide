@@ -11,7 +11,8 @@ ViewBinding), `minSdk 28`, `targetSdk 28` (ADR-009).
 | Répertoire | Rôle |
 |---|---|
 | `core-model/` | Modèle de projet : détection du type (`forge.json` / scripts Gradle), modèles de création |
-| `core-store/` | Stockage local : choix de mode, préférences (JSON, écriture atomique) |
+| `core-store/` | Stockage local : choix de mode, préférences (JSON, écriture atomique), rapport de diagnostic |
+| `core-diag/` | Journal applicatif + plantages (ADR-021) : pipeline asynchrone, expurgation, JSONL borné, rapports de plantage complets — portage Java de CodeIDE |
 | `workbench-spi/` | Ports de l'atelier : `BuildBackend`, événements de build, diagnostics |
 | `build-forge/` | Backend Forge : adaptation du client Forge au port `BuildBackend` |
 | `build-gradle-core/` | Backend Gradle : lancement via terminal, analyse des diagnostics (testable sans appareil) |
@@ -36,6 +37,12 @@ Les moteurs LSP (brique code-lsp v1.15.0, LOT-11) se lisent sur le GitHub
 Packages de `jjoblab/code-lsp` : registre à jeton même pour lire — un PAT avec
 `read:packages` suffit (`JOIDE_GH_PACKAGES_TOKEN`, ou `GITHUB_TOKEN`) ; la CI
 utilise le jeton du dépôt.
+
+compileSdk 35 (ADR-020) : les AAR exigeant 36/37.2 (céleris v2.2.18,
+lsp-host 1.15.0) se consomment en **copies locales à métadonnées ajustées**
+depuis `tools/aar-p35/repo` (servi avant JitPack/GitHub Packages,
+reconstruisible par `tools/aar-p35/reconstruire.py`) — la plateforme 35,
+stable, suffit ; plus de déroulage manuel de zip.
 
 Le mode de build actif est **Forge seul** (ADR-009) : le mode Gradle + terminal
 intégré est conçu et conservé (`build-gradle-core`, `terminal-core`) mais pas

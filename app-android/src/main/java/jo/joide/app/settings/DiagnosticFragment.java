@@ -20,29 +20,42 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 import jo.joide.app.BuildConfig;
 import jo.joide.app.R;
 import jo.joide.app.databinding.DiagnosticFragmentBinding;
-import jo.joide.corestore.CrashJournal;
+import jo.joide.app.diag.DiagApp;
+import jo.joide.app.diag.DeviceSnapshot;
 import jo.joide.corestore.DiagnosticReport;
 import jo.joide.corestore.ModeManager;
 import jo.joide.corestore.ModePreferences;
 import jo.joide.app.ModeSetupFragment;
+import jo.joide.diag.CrashReport;
+import jo.joide.diag.CrashReportStore;
+import jo.joide.diag.CrashReportSummary;
+import jo.joide.diag.CrashType;
+import jo.joide.diag.JsonlLogStore;
+import jo.joide.diag.LogEntry;
+import jo.joide.diag.LogLevel;
+import jo.joide.diag.LoggingLimits;
 import jo.joide.workbench.WorkMode;
 
 /**
  * Écran « Diagnostic » — reconstruction exacte du studio HTML (section
  * Diagnostic) : barre sticky (back, titre t-xl, ic_copy + ic_share 20),
  * carte « Versions constatées » (4 lignes label/sur_var + mono — valeurs
- * VRAIES : {@link BuildConfig#VERSION_NAME}, état des modes ; le studio
- * sert d'exemple quand une valeur n'est pas disponible), carte
+ * VRAIES : {@link BuildConfig#VERSION_NAME}, état des modes), carte
  * « Installation des modes » (pill INSTALLÉ ok_soft / NON INSTALLÉ
- * sc_high + taille réellement occupée via {@link ModeManager}), carte
- * « Journal borné du dernier build » (bloc mono sc_lowest contour rayon
- * 12, secrets rédigés par {@link DiagnosticReport#redact}), carte « Journal
- * des écroulements (borné à 20) » (mono 11 sur_var, {@link CrashJournal}),
+ * sc_high + taille réelle), carte « Journal borné du dernier build »
+ * (secrets rédigés), carte « <b>Rapports de plantage</b> » (ADR-021 : la
+ * liste des rapports de core-diag, tap = dépliage de la trace complète,
+ * marquage consulté, suppression), carte « <b>Journal applicatif</b> »
+ * (pipeline ADR-021 : queue bornée + réglage du niveau minimal persisté),
  * 2 chips 46dp rayon 14 ic_copy / ic_share.
  *
  * <p>Les actions Copier / Partager sont réelles (presse-papiers + intent de
@@ -71,7 +84,8 @@ public class DiagnosticFragment extends Fragment {
         renderVersions();
         renderModes();
         renderBuildLog();
-        renderCrashLog();
+        renderCrashReports();
+        renderJournal();
         return binding.getRoot();
     }
 
@@ -180,32 +194,253 @@ public class DiagnosticFragment extends Fragment {
         }
     }
 
-    // ---- Carte « Journal des écroulements (borné à 20) » -------------------------
+    // ---- Carte « Rapports de plantage » (core-diag, ADR-021) --------------------
 
-    /** Journal des écroulements réel (mono 11 sur_var), vide si aucun. */
-    private void renderCrashLog() {
-        CrashJournal crashes = new CrashJournal(
-                requireContext().getFilesDir().toPath().resolve("journal/ecroulements.txt"));
-        List<CrashJournal.Entry> entries = crashes.read();
-        if (entries.isEmpty()) {
-            binding.diagnosticCrashLog.setText(
-                    getString(R.string.diagnostic_crash_log_empty));
+    /** Dépôt des rapports du processus (filesDir/crashes). */
+    private CrashReportStore crashStore() {
+        return new CrashReportStore(
+                requireContext().getFilesDir().toPath().resolve("crashes"));
+    }
+
+    /** Liste des rapports : alerte non consultés + rangées dépliables. */
+    private void renderCrashReports() {
+        binding.diagnosticCrashList.removeAllViews();
+        List<CrashReportSummary> summaries = crashStore().listSummaries();
+
+        long unreviewed = summaries.stream().filter(s -> !s.reviewed()).count();
+        binding.diagnosticCrashUnreviewed.setVisibility(
+                unreviewed > 0 ? View.VISIBLE : View.GONE);
+        binding.diagnosticCrashUnreviewed.setText(
+                getString(R.string.diagnostic_crash_unreviewed, (int) unreviewed));
+
+        if (summaries.isEmpty()) {
+            TextView empty = new TextView(requireContext());
+            empty.setText(R.string.diagnostic_crash_none_recent);
+            empty.setTextColor(color(R.color.sur_var));
+            empty.setTextSize(12);
+            binding.diagnosticCrashList.addView(empty);
             return;
         }
-        StringBuilder lines = new StringBuilder();
-        // Les plus récentes en dernier ; le studio montre les 2 dernières.
-        int from = Math.max(0, entries.size() - 2);
-        for (int i = from; i < entries.size(); i++) {
-            lines.append(DiagnosticReport.redact(entries.get(i).line())).append('\n');
+        // Les 5 plus récents : la carte reste lisible, le rapport complet
+        // (Copier) emporte tout.
+        int from = Math.max(0, summaries.size() - 5);
+        for (int i = from; i < summaries.size(); i++) {
+            binding.diagnosticCrashList.addView(crashRow(summaries.get(i)));
         }
-        binding.diagnosticCrashLog.setText(lines.toString().trim());
+    }
+
+    /** Une rangée de rapport : pill type + classe + âge ; tap = détail. */
+    private View crashRow(CrashReportSummary summary) {
+        LinearLayout row = new LinearLayout(requireContext());
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(0, dp(6), 0, dp(6));
+
+        TextView type = new TextView(requireContext());
+        type.setText(crashTypeLabel(summary.type()));
+        type.setBackgroundResource(summary.type() == CrashType.ANR
+                ? R.drawable.fond_pill_warn : R.drawable.fond_pill_err);
+        type.setTextColor(color(summary.type() == CrashType.ANR
+                ? R.color.alerte : R.color.erreur));
+        type.setTextSize(10);
+        type.setPadding(dp(8), dp(2), dp(8), dp(2));
+        row.addView(type);
+
+        TextView name = new TextView(requireContext());
+        name.setText(summary.exceptionClassName()
+                + (summary.reviewed() ? "" : getString(R.string.activite_crash_non_lu)));
+        name.setTextColor(color(R.color.sur));
+        name.setTextSize(12.5f);
+        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        nameParams.leftMargin = dp(10);
+        name.setSingleLine(true);
+        name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        name.setLayoutParams(nameParams);
+        row.addView(name);
+
+        TextView age = new TextView(requireContext());
+        age.setText(relatif(Instant.ofEpochMilli(summary.timestampMillis())));
+        age.setTextColor(color(R.color.sur_var));
+        age.setTextSize(11);
+        row.addView(age);
+
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        LinearLayout container = new LinearLayout(requireContext());
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setLayoutParams(params);
+
+        TextView detail = new TextView(requireContext());
+        detail.setTextColor(color(R.color.sur_var));
+        detail.setTextSize(11);
+        detail.setTypeface(android.graphics.Typeface.MONOSPACE);
+        detail.setPadding(dp(4), dp(6), dp(4), dp(2));
+        detail.setVisibility(View.GONE);
+
+        LinearLayout actions = new LinearLayout(requireContext());
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        actions.setPadding(0, 0, 0, dp(6));
+        actions.setVisibility(View.GONE);
+
+        container.addView(row);
+        container.addView(detail);
+        container.addView(actions);
+        row.setOnClickListener(v -> {
+            boolean expand = detail.getVisibility() != View.VISIBLE;
+            if (expand && detail.length() == 0) {
+                detail.setText(crashDetail(summary.id()));
+            }
+            detail.setVisibility(expand ? View.VISIBLE : View.GONE);
+            actions.setVisibility(expand ? View.VISIBLE : View.GONE);
+        });
+        fillCrashActions(summary.id(), actions);
+        return container;
+    }
+
+    /** Actions d'un rapport : Marquer consulté · Supprimer (petites pills). */
+    private void fillCrashActions(String reportId, LinearLayout actions) {
+        TextView markReviewed = pillAction(getString(R.string.diagnostic_crash_mark_reviewed));
+        markReviewed.setOnClickListener(v -> {
+            if (crashStore().markReviewed(reportId)) {
+                Toast.makeText(requireContext(),
+                        R.string.diagnostic_crash_reviewed_toast, Toast.LENGTH_SHORT).show();
+                renderCrashReports();
+            }
+        });
+        actions.addView(markReviewed);
+
+        TextView delete = pillAction(getString(R.string.diagnostic_crash_delete));
+        delete.setOnClickListener(v -> {
+            crashStore().delete(reportId);
+            Toast.makeText(requireContext(),
+                    R.string.diagnostic_crash_deleted, Toast.LENGTH_SHORT).show();
+            renderCrashReports();
+        });
+        LinearLayout.LayoutParams deleteParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        deleteParams.leftMargin = dp(10);
+        actions.addView(delete, deleteParams);
+    }
+
+    /** Petite pill d'action (texte 11, contour, clic). */
+    private TextView pillAction(String label) {
+        TextView pill = new TextView(requireContext());
+        pill.setText(label);
+        pill.setBackgroundResource(R.drawable.fond_bouton_contour);
+        pill.setTextColor(color(R.color.sur));
+        pill.setTextSize(11);
+        pill.setPadding(dp(12), dp(5), dp(12), dp(5));
+        return pill;
+    }
+
+    /** Détail complet d'un rapport : méta, trace aplatie, derniers filons. */
+    private String crashDetail(String reportId) {
+        CrashReport report = crashStore().get(reportId);
+        if (report == null) {
+            return getString(R.string.diagnostic_crash_reports_empty);
+        }
+        StringBuilder text = new StringBuilder(512);
+        text.append(crashTypeLabel(report.type()))
+                .append(" · fil « ").append(report.threadName()).append(" »");
+        if (report.lastScreen() != null) {
+            text.append(" · ").append(report.lastScreen());
+        }
+        text.append(" · ").append(report.processUptimeMs()).append(" ms");
+        if (report.isCrashLoop()) {
+            text.append(" · ").append(getString(R.string.diagnostic_crash_boucle));
+        }
+        text.append('\n').append(report.exception().formatAsText());
+        if (!report.breadcrumbs().isEmpty()) {
+            text.append('\n').append(getString(R.string.diagnostic_crash_breadcrumbs));
+            List<LogEntry> crumbs = report.breadcrumbs();
+            int from = Math.max(0, crumbs.size() - 5);
+            for (int i = from; i < crumbs.size(); i++) {
+                text.append('\n').append(journalLine(crumbs.get(i)));
+            }
+        }
+        return DiagnosticReport.redact(text.toString());
+    }
+
+    // ---- Carte « Journal applicatif » (pipeline ADR-021) -------------------------
+
+    /** Queue bornée du journal + réglage du niveau minimal persisté. */
+    private void renderJournal() {
+        renderJournalLevels();
+        JsonlLogStore store = new JsonlLogStore(
+                requireContext().getFilesDir().toPath().resolve(
+                        LoggingLimits.LOGS_DIR_NAME));
+        List<LogEntry> entries = store.readAll();
+        if (entries.isEmpty()) {
+            binding.diagnosticJournal.setText(getString(R.string.diagnostic_journal_empty));
+            return;
+        }
+        StringBuilder text = new StringBuilder(1024);
+        List<LogEntry> tail = entries.size() > LoggingLimits.DIAGNOSTIC_JOURNAL_TAIL
+                ? entries.subList(entries.size() - LoggingLimits.DIAGNOSTIC_JOURNAL_TAIL,
+                        entries.size())
+                : entries;
+        for (LogEntry entry : tail) {
+            text.append(journalLine(entry)).append('\n');
+        }
+        binding.diagnosticJournal.setText(text.toString().trim());
+    }
+
+    /** 4 pills de niveau : la courante est active — le choix est immédiat et persisté. */
+    private void renderJournalLevels() {
+        LinearLayout levels = binding.diagnosticJournalLevels;
+        levels.removeAllViews();
+        LogLevel current = currentLevel();
+        for (LogLevel level : LogLevel.values()) {
+            TextView pill = new TextView(requireContext());
+            pill.setText(level.name().substring(0, 1));
+            pill.setGravity(Gravity.CENTER);
+            pill.setTextSize(11);
+            pill.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+            pill.setBackgroundResource(level == current
+                    ? R.drawable.fond_segment_actif : R.drawable.fond_pill_sc_highest);
+            pill.setTextColor(color(level == current ? R.color.sur : R.color.sur_var));
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    dp(34), dp(26));
+            if (levels.getChildCount() > 0) {
+                params.leftMargin = dp(8);
+            }
+            pill.setLayoutParams(params);
+            pill.setOnClickListener(v -> {
+                DiagApp.setLevel(requireContext(), level);
+                renderJournalLevels();
+                Toast.makeText(requireContext(), level.name(), Toast.LENGTH_SHORT).show();
+            });
+            levels.addView(pill);
+        }
+    }
+
+    /** Niveau minimal courant (config à chaud, défaut DEBUG en debug). */
+    private LogLevel currentLevel() {
+        jo.joide.diag.LogConfigHolder holder = DiagApp.configHolder();
+        return holder != null ? holder.read().minLevel() : LogLevel.INFO;
+    }
+
+    /** Une ligne de journal : HH:mm:ss NIVEAU/Tag : message. */
+    private static String journalLine(LogEntry entry) {
+        return ZonedDateTime.ofInstant(Instant.ofEpochMilli(entry.timestampMillis()),
+                        java.time.ZoneId.systemDefault())
+                .format(DateTimeFormatter.ofPattern("HH:mm:ss"))
+                + " " + entry.level() + "/" + entry.tag() + " : " + entry.message();
     }
 
     // ---- Actions réelles : copier / partager -------------------------------------
 
     private String report() {
-        CrashJournal crashes = new CrashJournal(
-                requireContext().getFilesDir().toPath().resolve("journal/ecroulements.txt"));
+        CrashReportStore crashes = crashStore();
+        JsonlLogStore logs = new JsonlLogStore(
+                requireContext().getFilesDir().toPath().resolve(
+                        LoggingLimits.LOGS_DIR_NAME));
+        List<LogEntry> entries = logs.readAll();
+        List<LogEntry> tail = entries.size() > LoggingLimits.DIAGNOSTIC_JOURNAL_TAIL
+                ? entries.subList(entries.size() - LoggingLimits.DIAGNOSTIC_JOURNAL_TAIL,
+                        entries.size())
+                : entries;
         DiagnosticReport diagnostic = new DiagnosticReport(
                 new DiagnosticReport.Versions(
                         BuildConfig.VERSION_NAME, "0.2.13", "8.11.1",
@@ -217,7 +452,10 @@ public class DiagnosticFragment extends Fragment {
                         new DiagnosticReport.ModeState("GRADLE",
                                 modes.isInstalled(WorkMode.GRADLE) ? "INSTALLED"
                                         : "NOT_INSTALLED")),
-                lastBuildLog(), crashes.read());
+                lastBuildLog(),
+                crashes.listSummaries(),
+                tail,
+                DeviceSnapshot.take(requireContext()));
         return diagnostic.render();
     }
 
@@ -247,5 +485,26 @@ public class DiagnosticFragment extends Fragment {
 
     private int dp(float value) {
         return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
+    }
+
+    /** « il y a 2 min » — âge relatif court. */
+    private static String relatif(Instant quand) {
+        long minutes = Math.max(0, Duration.between(quand, Instant.now()).toMinutes());
+        if (minutes < 60) {
+            return String.format(Locale.getDefault(), "%d min", Math.max(1, minutes));
+        }
+        if (minutes < 24 * 60) {
+            return String.format(Locale.getDefault(), "%d h", minutes / 60);
+        }
+        return String.format(Locale.getDefault(), "%d j", minutes / (24 * 60));
+    }
+
+    /** Libellé de pill du type de plantage. */
+    private String crashTypeLabel(CrashType type) {
+        return getString(type == CrashType.EXCEPTION
+                ? R.string.diagnostic_crash_type_exception
+                : type == CrashType.ANR
+                ? R.string.diagnostic_crash_type_anr
+                : R.string.diagnostic_crash_type_native);
     }
 }

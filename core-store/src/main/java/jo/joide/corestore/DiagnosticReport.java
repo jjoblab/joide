@@ -3,13 +3,20 @@ package jo.joide.corestore;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import jo.joide.diag.CrashReportSummary;
+import jo.joide.diag.DeviceInfo;
+import jo.joide.diag.LogEntry;
 
 /**
- * Rapport de diagnostic copiable (conception §10) : versions (app, Forge,
- * Gradle, briques), état d'installation des modes, journal borné du dernier
- * build, journal des écroulements, **secrets rédigés** — jetons de plus de 16
- * caractères proches de « key/token/secret » remplacés par `[rédigé]`
- * (heuristique de la conception, appliquée à chaque ligne du rapport).
+ * Rapport de diagnostic copiable (conception §10, enrichi ADR-021) :
+ * versions (app, Forge, Gradle, briques), état d'installation des modes,
+ * journal borné du dernier build, <b>résumés des rapports de plantage</b>
+ * (système complet de core-diag : trace, filons, appareil), <b>queue du
+ * journal applicatif</b> (pipeline ADR-021) et photographie de l'appareil —
+ * <b>secrets rédigés</b> : jetons de plus de 16 caractères proches de
+ * « key/token/secret » remplacés par {@code [rédigé]} (heuristique de la
+ * conception, appliquée à chaque ligne du rapport ; les entrées du journal
+ * applicatif sont déjà expurgées à l'écriture par core-diag).
  *
  * <p>Pur JVM : la coquille assemble les valeurs réelles et appelle
  * {@link #render}. Bouton « Copier » + partage côté Android.</p>
@@ -25,14 +32,18 @@ public final class DiagnosticReport {
     private final Versions versions;
     private final List<ModeState> modes;
     private final String lastBuildLog;
-    private final List<CrashJournal.Entry> crashes;
+    private final List<CrashReportSummary> crashes;
+    private final List<LogEntry> journalTail;
+    private final DeviceInfo device;
 
     public DiagnosticReport(Versions versions, List<ModeState> modes, String lastBuildLog,
-            List<CrashJournal.Entry> crashes) {
+            List<CrashReportSummary> crashes, List<LogEntry> journalTail, DeviceInfo device) {
         this.versions = versions;
         this.modes = List.copyOf(modes);
         this.lastBuildLog = lastBuildLog == null ? "" : lastBuildLog;
-        this.crashes = List.copyOf(crashes);
+        this.crashes = crashes == null ? List.of() : List.copyOf(crashes);
+        this.journalTail = journalTail == null ? List.of() : List.copyOf(journalTail);
+        this.device = device;
     }
 
     /** Le rapport complet, copiable — chaque ligne passe par la rédaction des secrets. */
@@ -43,6 +54,16 @@ public final class DiagnosticReport {
         report.append("- Forge : ").append(versions.forge()).append('\n');
         report.append("- Gradle : ").append(versions.gradle()).append('\n');
         report.append("- Briques : ").append(versions.briques()).append('\n');
+        if (device != null) {
+            report.append('\n').append("Appareil :\n");
+            report.append("- Modèle : ").append(device.manufacturer()).append(' ')
+                    .append(device.model()).append('\n');
+            report.append("- Android : ").append(device.androidVersion())
+                    .append(" (API ").append(device.apiLevel()).append(")\n");
+            report.append("- Mémoire : ").append(device.freeMemoryBytes() / (1024 * 1024))
+                    .append(" / ").append(device.maxMemoryBytes() / (1024 * 1024))
+                    .append(" Mo utilisables\n");
+        }
         report.append('\n').append("État d'installation des modes :\n");
         for (ModeState mode : modes) {
             report.append("- ").append(mode.mode()).append(" : ")
@@ -50,11 +71,26 @@ public final class DiagnosticReport {
         }
         report.append('\n').append("Journal borné du dernier build :\n");
         appendBounded(report, lastBuildLog, 2_000, true);
-        report.append('\n').append("Journal des écroulements :\n");
+        report.append('\n').append("Rapports de plantage (les plus récents d'abord) :\n");
         if (crashes.isEmpty()) {
             report.append("(aucun)\n");
         } else {
-            crashes.forEach(c -> report.append(redact(c.line())).append('\n'));
+            for (CrashReportSummary crash : crashes) {
+                report.append("- ").append(crash.type()).append(" · ")
+                        .append(crash.exceptionClassName()).append(" : ")
+                        .append(redact(crash.shortMessage()))
+                        .append(crash.reviewed() ? "" : " [non consulté]")
+                        .append('\n');
+            }
+        }
+        report.append('\n').append("Journal applicatif (queue bornée) :\n");
+        if (journalTail.isEmpty()) {
+            report.append("(vide)\n");
+        } else {
+            for (LogEntry entry : journalTail) {
+                report.append(entry.level()).append('/').append(entry.tag()).append(": ")
+                        .append(redact(entry.message())).append('\n');
+            }
         }
         return report.toString();
     }

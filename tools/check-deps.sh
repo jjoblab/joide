@@ -4,7 +4,7 @@
 set -uo pipefail
 cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 failed=0
-for m in core-model core-store workbench-spi build-forge build-gradle-core; do
+for m in core-model core-store core-diag workbench-spi build-forge build-gradle-core; do
   if grep -nE 'com.android.(application|library)|androidx\.' "$m/build.gradle" 2>/dev/null; then
     echo "  module JVM $m référence l'Android" >&2; failed=1
   fi

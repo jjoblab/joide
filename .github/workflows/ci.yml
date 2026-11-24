@@ -46,20 +46,17 @@ jobs:
         run: |
           chmod +x gradlew
           JOIDE_SKIP_ANDROID=1 ./gradlew --no-daemon test
-      - name: APK debug (SDK de l executant, plateforme 37)
+      - name: APK debug (plateforme 35, ADR-020)
         env:
           JOIDE_GH_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # lsp-host 1.15.0 (minCompileSdk 37.2) exige la plateforme 37 — AGP 8.7
-          # y cherche « platforms/android-37 » : le dépôt Google publie la
-          # plateforme sous « platforms;android-37.0 » (schéma mineur), qui
-          # s'installe en android-37.0 invisible d'AGP 8.7. Le zip officiel
-          # est déroulé à la main, renommé, et son package.xml (versionné dans
-          # tools/) posé — même montage que le bac à sable local.
-          curl -sL -o /tmp/p37.zip https://dl.google.com/android/repository/platform-37.0_r02.zip
-          unzip -qo /tmp/p37.zip -d "$ANDROID_HOME/platforms/"
-          mv "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
-          cp tools/platform-37-package.xml "$ANDROID_HOME/platforms/android-37/package.xml"
+          # compileSdk 35 (ADR-020) : plateforme stable, visible d'AGP 8.7 —
+          # plus de déroulage manuel (la 37 n'était publiée qu'en android-37.0,
+          # schéma mineur invisible du résolveur). Les AAR exigeant 36/37.2
+          # (céleris, lsp-host) se consomment en copies locales à métadonnées
+          # ajustées depuis tools/aar-p35/repo, servi avant les registres
+          # distants — la CI n'a plus rien d'exceptionnel à installer.
+          sdkmanager "platforms;android-35" >/dev/null
           chmod +x gradlew
           ./gradlew --no-daemon :app-android:assembleDebug
       - uses: actions/upload-artifact@v4
@@ -93,10 +90,7 @@ jobs:
           # Keystore reconstitué depuis le secret (base64 PKCS12), puis build
           # release signé (même clé pour toutes les mises à jour).
           echo "$JOIDE_KEYSTORE_B64" | base64 -d > app-android/joide-ci.keystore
-          curl -sL -o /tmp/p37.zip https://dl.google.com/android/repository/platform-37.0_r02.zip
-          unzip -qo /tmp/p37.zip -d "$ANDROID_HOME/platforms/"
-          mv "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
-          cp tools/platform-37-package.xml "$ANDROID_HOME/platforms/android-37/package.xml"
+          sdkmanager "platforms;android-35" >/dev/null
           chmod +x gradlew
           ./gradlew --no-daemon :app-android:assembleRelease
           rm -f app-android/joide-ci.keystore
